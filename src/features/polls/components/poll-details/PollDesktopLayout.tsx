@@ -1,7 +1,7 @@
 /**
  * Poll Desktop Layout
  * Компонент для отображения деталей опроса на широких экранах
- * Layout: Три колонки - Информация + Голосование/Результаты + Проголосовавшие
+ * Layout: Две колонки - Обзор (слева) + Табы: Результаты/Проголосовавшие (справа)
  */
 
 import React, { useState } from 'react';
@@ -13,6 +13,13 @@ import type { Poll, PollVoter } from '../../types/poll.types';
 import { PollInfo } from './PollInfo';
 import { PollVotingUI } from '../voting/PollVotingUI';
 import { PollActionButtons } from '../voting/PollActionButtons';
+
+type DesktopTabType = 'results' | 'voters';
+
+const TAB_CONFIG: { key: DesktopTabType; icon: string; label: string }[] = [
+  { key: 'results', icon: 'bar-chart-outline', label: 'Результаты' },
+  { key: 'voters', icon: 'people-outline', label: 'Проголосовавшие' },
+];
 
 interface PollDesktopLayoutProps {
   poll: Poll;
@@ -73,270 +80,236 @@ export const PollDesktopLayout: React.FC<PollDesktopLayoutProps> = ({
   onPublish,
   onViewVoters,
 }) => {
-  const { theme } = useTheme();
-  const [hoveredSection, setHoveredSection] = useState<'info' | 'voting' | 'voters' | null>(null);
+  const { theme, isDark } = useTheme();
+  const cardBgColor = isDark ? theme.card : '#FFFFFF';
+  const [activeRightTab, setActiveRightTab] = useState<DesktopTabType>('results');
+  const [hoveredCard, setHoveredCard] = useState<'left' | 'right' | null>(null);
+  const [hoveredTab, setHoveredTab] = useState<DesktopTabType | null>(null);
 
-  const showVotersColumn = poll.total_voters > 0;
+  const hasResults = showResultsSection && poll.options && poll.options.length > 0 &&
+    poll.options.some(opt => opt.vote_count !== undefined);
+
+  const getBadgeCount = (tab: DesktopTabType): number => {
+    switch (tab) {
+      case 'results': return poll.options?.length || 0;
+      case 'voters': return poll.total_voters || 0;
+    }
+  };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContainer}
-      showsVerticalScrollIndicator={true}
-    >
-      {/* Two Column Layout */}
-      <View style={styles.mainContent}>
-        {/* Left Column - Main Content */}
-        <View style={styles.leftColumn}>
-            {/* Poll Header Section */}
-            <View style={[styles.pollHeaderSection, { backgroundColor: theme.card }]}>
-              <Text style={[styles.pollTitle, { color: theme.text }]}>{poll.title}</Text>
-              <View style={styles.badgesRow}>
-                <View style={[styles.statusBadge, {
-                  backgroundColor: poll.status === 'active' ? '#10B981' :
-                                   poll.status === 'draft' ? '#6B7280' :
-                                   poll.status === 'closed' ? '#EF4444' : '#6B7280'
-                }]}>
-                  <Text style={styles.badgeText}>
-                    {poll.status === 'active' ? 'Активен' :
-                     poll.status === 'draft' ? 'Черновик' :
-                     poll.status === 'closed' ? 'Завершён' : poll.status}
-                  </Text>
-                </View>
-                <View style={[styles.typeBadge, { backgroundColor: theme.primary }]}>
-                  <Ionicons
-                    name={poll.type === 'single_choice' ? 'radio-button-on' :
-                          poll.type === 'multiple_choice' ? 'checkbox' :
-                          poll.type === 'rating' ? 'star' : 'create'}
-                    size={12}
-                    color="#FFFFFF"
-                  />
-                  <Text style={styles.badgeText}>
-                    {poll.type === 'single_choice' ? 'Один вариант' :
-                     poll.type === 'multiple_choice' ? 'Несколько вариантов' :
-                     poll.type === 'rating' ? 'Рейтинг' :
-                     poll.type === 'open_text' ? 'Текст' : poll.type}
-                  </Text>
-                </View>
-
-                {/* Visibility Badge */}
-                <View style={[styles.visibilityBadge, { backgroundColor: '#3B82F6' }]}>
-                  <Ionicons
-                    name={poll.visibility === 'public' ? 'globe-outline' :
-                          poll.visibility === 'invite_only' ? 'mail-outline' :
-                          poll.visibility === 'department' ? 'people-outline' : 'lock-closed-outline'}
-                    size={12}
-                    color="#FFFFFF"
-                  />
-                  <Text style={styles.badgeText}>
-                    {poll.visibility === 'public' ? 'Публичный' :
-                     poll.visibility === 'invite_only' ? 'По приглашению' :
-                     poll.visibility === 'department' ? 'Отдел' : 'Приватный'}
-                  </Text>
-                </View>
-
-                {/* Anonymous Badge */}
-                {poll.allow_anonymous && (
-                  <View style={[styles.anonymousBadge, { backgroundColor: '#8B5CF6' }]}>
-                    <Ionicons name="eye-off-outline" size={12} color="#FFFFFF" />
-                    <Text style={styles.badgeText}>Анонимный</Text>
-                  </View>
-                )}
-              </View>
+    <View style={styles.container}>
+      <View style={styles.columnsRow}>
+        {/* LEFT COLUMN - Poll Overview */}
+        <View
+          style={styles.leftColumn}
+          // @ts-ignore - web-only props
+          onMouseEnter={Platform.OS === 'web' ? () => setHoveredCard('left') : undefined}
+          onMouseLeave={Platform.OS === 'web' ? () => setHoveredCard(null) : undefined}
+        >
+          <View style={[
+            styles.leftCard,
+            { backgroundColor: cardBgColor, borderColor: theme.border },
+            hoveredCard === 'left' && styles.cardHovered,
+          ]}>
+            {/* Left card header */}
+            <View style={[styles.leftCardHeader, { borderBottomColor: theme.border }]}>
+              <Ionicons name="stats-chart-outline" size={18} color={theme.primary} />
+              <Text style={[styles.leftCardTitle, { color: theme.text }]}>Опрос</Text>
             </View>
+            <ScrollView
+              style={[styles.leftCardScroll, { backgroundColor: theme.background }]}
+              contentContainerStyle={styles.leftCardContent}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled={true}
+            >
+              {/* Poll Info */}
+              <PollInfo poll={poll} onUserPress={onUserPress} />
 
-            {/* Voting/Results Section */}
-            {((showVotingUI || isRevoting) || (showResultsSection && !isRevoting && !showVotingUI && poll.options && poll.options.length > 0 && poll.options.some(opt => opt.vote_count !== undefined))) && (
-              <View style={[styles.mainCard, { backgroundColor: theme.card }]}>
-                {(showVotingUI || isRevoting) && (
-                  <>
-                    <View style={styles.sectionHeader}>
-                      <Ionicons name="create-outline" size={22} color={theme.primary} />
-                      <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                        {isRevoting ? 'Изменить голос' : 'Ваш голос'}
-                      </Text>
-                    </View>
-                    <PollVotingUI
-                      poll={poll}
-                      selectedOptions={selectedOptions}
-                      textAnswer={textAnswer}
-                      ratingValue={ratingValue}
-                      isRevoting={isRevoting}
-                      onOptionToggle={onOptionToggle}
-                      onTextChange={onTextChange}
-                      onRatingChange={onRatingChange}
-                      onSelectRatingOption={onSelectRatingOption}
-                    />
-                  </>
-                )}
-
-                {/* Results */}
-                {showResultsSection && !isRevoting && !showVotingUI && poll.options && poll.options.length > 0 && poll.options.some(opt => opt.vote_count !== undefined) && (
-                  <>
-                    <View style={styles.sectionHeader}>
-                      <Ionicons name="bar-chart" size={22} color={theme.primary} />
-                      <Text style={[styles.sectionTitle, { color: theme.text }]}>Результаты</Text>
-                    </View>
-                    <View style={styles.resultsSection}>
-                      {poll.options.map((option) => (
-                        <View key={option.id} style={styles.resultItem}>
-                          <View style={styles.resultHeader}>
-                            <Text style={[styles.resultText, { color: theme.text }]}>{option.text}</Text>
-                            <Text style={[styles.resultPercent, { color: theme.primary }]}>
-                              {option.vote_percent?.toFixed(1) || 0}%
-                            </Text>
-                          </View>
-                          <View style={[styles.resultBar, { backgroundColor: theme.border }]}>
-                            <View
-                              style={[
-                                styles.resultBarFill,
-                                {
-                                  width: `${option.vote_percent || 0}%`,
-                                  backgroundColor: theme.primary,
-                                },
-                              ]}
-                            />
-                          </View>
-                          <Text style={[styles.resultCount, { color: theme.textSecondary }]}>
-                            {option.vote_count || 0} {option.vote_count === 1 ? 'голос' : 'голосов'}
-                          </Text>
-                        </View>
-                      ))}
-                      <View style={[styles.totalVotes, { borderTopColor: theme.border }]}>
-                        <Ionicons name="people" size={18} color={theme.textSecondary} />
-                        <Text style={[styles.totalVotesText, { color: theme.textSecondary }]}>
-                          Всего проголосовало: {poll.total_voters || 0}
-                        </Text>
-                      </View>
-
-                      {/* Revote button under results */}
-                      {poll.user_has_voted && poll.status === 'active' && !isCreatorOrAdmin && (
-                        <TouchableOpacity
-                          style={[styles.revoteButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.primary }]}
-                          onPress={onRevote}
-                        >
-                          <Ionicons name="refresh" size={20} color={theme.primary} />
-                          <Text style={[styles.revoteButtonText, { color: theme.primary }]}>
-                            Переголосовать
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </>
-                )}
-
-                {/* Action Buttons */}
-                <View style={styles.actionButtonsContainer}>
-                  <PollActionButtons
-                    poll={poll}
-                    canDeleteOrClose={canDeleteOrClose}
-                    isCreatorOrAdmin={isCreatorOrAdmin}
-                    isRevoting={isRevoting}
-                    isVoting={isVoting}
-                    isPublishing={isPublishing}
-                    showResults={showResults}
-                    comment={comment}
-                    isDesktop={true}
-                    onCommentChange={onCommentChange}
-                    onVote={onVote}
-                    onRevote={onRevote}
-                    onCancelRevote={onCancelRevote}
-                    onToggleResults={onToggleResults}
-                    onPublish={onPublish}
-                  />
-                </View>
-              </View>
-            )}
-        </View>
-
-        {/* Right Column - Sidebar */}
-        <View style={styles.rightColumn}>
-            {/* About Section */}
-            <View style={[styles.sidebarCard, { backgroundColor: theme.card }]}>
-              <View style={styles.sidebarHeader}>
-                <Ionicons name="information-circle" size={20} color={theme.primary} />
-                <Text style={[styles.sidebarTitle, { color: theme.text }]}>О опросе</Text>
-              </View>
-
-              {poll.description && (
-                <View style={styles.sidebarSection}>
-                  <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Описание</Text>
-                  <Text style={[styles.sidebarValue, { color: theme.text }]}>{poll.description}</Text>
-                </View>
-              )}
-
-              <View style={styles.sidebarSection}>
-                <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Создатель</Text>
-                <TouchableOpacity
-                  style={styles.creatorButton}
-                  onPress={() => poll.created_by && onUserPress(poll.created_by)}
-                  activeOpacity={0.7}
-                >
-                  <Avatar
-                    name={poll.creator?.name || 'Unknown'}
-                    imageUrl={poll.creator?.avatar}
-                    size={32}
-                  />
-                  <Text style={[styles.sidebarValue, { color: theme.text }]}>
-                    {poll.creator?.name || 'Unknown'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.sidebarSection}>
-                <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Создан</Text>
-                <Text style={[styles.sidebarValue, { color: theme.text }]}>
-                  {new Date(poll.created_at).toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                  })}
-                </Text>
-              </View>
-
-              {poll.end_time && poll.status === 'active' && (
-                <View style={styles.sidebarSection}>
-                  <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Дедлайн</Text>
-                  <View style={styles.deadlineRow}>
-                    <Ionicons name="time" size={16} color="#F59E0B" />
-                    <Text style={[styles.sidebarValue, { color: '#F59E0B' }]}>
-                      {new Date(poll.end_time).toLocaleDateString('ru-RU', {
-                        day: 'numeric',
-                        month: 'long'
-                      })}
+              {/* Voting UI */}
+              {(showVotingUI || isRevoting) && (
+                <View style={styles.votingSection}>
+                  <View style={[styles.votingSectionHeader, { borderTopColor: theme.border }]}>
+                    <Ionicons name="create-outline" size={18} color={theme.primary} />
+                    <Text style={[styles.votingSectionTitle, { color: theme.text }]}>
+                      {isRevoting ? 'Изменить голос' : 'Ваш голос'}
                     </Text>
                   </View>
+                  <PollVotingUI
+                    poll={poll}
+                    selectedOptions={selectedOptions}
+                    textAnswer={textAnswer}
+                    ratingValue={ratingValue}
+                    isRevoting={isRevoting}
+                    onOptionToggle={onOptionToggle}
+                    onTextChange={onTextChange}
+                    onRatingChange={onRatingChange}
+                    onSelectRatingOption={onSelectRatingOption}
+                  />
                 </View>
               )}
 
-              <View style={[styles.statsGrid, { borderTopColor: theme.border }]}>
-                <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: theme.text }]}>{poll.total_votes || 0}</Text>
-                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Голосов</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: theme.text }]}>{poll.total_voters || 0}</Text>
-                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Участников</Text>
-                </View>
-              </View>
+              {/* Action Buttons */}
+              <PollActionButtons
+                poll={poll}
+                canDeleteOrClose={canDeleteOrClose}
+                isCreatorOrAdmin={isCreatorOrAdmin}
+                isRevoting={isRevoting}
+                isVoting={isVoting}
+                isPublishing={isPublishing}
+                showResults={showResults}
+                comment={comment}
+                isDesktop={true}
+                onCommentChange={onCommentChange}
+                onVote={onVote}
+                onRevote={onRevote}
+                onCancelRevote={onCancelRevote}
+                onToggleResults={onToggleResults}
+                onPublish={onPublish}
+              />
+            </ScrollView>
+          </View>
+        </View>
+
+        {/* RIGHT COLUMN - Tabbed Panel */}
+        <View
+          style={styles.rightColumn}
+          // @ts-ignore - web-only props
+          onMouseEnter={Platform.OS === 'web' ? () => setHoveredCard('right') : undefined}
+          onMouseLeave={Platform.OS === 'web' ? () => setHoveredCard(null) : undefined}
+        >
+          <View style={[
+            styles.rightCard,
+            { backgroundColor: cardBgColor, borderColor: theme.border },
+            hoveredCard === 'right' && styles.cardHovered,
+          ]}>
+            {/* Right card header */}
+            <View style={[styles.rightCardHeader, { borderBottomColor: theme.border }]}>
+              <Ionicons name="document-text-outline" size={18} color={theme.primary} />
+              <Text style={[styles.rightCardTitle, { color: theme.text }]}>Детали</Text>
             </View>
 
-            {/* Voters Section */}
-            {showVotersColumn && (
-              <View style={[styles.sidebarCard, { backgroundColor: theme.card }]}>
-                <View style={styles.sidebarHeader}>
-                  <Ionicons name="people" size={20} color={theme.primary} />
-                  <Text style={[styles.sidebarTitle, { color: theme.text }]}>
-                    Проголосовали
-                  </Text>
-                  {poll.total_voters > 0 && (
-                    <View style={[styles.votersBadge, { backgroundColor: theme.primary }]}>
-                      <Text style={styles.badgeText}>{poll.total_voters}</Text>
-                    </View>
-                  )}
-                </View>
+            {/* Tab Bar */}
+            <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
+              {TAB_CONFIG.map(({ key, icon, label }) => {
+                const isActive = activeRightTab === key;
+                const isHovered = hoveredTab === key;
+                const count = getBadgeCount(key);
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[
+                      styles.tabItem,
+                      isActive && { borderBottomColor: theme.primary },
+                      isHovered && !isActive && styles.tabItemHovered,
+                    ]}
+                    onPress={() => setActiveRightTab(key)}
+                    activeOpacity={0.7}
+                    // @ts-ignore - web-only props
+                    onMouseEnter={Platform.OS === 'web' ? () => setHoveredTab(key) : undefined}
+                    onMouseLeave={Platform.OS === 'web' ? () => setHoveredTab(null) : undefined}
+                  >
+                    <Ionicons
+                      name={icon as any}
+                      size={18}
+                      color={isActive ? theme.primary : theme.textSecondary}
+                    />
+                    <Text style={[
+                      styles.tabLabel,
+                      { color: isActive ? theme.primary : theme.textSecondary },
+                      isActive && { fontWeight: '700' },
+                    ]}>
+                      {label}
+                    </Text>
+                    {count > 0 && (
+                      <View style={[
+                        styles.tabBadge,
+                        { backgroundColor: isActive ? theme.primary : theme.backgroundTertiary },
+                      ]}>
+                        <Text style={[
+                          styles.tabBadgeText,
+                          { color: isActive ? '#FFFFFF' : theme.textSecondary },
+                        ]}>
+                          {count}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-                <View style={styles.votersContent}>
+            {/* Tab Content */}
+            {activeRightTab === 'results' && (
+              <ScrollView
+                style={[styles.tabContent, { backgroundColor: theme.background }]}
+                contentContainerStyle={styles.tabContentInner}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}
+              >
+                {hasResults ? (
+                  <>
+                    {poll.options.map((option) => (
+                      <View key={option.id} style={styles.resultItem}>
+                        <View style={styles.resultHeader}>
+                          <Text style={[styles.resultText, { color: theme.text }]}>{option.text}</Text>
+                          <Text style={[styles.resultPercent, { color: theme.primary }]}>
+                            {option.vote_percent?.toFixed(1) || 0}%
+                          </Text>
+                        </View>
+                        <View style={[styles.resultBar, { backgroundColor: theme.border }]}>
+                          <View
+                            style={[
+                              styles.resultBarFill,
+                              {
+                                width: `${option.vote_percent || 0}%`,
+                                backgroundColor: theme.primary,
+                              },
+                            ]}
+                          />
+                        </View>
+                        <Text style={[styles.resultCount, { color: theme.textSecondary }]}>
+                          {option.vote_count || 0} {option.vote_count === 1 ? 'голос' : 'голосов'}
+                        </Text>
+                      </View>
+                    ))}
+                    <View style={[styles.totalVotes, { borderTopColor: theme.border }]}>
+                      <Ionicons name="people" size={18} color={theme.textSecondary} />
+                      <Text style={[styles.totalVotesText, { color: theme.textSecondary }]}>
+                        Всего проголосовало: {poll.total_voters || 0}
+                      </Text>
+                    </View>
+
+                    {/* Revote button under results */}
+                    {poll.user_has_voted && poll.status === 'active' && !isCreatorOrAdmin && (
+                      <TouchableOpacity
+                        style={[styles.revoteButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.primary }]}
+                        onPress={onRevote}
+                      >
+                        <Ionicons name="refresh" size={20} color={theme.primary} />
+                        <Text style={[styles.revoteButtonText, { color: theme.primary }]}>
+                          Переголосовать
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                ) : (
+                  <View style={styles.emptyState}>
+                    <Ionicons name="bar-chart-outline" size={48} color={theme.textSecondary} />
+                    <Text style={[styles.emptyStateText, { color: theme.textSecondary }]}>
+                      {poll.status === 'draft' ? 'Опрос ещё не опубликован' : 'Результатов пока нет'}
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            )}
+
+            {activeRightTab === 'voters' && (
+              <ScrollView
+                style={[styles.tabContent, { backgroundColor: theme.background }]}
+                contentContainerStyle={styles.tabContentInner}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}
+              >
                 {votersPreview.length > 0 ? (
                   <>
                     <View style={styles.votersList}>
@@ -371,7 +344,7 @@ export const PollDesktopLayout: React.FC<PollDesktopLayoutProps> = ({
                             )}
                             {voter.comment && (
                               <Text style={[styles.voterComment, { color: theme.textSecondary }]} numberOfLines={2}>
-                                💬 {voter.comment}
+                                {voter.comment}
                               </Text>
                             )}
                           </View>
@@ -391,19 +364,19 @@ export const PollDesktopLayout: React.FC<PollDesktopLayoutProps> = ({
                     )}
                   </>
                 ) : (
-                  <View style={styles.emptyVotersState}>
+                  <View style={styles.emptyState}>
                     <Ionicons name="people-outline" size={48} color={theme.textSecondary} />
-                    <Text style={[styles.emptyVotersText, { color: theme.textSecondary }]}>
-                      Загрузка списка проголосовавших...
+                    <Text style={[styles.emptyStateText, { color: theme.textSecondary }]}>
+                      {poll.status === 'draft' ? 'Опрос ещё не опубликован' : 'Пока никто не проголосовал'}
                     </Text>
                   </View>
                 )}
-                </View>
-              </View>
+              </ScrollView>
             )}
+          </View>
         </View>
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
@@ -411,160 +384,196 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollContainer: {
-    flexGrow: 1,
-  },
-  mainContent: {
+  columnsRow: {
+    flex: 1,
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    padding: 24,
-    gap: 24,
+    padding: 16,
+    gap: 16,
   },
+
+  // Left column
   leftColumn: {
-    flex: 0,
-    width: '100%',
-    maxWidth: 800,
-    minWidth: 500,
-    gap: 20,
+    flex: 2,
+    minWidth: 360,
+    maxWidth: 600,
   },
-  rightColumn: {
-    flex: 0,
-    width: 380,
-    minWidth: 380,
-    gap: 20,
-  },
-
-  // Poll Header Section
-  pollHeaderSection: {
-    padding: 20,
+  leftCard: {
+    flex: 1,
     borderRadius: 16,
-    marginBottom: 20,
+    borderWidth: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
     ...Platform.select({
       web: {
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 2,
-      },
-    }),
-  },
-  pollTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 32,
-    marginBottom: 16,
-    letterSpacing: -0.5,
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
-  },
-  typeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
-  },
-  visibilityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
-  },
-  anonymousBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-  },
-
-  // Main Content Card
-  mainCard: {
-    padding: 24,
-    borderRadius: 16,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        transitionProperty: 'box-shadow, transform',
+        transitionDuration: '0.2s',
+        transitionTimingFunction: 'ease-out',
       },
       default: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
-        shadowRadius: 12,
+        shadowRadius: 8,
         elevation: 3,
       },
     }),
   },
-  sectionHeader: {
+  leftCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
   },
-  sectionTitle: {
-    fontSize: 20,
+  leftCardTitle: {
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
-  actionButtonsContainer: {
-    marginTop: 0,
-    marginBottom: 0,
+  leftCardScroll: {
+    flex: 1,
   },
-  revoteButton: {
+  leftCardContent: {
+    padding: 20,
+    paddingBottom: 24,
+  },
+
+  // Right column
+  rightCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  rightCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  rightColumn: {
+    flex: 3,
+    minWidth: 400,
+  },
+  rightCard: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        transitionProperty: 'box-shadow, transform',
+        transitionDuration: '0.2s',
+        transitionTimingFunction: 'ease-out',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+      },
+    }),
+  },
+
+  cardHovered: {
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 20px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.06)',
+        transform: 'translateY(-2px)',
+      },
+      default: {
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        elevation: 6,
+      },
+    }),
+  },
+
+  // Voting section inside left card
+  votingSection: {
+    marginTop: 8,
+  },
+  votingSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 16,
+    marginBottom: 12,
+    borderTopWidth: 1,
+  },
+  votingSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+
+  // Tab bar
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    paddingHorizontal: 8,
+  },
+  tabItem: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 2,
     gap: 8,
-    marginTop: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
     ...Platform.select({
       web: {
         cursor: 'pointer',
-        transitionProperty: 'background-color, border-color',
+        transitionProperty: 'border-color, background-color',
         transitionDuration: '0.15s',
       },
     }),
   },
-  revoteButtonText: {
-    fontSize: 15,
+  tabItemHovered: {
+    ...Platform.select({
+      web: {
+        backgroundColor: 'rgba(0, 0, 0, 0.02)',
+      },
+    }),
+  },
+  tabLabel: {
+    fontSize: 14,
     fontWeight: '600',
+    letterSpacing: -0.2,
+  },
+  tabBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 7,
+  },
+  tabBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 
-  // Results Section
-  resultsSection: {
-    gap: 16,
+  // Tab content
+  tabContent: {
+    flex: 1,
   },
+  tabContentInner: {
+    padding: 20,
+  },
+
+  // Results
   resultItem: {
     marginBottom: 20,
   },
@@ -616,110 +625,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-
-  // Sidebar Cards
-  sidebarCard: {
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 16,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 2,
-      },
-    }),
-  },
-  sidebarHeader: {
+  revoteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
-  },
-  sidebarTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    flex: 1,
-  },
-  sidebarSection: {
-    marginBottom: 18,
-  },
-  sidebarLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  sidebarValue: {
-    fontSize: 15,
-    fontWeight: '500',
-    lineHeight: 22,
-  },
-  creatorButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 8,
-    borderRadius: 10,
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    gap: 8,
+    marginTop: 20,
     ...Platform.select({
       web: {
         cursor: 'pointer',
-        transitionProperty: 'background-color',
+        transitionProperty: 'background-color, border-color',
         transitionDuration: '0.15s',
       },
     }),
   },
-  deadlineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    marginTop: 18,
-    paddingTop: 18,
-    borderTopWidth: 2,
-    gap: 16,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
+  revoteButtonText: {
+    fontSize: 15,
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
 
-  // Voters Section
-  votersBadge: {
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  votersContent: {
-    gap: 2,
-  },
+  // Voters
   votersList: {
     gap: 2,
   },
@@ -802,14 +730,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  emptyVotersState: {
+
+  // Empty state
+  emptyState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 48,
+    paddingVertical: 60,
     paddingHorizontal: 24,
   },
-  emptyVotersText: {
+  emptyStateText: {
     fontSize: 14,
     fontWeight: '500',
     textAlign: 'center',
