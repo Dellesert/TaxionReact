@@ -1085,7 +1085,7 @@ export const ScheduleDetailScreen: React.FC = () => {
               {viewMode === 'grid' && schedule.mode === 'monthly' ? (
                 // Desktop Grid View - employees as rows, dates as columns
                 <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
-                  <View style={[styles.sectionHeader, { marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+                  <View style={[styles.sectionHeader, styles.sectionHeaderFullWidth, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                       <TouchableOpacity
                         style={[styles.infoToggleButton, { width: 28, height: 28, borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
@@ -1179,7 +1179,7 @@ export const ScheduleDetailScreen: React.FC = () => {
               ) : viewMode === 'shifts' && schedule.mode === 'monthly' ? (
                 // Desktop Shifts View - dates as rows, morning/evening columns
                 <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
-                  <View style={[styles.sectionHeader, { marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+                  <View style={[styles.sectionHeader, styles.sectionHeaderFullWidth, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                       <TouchableOpacity
                         style={[styles.infoToggleButton, { width: 28, height: 28, borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
@@ -1252,7 +1252,7 @@ export const ScheduleDetailScreen: React.FC = () => {
               ) : (
                 // Standard List View
                 <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
-                  <View style={[styles.sectionHeader, { marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+                  <View style={[styles.sectionHeader, styles.sectionHeaderFullWidth, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                       <TouchableOpacity
                         style={[styles.infoToggleButton, { width: 28, height: 28, borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
@@ -1884,6 +1884,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  sectionHeaderFullWidth: {
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+    marginTop: -20,
+    paddingTop: 12,
+    paddingBottom: 10,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   sectionTitle: {
     fontSize: 16,

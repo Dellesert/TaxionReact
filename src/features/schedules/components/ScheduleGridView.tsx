@@ -468,7 +468,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
       <ScrollView horizontal showsHorizontalScrollIndicator={true}>
         <View>
           {/* Header row with dates */}
-          <View style={styles.headerRow}>
+          <View style={[styles.headerRow, { borderBottomColor: theme.border }]}>
             {/* Empty cell for name column */}
             <View style={[styles.nameCell, styles.headerNameCell, { width: NAME_COLUMN_WIDTH, backgroundColor: theme.card, borderColor: theme.border }]}>
               <Text style={[styles.headerText, { color: theme.textSecondary }]}>Ф.И.О.</Text>
