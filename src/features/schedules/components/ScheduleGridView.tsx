@@ -866,7 +866,12 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 13,
     flex: 1,
-  },
+    ...Platform.select({
+      web: {
+        transition: 'color 0.15s ease',
+      },
+    }),
+  } as any,
   entryCell: {
     alignItems: 'center',
     justifyContent: 'center',
