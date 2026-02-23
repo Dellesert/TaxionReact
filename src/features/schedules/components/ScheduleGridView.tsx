@@ -468,7 +468,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
       <ScrollView horizontal showsHorizontalScrollIndicator={true}>
         <View>
           {/* Header row with dates */}
-          <View style={[styles.headerRow, { borderBottomColor: theme.border }]}>
+          <View style={styles.headerRow}>
             {/* Empty cell for name column */}
             <View style={[styles.nameCell, styles.headerNameCell, { width: NAME_COLUMN_WIDTH, backgroundColor: theme.card, borderColor: theme.border }]}>
               <Text style={[styles.headerText, { color: theme.textSecondary }]}>Ф.И.О.</Text>
@@ -511,6 +511,9 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
             })}
           </View>
 
+          {/* Full-width separator between header and body */}
+          <View style={[styles.headerSeparator, { backgroundColor: theme.border }]} />
+
           {/* User rows */}
           <ScrollView style={styles.bodyScroll} showsVerticalScrollIndicator={true}>
             {userRows.length === 0 ? (
@@ -536,7 +539,7 @@ export const ScheduleGridView: React.FC<ScheduleGridViewProps> = ({
                       imageUrl={userRow.userAvatar}
                       size={28}
                     />
-                    <Text style={[styles.userName, { color: theme.text }]} numberOfLines={2}>
+                    <Text style={[styles.userName, { color: hoveredRow === userRow.userId ? theme.primary : theme.text }]} numberOfLines={2}>
                       {userRow.userName}
                     </Text>
                   </View>
@@ -801,7 +804,10 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    borderBottomWidth: 2,
+  },
+  headerSeparator: {
+    height: 1,
+    alignSelf: 'stretch',
   },
   headerNameCell: {
     justifyContent: 'center',
