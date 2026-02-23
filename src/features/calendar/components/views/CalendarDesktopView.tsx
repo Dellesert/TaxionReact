@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl, TouchableOpacity, Animated } from 'react-native';
 import { Event, CalendarView, WeekDisplayMode } from '../../types/calendar.types';
 import { EventSection, getViewLabel } from '../../utils/calendarHelpers';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -23,6 +23,18 @@ import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import { useNavigation } from '@react-navigation/native';
 import { useNotification } from '@shared/contexts/NotificationContext';
 
+
+const FadeIn: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [opacity]);
+  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
+};
 
 interface CalendarDesktopViewProps {
   selectedDate: Date;
@@ -176,33 +188,35 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
           {isLoading ? (
             <LeftSidebarSkeleton />
           ) : (
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.leftSidebarContent}
-              style={{ backgroundColor: theme.background }}
-            >
-              {/* Upcoming Events Card */}
-              <UpcomingEventsCard
-                events={monthEvents}
-                onEventPress={handleEventPress}
-              />
+            <FadeIn>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.leftSidebarContent}
+                style={{ backgroundColor: theme.background }}
+              >
+                {/* Upcoming Events Card */}
+                <UpcomingEventsCard
+                  events={monthEvents}
+                  onEventPress={handleEventPress}
+                />
 
-              <MonthCalendarView
-                selectedDate={selectedDate}
-                events={monthEvents}
-                onDatePress={handleDayPress}
-                onEventPress={handleEventPress}
-                isCompact={true}
-                viewMode={viewMode}
-              />
+                <MonthCalendarView
+                  selectedDate={selectedDate}
+                  events={monthEvents}
+                  onDatePress={handleDayPress}
+                  onEventPress={handleEventPress}
+                  isCompact={true}
+                  viewMode={viewMode}
+                />
 
-              <CalendarStatsPanel
-                selectedDate={selectedDate}
-                events={monthEvents}
-                viewMode={viewMode as 'day' | 'week'}
-                isCompact={false}
-              />
-            </ScrollView>
+                <CalendarStatsPanel
+                  selectedDate={selectedDate}
+                  events={monthEvents}
+                  viewMode={viewMode as 'day' | 'week'}
+                  isCompact={false}
+                />
+              </ScrollView>
+            </FadeIn>
           )}
         </View>
 
@@ -248,15 +262,33 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
 
             {isLoading ? (
               <EventListSkeleton />
-            ) : viewMode === 'week' ? (
-              weekDisplayMode === 'timeline' ? (
-                <WeekTimelineView
-                  selectedDate={selectedDate}
-                  events={events}
-                  onEventPress={handleEventPress}
-                />
-              ) : (
-                sections.length === 0 ? (
+            ) : (
+              <FadeIn>
+                {viewMode === 'week' ? (
+                  weekDisplayMode === 'timeline' ? (
+                    <WeekTimelineView
+                      selectedDate={selectedDate}
+                      events={events}
+                      onEventPress={handleEventPress}
+                    />
+                  ) : (
+                    sections.length === 0 ? (
+                      <ScrollView
+                        contentContainerStyle={styles.emptyStateContainer}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                      >
+                        <CalendarEmptyState />
+                      </ScrollView>
+                    ) : (
+                      <CalendarEventsList
+                        sections={sections}
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        onEventPress={handleEventPress}
+                      />
+                    )
+                  )
+                ) : sections.length === 0 ? (
                   <ScrollView
                     contentContainerStyle={styles.emptyStateContainer}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -270,22 +302,8 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
                     onRefresh={onRefresh}
                     onEventPress={handleEventPress}
                   />
-                )
-              )
-            ) : sections.length === 0 ? (
-              <ScrollView
-                contentContainerStyle={styles.emptyStateContainer}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-              >
-                <CalendarEmptyState />
-              </ScrollView>
-            ) : (
-              <CalendarEventsList
-                sections={sections}
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                onEventPress={handleEventPress}
-              />
+                )}
+              </FadeIn>
             )}
           </View>
         </View>
