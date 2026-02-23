@@ -34,7 +34,7 @@ export const CalendarEventsList: React.FC<CalendarEventsListProps> = ({
           const holiday = sectionDate ? getHoliday(sectionDate) : null;
 
           return (
-            <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
+            <View style={[styles.sectionHeader, { backgroundColor: 'transparent' }]}>
               <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</Text>
               {holiday && (
                 <View style={[styles.holidayTag, { backgroundColor: theme.error + '20' }]} pointerEvents="none">

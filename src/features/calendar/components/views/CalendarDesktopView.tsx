@@ -197,7 +197,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
         </View>
 
         {/* Center Panel - Main Calendar View */}
-        <View style={[styles.centerPanel, { backgroundColor: theme.background }]}>
+        <View style={[styles.centerPanel, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
           {/* Holiday banner for day view */}
           {viewMode === 'day' && (() => {
             const holiday = getHoliday(selectedDate);
@@ -329,6 +329,14 @@ const styles = StyleSheet.create({
   centerPanel: {
     flex: 1,
     minWidth: 0,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 16,
+    marginBottom: 16,
+    marginLeft: 16,
+    marginRight: 16,
+    overflow: 'hidden',
+    ...sidebarShadow,
   },
   rightSidebar: {
     width: 380,
