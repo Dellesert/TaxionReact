@@ -1179,16 +1179,60 @@ export const ScheduleDetailScreen: React.FC = () => {
               ) : viewMode === 'shifts' && schedule.mode === 'monthly' ? (
                 // Desktop Shifts View - dates as rows, morning/evening columns
                 <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                      Даты × Смены ({entries.length})
-                    </Text>
-                    <TouchableOpacity
-                        style={[styles.infoToggleButton, { borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
+                  <View style={[styles.sectionHeader, { marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                      <TouchableOpacity
+                        style={[styles.infoToggleButton, { width: 28, height: 28, borderColor: showInfoCard ? theme.primary : theme.border, backgroundColor: showInfoCard ? theme.primary + '12' : 'transparent' }]}
                         onPress={() => setShowInfoCard(!showInfoCard)}
                       >
-                        <Ionicons name="information-circle-outline" size={18} color={showInfoCard ? theme.primary : theme.textSecondary} />
+                        <Ionicons name="information-circle-outline" size={16} color={showInfoCard ? theme.primary : theme.textSecondary} />
                       </TouchableOpacity>
+                      <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 14 }]} numberOfLines={1}>
+                        Смены ({filteredEntries.length})
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      ref={filterButtonRef}
+                      style={[
+                        styles.userFilterChip,
+                        { backgroundColor: theme.card, borderColor: theme.border },
+                        filterUserId ? { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary } : null,
+                      ]}
+                      onPress={() => {
+                        if (isElectron && filterButtonRef.current) {
+                          const rect = filterButtonRef.current.getBoundingClientRect?.();
+                          if (rect) {
+                            setFilterButtonPosition({ x: rect.left, y: rect.top, width: rect.width, height: rect.height });
+                          }
+                        }
+                        setShowUserFilterPicker(true);
+                      }}
+                    >
+                      <Ionicons
+                        name="person"
+                        size={16}
+                        color={filterUserId ? theme.primary : theme.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.userFilterText,
+                          { color: filterUserId ? theme.primary : theme.textSecondary },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {filterUserName || 'Все сотрудники'}
+                      </Text>
+                      {filterUserId ? (
+                        <TouchableOpacity
+                          onPress={() => handleUserFilterChange(null, null)}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <Ionicons name="close-circle" size={18} color={theme.primary} />
+                        </TouchableOpacity>
+                      ) : (
+                        <Ionicons name="chevron-down" size={16} color={theme.textSecondary} />
+                      )}
+                    </TouchableOpacity>
                   </View>
                   {isLoadingEntries ? (
                     <View style={styles.entriesLoader}>
@@ -1197,7 +1241,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                   ) : (
                     <ScheduleShiftsView
                       schedule={schedule}
-                      entries={entries}
+                      entries={filteredEntries}
                       canEdit={canManageEntries}
                       onAddEntry={handleShiftsAddEntry}
                       onUpdateEntry={handleShiftsUpdateEntry}
