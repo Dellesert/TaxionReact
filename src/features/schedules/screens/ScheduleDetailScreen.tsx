@@ -171,6 +171,8 @@ export const ScheduleDetailScreen: React.FC = () => {
   // View mode for desktop: 'list', 'grid' (employees x dates), or 'shifts' (dates x shifts)
   const [viewMode, setViewMode] = useState<ScheduleViewMode>('list');
   const viewModeInitialized = useRef(false);
+  const [displayedViewMode, setDisplayedViewMode] = useState<ScheduleViewMode>('list');
+  const [viewTransitioning, setViewTransitioning] = useState(false);
 
   // Load saved view mode from localStorage when schedule type is known (Electron only)
   useEffect(() => {
@@ -179,6 +181,7 @@ export const ScheduleDetailScreen: React.FC = () => {
       const saved = localStorage.getItem(key);
       if (saved === 'list' || saved === 'grid' || saved === 'shifts') {
         setViewMode(saved);
+        setDisplayedViewMode(saved);
       }
       viewModeInitialized.current = true;
     }
@@ -194,8 +197,27 @@ export const ScheduleDetailScreen: React.FC = () => {
 
   // Show/hide info card based on view mode: hidden by default in grid, shown in others
   useEffect(() => {
-    setShowInfoCard(viewMode !== 'grid');
-  }, [viewMode]);
+    setShowInfoCard(displayedViewMode !== 'grid');
+  }, [displayedViewMode]);
+
+  // Smooth view mode transition on Electron desktop
+  useEffect(() => {
+    if (viewMode === displayedViewMode) return;
+    if (isElectron && isWideScreen) {
+      setViewTransitioning(true);
+      const timer = setTimeout(() => {
+        setDisplayedViewMode(viewMode);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setViewTransitioning(false);
+          });
+        });
+      }, 150);
+      return () => clearTimeout(timer);
+    } else {
+      setDisplayedViewMode(viewMode);
+    }
+  }, [viewMode, displayedViewMode, isElectron, isWideScreen]);
 
   // Load group members (from user group or schedule assignments for imported schedules)
   useEffect(() => {
@@ -1009,7 +1031,11 @@ export const ScheduleDetailScreen: React.FC = () => {
       >
         {isWideScreen ? (
           // Desktop layout
-          <View style={styles.desktopLayout}>
+          <View style={[
+            styles.desktopLayout,
+            isElectron && styles.viewTransitionContent,
+            isElectron && viewTransitioning && styles.viewTransitionFadeOut,
+          ]}>
             {/* Left sidebar - Collapsible Info Card */}
             {showInfoCard && (
               <View style={[styles.infoCardPanel, { backgroundColor: theme.card }]}>
@@ -1082,7 +1108,7 @@ export const ScheduleDetailScreen: React.FC = () => {
             {/* Right - Main Content (Entries) */}
             <View style={styles.desktopLeftColumn}>
               {/* Entries Section - Grid/Shifts View for desktop or List View */}
-              {viewMode === 'grid' && schedule.mode === 'monthly' ? (
+              {displayedViewMode === 'grid' && schedule.mode === 'monthly' ? (
                 // Desktop Grid View - employees as rows, dates as columns
                 <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
                   <View style={[styles.sectionHeader, styles.sectionHeaderFullWidth, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
@@ -1176,7 +1202,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                     />
                   )}
                 </View>
-              ) : viewMode === 'shifts' && schedule.mode === 'monthly' ? (
+              ) : displayedViewMode === 'shifts' && schedule.mode === 'monthly' ? (
                 // Desktop Shifts View - dates as rows, morning/evening columns
                 <View style={[styles.desktopCard, { backgroundColor: theme.card }]}>
                   <View style={[styles.sectionHeader, styles.sectionHeaderFullWidth, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
@@ -1940,6 +1966,16 @@ const styles = StyleSheet.create({
   desktopLeftColumn: {
     flex: 1,
   },
+  viewTransitionContent: {
+    ...Platform.select({
+      web: {
+        transition: 'opacity 0.15s ease-in-out',
+      },
+    }),
+  } as any,
+  viewTransitionFadeOut: {
+    opacity: 0,
+  },
   desktopCard: {
     padding: 20,
     borderRadius: 16,
@@ -1978,7 +2014,8 @@ const styles = StyleSheet.create({
   },
   infoCardContent: {
     padding: 16,
-    paddingTop: 12,
+    paddingTop: 20,
+    paddingVertical: 26,
   },
   infoCardSection: {
     marginBottom: 14,
