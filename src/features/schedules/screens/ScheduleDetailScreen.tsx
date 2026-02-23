@@ -1057,7 +1057,7 @@ export const ScheduleDetailScreen: React.FC = () => {
                 </View>
 
                 {/* Info fields — white background */}
-                <View style={[styles.infoCardContent, { backgroundColor: theme.card, borderRadius: 12, overflow: 'hidden' }]}>
+                <View style={[styles.infoCardContent, { backgroundColor: theme.card, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, overflow: 'hidden' }]}>
                   <View style={styles.infoCardSection}>
                     <Text style={[styles.sidebarLabel, { color: theme.textSecondary }]}>Тип</Text>
                     <Text style={[styles.sidebarValue, { color: theme.text }]}>
