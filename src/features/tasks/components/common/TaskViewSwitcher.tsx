@@ -1,12 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Animated } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Task } from '../../types/task.types';
 import type { TasksByStatus, TotalsByStatus, LoadingByStatus, CanLoadMoreByStatus, StatusTab } from '../../hooks/useTaskListData';
 import type { AdvancedTaskFilters } from '../../utils/taskListHelpers';
 import { TaskKanbanBoard } from '../kanban/TaskKanbanBoard';
 import { TaskTableView } from '../lists/TaskTableView';
-import { TaskListSkeleton } from '../states/TaskListSkeleton';
+import { TaskBoardSkeleton } from '../states/TaskBoardSkeleton';
+
+const FadeIn: React.FC<{ children: React.ReactNode; style?: any; enabled?: boolean }> = ({ children, style, enabled = true }) => {
+  const opacity = useRef(new Animated.Value(enabled ? 0 : 1)).current;
+  useEffect(() => {
+    if (enabled) {
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [opacity, enabled]);
+  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
+};
 
 const STORAGE_KEY = '@task_view_mode';
 
@@ -32,6 +46,7 @@ interface TaskViewSwitcherProps {
 }
 
 export const TaskViewSwitcher: React.FC<TaskViewSwitcherProps> = (props) => {
+  const mountTime = useRef(Date.now());
   const [internalViewMode, setInternalViewMode] = useState<ViewMode>('board');
 
   // Use viewMode from props if provided, otherwise use internal state
@@ -107,9 +122,9 @@ export const TaskViewSwitcher: React.FC<TaskViewSwitcherProps> = (props) => {
         viewTransitioning && styles.viewTransitionFadeOut,
       ]}>
         {props.isInitialLoading ? (
-          <TaskListSkeleton />
+          <TaskBoardSkeleton />
         ) : (
-          <>
+          <FadeIn enabled={Date.now() - mountTime.current > 150}>
             {displayedViewMode === 'board' && (
               <TaskKanbanBoard
                 tasks={props.tasks}
@@ -137,7 +152,7 @@ export const TaskViewSwitcher: React.FC<TaskViewSwitcherProps> = (props) => {
                 onTaskUpdated={props.onTaskUpdated}
               />
             )}
-          </>
+          </FadeIn>
         )}
       </View>
     </View>

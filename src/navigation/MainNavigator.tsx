@@ -36,6 +36,7 @@ import { ScheduleDesktopFallback } from '@features/schedules/components/states/S
 import { ChatDesktopFallback } from '@features/chat/components/states/ChatDesktopFallback';
 import { AbsenceDesktopFallback } from '@features/absences/components/states/AbsenceDesktopFallback';
 import { AdminDesktopFallback } from '@features/admin/components/states/AdminDesktopFallback';
+import { TasksDesktopFallback } from '@features/tasks/components/states/TasksDesktopFallback';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -58,7 +59,11 @@ const MainNavigatorContent: React.FC = () => {
     const renderContent = () => {
       switch (currentActiveTab) {
         case 'Tasks':
-          return <TaskNavigator />;
+          return (
+            <Suspense fallback={<TasksDesktopFallback />}>
+              <TaskNavigator />
+            </Suspense>
+          );
         case 'Polls':
           return <PollNavigator />;
         case 'Chats':

@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { View, ScrollView, Dimensions, StyleSheet, useWindowDimensions, TouchableOpacity, Text, Platform } from 'react-native';
+import { View, ScrollView, Dimensions, StyleSheet, useWindowDimensions, TouchableOpacity, Text, Platform, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { TaskContentSkeleton } from '../components/states/TaskDetailSkeleton';
+import { TaskDetailDesktopSkeleton } from '../components/states/TaskDetailDesktopSkeleton';
 import { UserProfileModal } from '@shared/components/common/UserProfileModal';
 import ShareTaskModal from '../components/modals/ShareTaskModal';
 import EditTaskModal from '../components/modals/EditTaskModal';
@@ -42,6 +43,20 @@ type TaskDetailRouteParams = {
   taskId: string;
 };
 
+const FadeIn: React.FC<{ children: React.ReactNode; style?: any; enabled?: boolean }> = ({ children, style, enabled = true }) => {
+  const opacity = useRef(new Animated.Value(enabled ? 0 : 1)).current;
+  useEffect(() => {
+    if (enabled) {
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [opacity, enabled]);
+  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
+};
+
 const TaskDetailScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: TaskDetailRouteParams }, 'params'>>();
   const navigation = useNavigation();
@@ -49,6 +64,7 @@ const TaskDetailScreen: React.FC = () => {
   const { theme } = useTheme();
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
+  const mountTime = useRef(Date.now());
   const { showConfirm } = useActionModal();
   const { showSuccess, showError } = useNotification();
   const { width } = useWindowDimensions();
@@ -593,10 +609,9 @@ const TaskDetailScreen: React.FC = () => {
         {isDesktop ? (
           // Desktop Layout
           showContentSkeleton ? (
-            <View style={[styles.card, { backgroundColor: theme.background }]}>
-              <TaskContentSkeleton />
-            </View>
+            <TaskDetailDesktopSkeleton />
           ) : task ? (
+            <FadeIn enabled={Date.now() - mountTime.current > 150}>
             <TaskDesktopLayout
               task={task}
               subtasks={subtasks}
@@ -644,6 +659,7 @@ const TaskDetailScreen: React.FC = () => {
                 loadActivities().catch(() => showError('Не удалось загрузить историю'));
               }}
             />
+            </FadeIn>
           ) : null
         ) : (
           // Mobile Tabs Layout
