@@ -10,6 +10,7 @@ import { CalendarEventsList } from '../events/CalendarEventsList';
 import { CalendarEmptyState } from '../states/CalendarEmptyState';
 import { EventDetailsPanel } from '../panels/EventDetailsPanel';
 import { EventListSkeleton } from '../states/EventListSkeleton';
+import { LeftSidebarSkeleton } from '../states/LeftSidebarSkeleton';
 import { CalendarStatsPanel } from '../panels/CalendarStatsPanel';
 import { CompactCalendarToolbar } from '../navigation/CompactCalendarToolbar';
 import { MonthNavigator } from '../navigation/MonthNavigator';
@@ -172,33 +173,37 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
               />
             </View>
           )}
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.leftSidebarContent}
-            style={{ backgroundColor: theme.background }}
-          >
-            {/* Upcoming Events Card */}
-            <UpcomingEventsCard
-              events={monthEvents}
-              onEventPress={handleEventPress}
-            />
+          {isLoading ? (
+            <LeftSidebarSkeleton />
+          ) : (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.leftSidebarContent}
+              style={{ backgroundColor: theme.background }}
+            >
+              {/* Upcoming Events Card */}
+              <UpcomingEventsCard
+                events={monthEvents}
+                onEventPress={handleEventPress}
+              />
 
-            <MonthCalendarView
-              selectedDate={selectedDate}
-              events={monthEvents}
-              onDatePress={handleDayPress}
-              onEventPress={handleEventPress}
-              isCompact={true}
-              viewMode={viewMode}
-            />
+              <MonthCalendarView
+                selectedDate={selectedDate}
+                events={monthEvents}
+                onDatePress={handleDayPress}
+                onEventPress={handleEventPress}
+                isCompact={true}
+                viewMode={viewMode}
+              />
 
-            <CalendarStatsPanel
-              selectedDate={selectedDate}
-              events={monthEvents}
-              viewMode={viewMode as 'day' | 'week'}
-              isCompact={false}
-            />
-          </ScrollView>
+              <CalendarStatsPanel
+                selectedDate={selectedDate}
+                events={monthEvents}
+                viewMode={viewMode as 'day' | 'week'}
+                isCompact={false}
+              />
+            </ScrollView>
+          )}
         </View>
 
         {/* Center Panel - Main Calendar View */}
