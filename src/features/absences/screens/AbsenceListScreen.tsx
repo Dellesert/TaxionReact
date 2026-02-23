@@ -498,16 +498,73 @@ export const AbsenceListScreen: React.FC = () => {
 
       {/* Content */}
       <View style={[styles.contentContainer, { backgroundColor: theme.background }]}>
-        {/* Year Picker - show only on mobile (desktop has it in header/titlebar) */}
+        {/* Mobile: combined header row — user filter (left) + year picker (right) */}
         {!isDesktop && (
-          <YearPicker
-            selectedYear={selectedYear}
-            onYearChange={handleYearChange}
-          />
+          <View style={[styles.mobileHeaderBar, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <TouchableOpacity
+              style={[
+                styles.userFilterChip,
+                { backgroundColor: theme.card, borderColor: theme.border },
+                selectedUserId ? { borderColor: theme.primary, backgroundColor: theme.backgroundSecondary } : null,
+              ]}
+              onPress={() => setShowUserPicker(true)}
+            >
+              <Ionicons
+                name="person"
+                size={16}
+                color={selectedUserId ? theme.primary : theme.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.userFilterText,
+                  { color: selectedUserId ? theme.primary : theme.textSecondary },
+                ]}
+                numberOfLines={1}
+              >
+                {selectedUserName || 'Все сотрудники'}
+              </Text>
+              {selectedUserId ? (
+                <TouchableOpacity
+                  onPress={() => handleUserFilterChange(null, null)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close-circle" size={18} color={theme.primary} />
+                </TouchableOpacity>
+              ) : (
+                <Ionicons name="chevron-down" size={16} color={theme.textSecondary} />
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.mobileYearSwitcher}>
+              <TouchableOpacity
+                onPress={() => handleYearChange(selectedYear - 1)}
+                style={styles.mobileYearArrow}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-back" size={20} color={theme.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleYearChange(new Date().getFullYear())}
+                activeOpacity={selectedYear === new Date().getFullYear() ? 1 : 0.6}
+                disabled={selectedYear === new Date().getFullYear()}
+              >
+                <Text style={[styles.mobileYearText, { color: theme.text }]}>
+                  {selectedYear}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleYearChange(selectedYear + 1)}
+                style={styles.mobileYearArrow}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
 
-        {/* User Filter Chip - hide on desktop Electron (integrated into view headers) */}
-        {!(isElectron && isDesktop) && (
+        {/* User Filter Chip - desktop non-Electron only (Electron integrated into view headers) */}
+        {isDesktop && !isElectron && (
           <View style={styles.userFilterContainer}>
             <TouchableOpacity
               style={[
@@ -1137,6 +1194,31 @@ const styles = StyleSheet.create({
   filterMenuItemText: {
     fontSize: 15,
     fontWeight: '500',
+  },
+  // Mobile combined header bar
+  mobileHeaderBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  mobileYearSwitcher: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mobileYearArrow: {
+    padding: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mobileYearText: {
+    fontSize: 16,
+    fontWeight: '600',
+    minWidth: 44,
+    textAlign: 'center',
   },
   // User filter styles
   userFilterContainer: {
