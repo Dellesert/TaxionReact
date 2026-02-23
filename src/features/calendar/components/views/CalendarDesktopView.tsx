@@ -207,27 +207,30 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
             <Text style={[styles.centerPanelTitle, { color: theme.text }]}>
               {viewMode === 'week' && weekDisplayMode === 'timeline' ? 'Шкала времени' : 'Список событий'}
             </Text>
-            <View style={styles.viewSwitcher}>
-              {(['day', 'week', 'month'] as CalendarView[]).map((view) => (
-                <TouchableOpacity
-                  key={view}
-                  style={[
-                    styles.viewSwitcherPill,
-                    { backgroundColor: theme.backgroundSecondary },
-                    viewMode === view && { backgroundColor: theme.primary },
-                  ]}
-                  onPress={() => handleViewModeChange(view)}
-                >
-                  <Text
+            <View style={[styles.viewSwitcher, { borderColor: theme.border }]}>
+              {(['day', 'week', 'month'] as CalendarView[]).map((view, index) => (
+                <React.Fragment key={view}>
+                  {index > 0 && (
+                    <View style={[styles.viewSwitcherDivider, { backgroundColor: theme.border }]} />
+                  )}
+                  <TouchableOpacity
                     style={[
-                      styles.viewSwitcherText,
-                      { color: theme.textSecondary },
-                      viewMode === view && { color: '#FFFFFF' },
+                      styles.viewSwitcherSegment,
+                      viewMode === view && [styles.viewSwitcherSegmentActive, { backgroundColor: theme.primary }],
                     ]}
+                    onPress={() => handleViewModeChange(view)}
                   >
-                    {getViewLabel(view)}
-                  </Text>
-                </TouchableOpacity>
+                    <Text
+                      style={[
+                        styles.viewSwitcherText,
+                        { color: theme.textSecondary },
+                        viewMode === view && { color: '#FFFFFF' },
+                      ]}
+                    >
+                      {getViewLabel(view)}
+                    </Text>
+                  </TouchableOpacity>
+                </React.Fragment>
               ))}
             </View>
           </View>
@@ -389,12 +392,24 @@ const styles = StyleSheet.create({
   },
   viewSwitcher: {
     flexDirection: 'row',
-    gap: 6,
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 3,
   },
-  viewSwitcherPill: {
+  viewSwitcherDivider: {
+    width: 1,
+    height: 18,
+  },
+  viewSwitcherSegment: {
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewSwitcherSegmentActive: {
+    // backgroundColor set dynamically
   },
   viewSwitcherText: {
     fontSize: 13,
