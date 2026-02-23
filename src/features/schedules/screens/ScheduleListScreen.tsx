@@ -408,32 +408,31 @@ export const ScheduleListScreen: React.FC = () => {
                     {renderEmpty()}
                   </View>
                 ) : (
-                  <View style={styles.columnsWrapper}>
-                    <View style={styles.columnsContainer}>
-                      {sections.map((section) => (
-                        <View key={section.title} style={[styles.typeColumn, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                          <View style={[styles.columnHeader, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-                            <Text style={[styles.columnTitle, { color: theme.text }]}>
-                              {section.title}
+                  <View style={styles.sectionsContainer}>
+                    {sections.map((section) => (
+                      <View key={section.title} style={styles.sectionBlock}>
+                        <View style={styles.sectionBlockHeader}>
+                          <Text style={[styles.sectionBlockTitle, { color: theme.text }]}>
+                            {section.title}
+                          </Text>
+                          <View style={[styles.sectionBlockCount, { backgroundColor: theme.backgroundSecondary }]}>
+                            <Text style={[styles.sectionBlockCountText, { color: theme.textSecondary }]}>
+                              {section.data.length}
                             </Text>
-                            <View style={[styles.columnCount, { backgroundColor: theme.background }]}>
-                              <Text style={[styles.columnCountText, { color: theme.textSecondary }]}>
-                                {section.data.length}
-                              </Text>
-                            </View>
                           </View>
-                          <View style={styles.columnContentInner}>
-                            {section.data.map((schedule) => (
+                        </View>
+                        <View style={styles.sectionCardsRow}>
+                          {section.data.map((schedule) => (
+                            <View key={schedule.id} style={styles.sectionCardWrapper}>
                               <ScheduleCard
-                                key={schedule.id}
                                 schedule={schedule}
                                 onPress={() => handleSchedulePress(schedule)}
                               />
-                            ))}
-                          </View>
+                            </View>
+                          ))}
                         </View>
-                      ))}
-                    </View>
+                      </View>
+                    ))}
                   </View>
                 )}
               </ScrollView>
@@ -631,63 +630,47 @@ const styles = StyleSheet.create({
       elevation: 3,
     }),
   },
-  // Desktop columns layout
+  // Desktop sections layout
   columnsScrollContent: {
     flexGrow: 1,
-    padding: 16,
-  },
-  columnsWrapper: {
-  },
-  columnsContainer: {
-    ...(Platform.OS === 'web' ? {
-      display: 'grid' as any,
-      gridTemplateColumns: 'repeat(auto-fill, 320px)' as any,
-      justifyContent: 'center' as any,
-      gap: 16,
-    } : {
-      flexDirection: 'row' as const,
-      flexWrap: 'wrap' as const,
-      gap: 16,
-      justifyContent: 'flex-start' as const,
-      alignItems: 'flex-start' as const,
-    }),
+    padding: 20,
   },
   emptyContainerDesktop: {
     flex: 1,
     minWidth: '100%',
   },
-  typeColumn: {
-    width: 320,
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-    flexShrink: 0,
+  sectionsContainer: {
+    gap: 24,
   },
-  columnHeader: {
+  sectionBlock: {
+  },
+  sectionBlockHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
+    gap: 8,
+    marginBottom: 12,
   },
-  columnTitle: {
-    fontSize: 14,
+  sectionBlockTitle: {
+    fontSize: 15,
     fontWeight: '600',
   },
-  columnCount: {
+  sectionBlockCount: {
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
   },
-  columnCountText: {
+  sectionBlockCountText: {
     fontSize: 12,
     fontWeight: '500',
   },
-  columnContentInner: {
-    padding: 8,
-    gap: 8,
-    paddingBottom: 12,
+  sectionCardsRow: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: 12,
+  },
+  sectionCardWrapper: {
+    width: 300,
+    flexShrink: 0,
   },
   sectionHeader: {
     flexDirection: 'row',
