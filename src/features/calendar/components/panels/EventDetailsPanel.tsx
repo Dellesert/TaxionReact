@@ -85,7 +85,7 @@ const ParticipantGroup: React.FC<ParticipantGroupProps> = ({
         activeOpacity={0.7}
       >
         <View style={styles.participantGroupTitleRow}>
-          <Ionicons name={icon as any} size={18} color={color} />
+          <Ionicons name={icon as any} size={16} color={color} />
           <Text style={[styles.participantGroupTitle, { color: theme.text }]}>
             {title}
           </Text>
@@ -112,7 +112,7 @@ const ParticipantGroup: React.FC<ParticipantGroupProps> = ({
                 onPress={() => p.user && onUserPress(p.user.id)}
                 activeOpacity={0.7}
               >
-                <Avatar name={p.user?.name || 'User'} imageUrl={p.user?.avatar} size={32} />
+                <Avatar name={p.user?.name || 'User'} imageUrl={p.user?.avatar} size={28} />
                 <Text
                   style={[styles.participantName, { color: theme.text }]}
                   numberOfLines={1}
@@ -354,7 +354,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 >
                   <Ionicons
                     name="checkmark-circle"
-                    size={22}
+                    size={18}
                     color={myParticipation.status === 'accepted' ? '#FFFFFF' : '#10B981'}
                   />
                   <Text
@@ -381,7 +381,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 >
                   <Ionicons
                     name="help-circle"
-                    size={22}
+                    size={18}
                     color={myParticipation.status === 'maybe' ? '#FFFFFF' : '#F59E0B'}
                   />
                   <Text
@@ -408,7 +408,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 >
                   <Ionicons
                     name="close-circle"
-                    size={22}
+                    size={18}
                     color={myParticipation.status === 'declined' ? '#FFFFFF' : '#EF4444'}
                   />
                   <Text
@@ -467,7 +467,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         {/* Event Type Card */}
         <View style={[styles.infoCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
           <View style={[styles.infoCardIcon, { backgroundColor: event.color + '20' }]}>
-            <Ionicons name={getEventIcon() as any} size={22} color={event.color} />
+            <Ionicons name={getEventIcon() as any} size={18} color={event.color} />
           </View>
           <View style={styles.infoCardContent}>
             <Text style={[styles.infoCardLabel, { color: theme.textSecondary }]}>Тип события</Text>
@@ -478,7 +478,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         {/* Date & Time Card */}
         <View style={[styles.infoCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
           <View style={[styles.infoCardIcon, { backgroundColor: event.color + '20' }]}>
-            <Ionicons name="calendar-outline" size={22} color={event.color} />
+            <Ionicons name="calendar-outline" size={18} color={event.color} />
           </View>
           <View style={styles.infoCardContent}>
             <Text style={[styles.infoCardLabel, { color: theme.textSecondary }]}>Дата и время</Text>
@@ -503,7 +503,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         {event.location && (
           <View style={[styles.infoCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
             <View style={[styles.infoCardIcon, { backgroundColor: '#3B82F6' + '20' }]}>
-              <Ionicons name="location-outline" size={22} color="#3B82F6" />
+              <Ionicons name="location-outline" size={18} color="#3B82F6" />
             </View>
             <View style={styles.infoCardContent}>
               <Text style={[styles.infoCardLabel, { color: theme.textSecondary }]}>Место</Text>
@@ -531,7 +531,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               <Avatar
                 name={isCreator ? 'Я' : event.creator.name}
                 imageUrl={event.creator.avatar}
-                size={40}
+                size={32}
               />
               <View style={styles.creatorInfo}>
                 <Text style={[styles.creatorName, { color: theme.text }]}>
@@ -700,13 +700,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   eventTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
-    lineHeight: 32,
-    marginBottom: 16,
+    lineHeight: 28,
+    marginBottom: 12,
   },
   responseSection: {
-    marginTop: 12,
+    marginTop: 10,
   },
   responseSectionLabel: {
     fontSize: 12,
@@ -724,12 +724,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
     borderWidth: 2,
-    minHeight: 48,
+    minHeight: 40,
   },
   responseButtonActive: {
     shadowColor: '#000',
@@ -745,39 +745,39 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 16,
-    paddingTop: 16,
+    gap: 6,
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
   },
   statBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   statText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    padding: 14,
     flexGrow: 1,
   },
   section: {
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   sectionTitleAlt: {
     fontSize: 12,
@@ -787,22 +787,22 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   descriptionText: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
   },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    padding: 16,
-    borderRadius: 12,
+    gap: 10,
+    padding: 12,
+    borderRadius: 10,
     borderWidth: 1,
     marginBottom: 8,
   },
   infoCardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -817,9 +817,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   infoCardValue: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    lineHeight: 20,
+    lineHeight: 19,
   },
   infoCardSubValue: {
     fontSize: 13,
@@ -835,9 +835,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   creatorName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   creatorLabel: {
     fontSize: 12,
@@ -850,8 +850,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderRadius: 8,
   },
   participantGroupTitleRow: {
@@ -861,7 +861,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   participantGroupTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   participantCountBadge: {
@@ -879,19 +879,19 @@ const styles = StyleSheet.create({
   participantGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingTop: 8,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingTop: 6,
   },
   participantItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
-    minWidth: 160,
-    maxWidth: 220,
+    minWidth: 140,
+    maxWidth: 200,
   },
   participantName: {
     fontSize: 13,
