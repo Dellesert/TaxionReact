@@ -241,15 +241,6 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
     return <PollListErrorState error={error} onRetry={onRetry} />;
   }
 
-  // Loading state (initial)
-  if (isLoading && !refreshing && polls.length === 0) {
-    return (
-      <View style={localStyles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
-    );
-  }
-
   // Empty state
   if (polls.length === 0 && !isLoading) {
     return <PollListEmptyState />;
@@ -261,6 +252,7 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
       data={polls}
       keyExtractor={(poll) => String(poll.id)}
       onRowPress={onPollPress}
+      isLoading={isLoading && !refreshing}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       renderAfterRows={
         isLoadingMore && hasMore ? (
@@ -290,12 +282,6 @@ const localStyles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     lineHeight: 14,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
   },
   loadMoreContainer: {
     paddingVertical: 16,

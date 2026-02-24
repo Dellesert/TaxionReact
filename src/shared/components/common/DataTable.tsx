@@ -5,13 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   Platform,
   ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import type { Theme } from '@shared/constants/theme.constants';
+import { DataTableSkeleton } from './DataTableSkeleton';
 
 // ─── Public Types ────────────────────────────────────────────────
 
@@ -267,9 +267,7 @@ export function DataTable<T>({
       >
         {isLoading && data.length === 0 ? (
           loadingComponent ?? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={theme.primary} />
-            </View>
+            <DataTableSkeleton columns={columns} />
           )
         ) : data.length === 0 ? (
           emptyComponent ?? (
@@ -396,12 +394,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingRight: 12,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
   },
   emptyContainer: {
     flex: 1,
