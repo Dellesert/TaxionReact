@@ -9,7 +9,11 @@ import { useChatStore } from '@shared/store/chatStore';
 import { useTaskStore } from '@shared/store/taskStore';
 import { usePollStore } from '@shared/store/pollStore';
 import { useUserStore } from '@shared/store/userStore';
+import { useCalendarStore } from '@shared/store/calendarStore';
+import { useScheduleCacheStore } from '@shared/store/scheduleCacheStore';
+import { useAbsenceStore } from '@/features/absences/store/absenceStore';
 import { isNative } from '@shared/storage';
+import { isElectron } from '@shared/utils/platform';
 
 // Приоритеты загрузки (чем меньше, тем раньше)
 const WARM_PRIORITY = {
@@ -18,7 +22,19 @@ const WARM_PRIORITY = {
   unreadCount: 3, // Счётчик непрочитанных
   polls: 4,      // Опросы
   users: 5,      // Профили пользователей (кэшируются отдельно)
+  calendar: 6,   // Календарь - текущий месяц
+  schedules: 7,  // Графики - текущий месяц
+  absences: 8,   // Нерабочие дни - текущий год
 } as const;
+
+/**
+ * Создать ключ кэша для диапазона дат (формат YYYY-MM-DD_YYYY-MM-DD)
+ */
+const createRangeKey = (startDate: Date, endDate: Date): string => {
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${fmt(startDate)}_${fmt(endDate)}`;
+};
 
 interface WarmingResult {
   feature: keyof typeof WARM_PRIORITY;
@@ -98,6 +114,12 @@ export const useCacheWarming = (options: UseCacheWarmingOptions = {}) => {
       }
       case 'unreadCount':
         return true; // Всегда обновляем
+      case 'calendar':
+        return true; // Всегда загружаем свежие данные календаря
+      case 'schedules':
+        return true; // Всегда загружаем свежие графики
+      case 'absences':
+        return true; // Всегда загружаем свежие нерабочие дни
       case 'users':
         return false; // Пользователи кэшируются по запросу
       default:
@@ -203,6 +225,103 @@ export const useCacheWarming = (options: UseCacheWarmingOptions = {}) => {
   }, [loadUnreadCount, onError]);
 
   /**
+   * Прогреть календарь (текущий месяц)
+   */
+  const warmCalendar = useCallback(async (): Promise<WarmingResult> => {
+    const start = Date.now();
+    try {
+      const calendarApi = await import('@/features/calendar/api/calendar.api');
+
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const rangeKey = createRangeKey(startDate, endDate);
+
+      const startISO = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}T00:00:00Z`;
+      const endISO = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}T23:59:59Z`;
+
+      const response = await calendarApi.getEvents({ start: startISO, end: endISO }, 100, 0);
+      useCalendarStore.getState().setEventsForRange(rangeKey, response.events);
+
+      return {
+        feature: 'calendar',
+        success: true,
+        duration: Date.now() - start,
+        itemsLoaded: response.events.length,
+      };
+    } catch (error) {
+      onError?.(error as Error, 'calendar');
+      return { feature: 'calendar', success: false, duration: Date.now() - start };
+    }
+  }, [onError]);
+
+  /**
+   * Прогреть графики (текущий месяц)
+   */
+  const warmSchedules = useCallback(async (): Promise<WarmingResult> => {
+    const start = Date.now();
+    try {
+      const { scheduleApi } = await import('@/features/schedules/api/schedule.api');
+
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const startStr = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`;
+      const endStr = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+      const rangeKey = `${startStr}_${endStr}`;
+
+      const response = await scheduleApi.getSchedules(
+        { start_date: startStr, end_date: endStr },
+        { limit: 20, offset: 0 }
+      );
+      useScheduleCacheStore.getState().setSchedulesForRange(rangeKey, response.schedules);
+
+      return {
+        feature: 'schedules',
+        success: true,
+        duration: Date.now() - start,
+        itemsLoaded: response.schedules.length,
+      };
+    } catch (error) {
+      onError?.(error as Error, 'schedules');
+      return { feature: 'schedules', success: false, duration: Date.now() - start };
+    }
+  }, [onError]);
+
+  /**
+   * Прогреть нерабочие дни (текущий год)
+   */
+  const warmAbsences = useCallback(async (): Promise<WarmingResult> => {
+    const start = Date.now();
+    try {
+      const { absenceApi } = await import('@/features/absences/api/absence.api');
+
+      const year = new Date().getFullYear();
+      const response = await absenceApi.getAbsences(
+        { sort_order: 'asc', start_date: `${year}-01-01`, end_date: `${year}-12-31` },
+        { offset: 0, limit: 20 }
+      );
+
+      useAbsenceStore.setState({
+        absences: response.absences,
+        total: response.total,
+        hasMore: response.absences.length === 20,
+        filters: { sort_order: 'asc', start_date: `${year}-01-01`, end_date: `${year}-12-31` },
+      });
+
+      return {
+        feature: 'absences',
+        success: true,
+        duration: Date.now() - start,
+        itemsLoaded: response.absences.length,
+      };
+    } catch (error) {
+      onError?.(error as Error, 'absences');
+      return { feature: 'absences', success: false, duration: Date.now() - start };
+    }
+  }, [onError]);
+
+  /**
    * Выполнить прогрев кэша
    */
   const warmCache = useCallback(async () => {
@@ -232,6 +351,15 @@ export const useCacheWarming = (options: UseCacheWarmingOptions = {}) => {
     }
     if (needsWarming('polls')) {
       featuresToWarm.push({ feature: 'polls', warmFn: warmPolls });
+    }
+    if (needsWarming('calendar')) {
+      featuresToWarm.push({ feature: 'calendar', warmFn: warmCalendar });
+    }
+    if (needsWarming('schedules')) {
+      featuresToWarm.push({ feature: 'schedules', warmFn: warmSchedules });
+    }
+    if (needsWarming('absences')) {
+      featuresToWarm.push({ feature: 'absences', warmFn: warmAbsences });
     }
 
     // Сортируем по приоритету
@@ -287,6 +415,9 @@ export const useCacheWarming = (options: UseCacheWarmingOptions = {}) => {
     warmTasks,
     warmPolls,
     warmUnreadCount,
+    warmCalendar,
+    warmSchedules,
+    warmAbsences,
     onComplete,
   ]);
 
@@ -326,7 +457,7 @@ export const useCacheWarming = (options: UseCacheWarmingOptions = {}) => {
  */
 export const useCacheWarmingOnAuth = (isAuthenticated: boolean) => {
   const { startWarming, resetWarming } = useCacheWarming({
-    enabled: isNative,
+    enabled: isNative || isElectron(),
     delay: 300, // Небольшая задержка после авторизации
     parallel: true,
     onComplete: (results) => {
