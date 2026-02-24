@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Poll } from '../../types/poll.types';
@@ -33,7 +33,7 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
   onLoadMore,
   onRetry,
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
 
   // Hover state for rows (web only)
@@ -166,6 +166,18 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
     return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
+  // Render empty state
+  const renderEmpty = useCallback(() => {
+    if (isLoading) {
+      return (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      );
+    }
+    return <PollListEmptyState />;
+  }, [isLoading, theme]);
+
   // Error state
   if (error) {
     return <PollListErrorState error={error} onRetry={onRetry} />;
@@ -186,143 +198,115 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.listCard, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.border }]}>
+      {/* Table Header */}
+      <View style={[styles.tableHeaderRow, { borderColor: theme.border }]}>
+        <Text style={[styles.tableHeaderCell, styles.colTitle, { color: theme.textSecondary }]}>Название</Text>
+        <Text style={[styles.tableHeaderCell, styles.colStatus, { color: theme.textSecondary }]}>Статус</Text>
+        <Text style={[styles.tableHeaderCell, styles.colType, { color: theme.textSecondary }]}>Тип</Text>
+        <Text style={[styles.tableHeaderCell, styles.colVisibility, { color: theme.textSecondary }]}>Видимость</Text>
+        <Text style={[styles.tableHeaderCell, styles.colStats, { color: theme.textSecondary }]}>Голоса</Text>
+        <Text style={[styles.tableHeaderCell, styles.colDate, { color: theme.textSecondary }]}>Дедлайн</Text>
+        <Text style={[styles.tableHeaderCell, styles.colCreator, { color: theme.textSecondary }]}>Автор</Text>
+      </View>
+
+      {/* Table Body */}
       <ScrollView
-        style={styles.scrollContainer}
+        style={{ backgroundColor: theme.background }}
+        contentContainerStyle={styles.tableScrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <View style={[styles.tableContainer, { borderColor: theme.border, backgroundColor: theme.card }]}>
-          {/* Header */}
-          <View style={[styles.headerRow, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-            <View style={[styles.headerCell, styles.titleColumn]}>
-              <Text style={[styles.headerText, { color: theme.text }]}>Название</Text>
-            </View>
-
-            <View style={[styles.headerCell, styles.statusColumn]}>
-              <Text style={[styles.headerText, { color: theme.text }]}>Статус</Text>
-            </View>
-
-            <View style={[styles.headerCell, styles.typeColumn]}>
-              <Text style={[styles.headerText, { color: theme.text }]}>Тип</Text>
-            </View>
-
-            <View style={[styles.headerCell, styles.visibilityColumn]}>
-              <Text style={[styles.headerText, { color: theme.text }]}>Видимость</Text>
-            </View>
-
-            <View style={[styles.headerCell, styles.statsColumn]}>
-              <Text style={[styles.headerText, { color: theme.text }]}>Голоса</Text>
-            </View>
-
-            <View style={[styles.headerCell, styles.dateColumn]}>
-              <Text style={[styles.headerText, { color: theme.text }]}>Дедлайн</Text>
-            </View>
-
-            <View style={[styles.headerCell, styles.creatorColumn]}>
-              <Text style={[styles.headerText, { color: theme.text }]}>Автор</Text>
-            </View>
-          </View>
-
-          {/* Body */}
-          {polls.map((poll, index) => {
+        {polls.length === 0 ? (
+          renderEmpty()
+        ) : (
+          polls.map((poll) => {
             const isHovered = hoveredRowId === poll.id;
-            const isEvenRow = index % 2 === 0;
-            const isLastRow = index === polls.length - 1;
 
             return (
               <TouchableOpacity
                 key={poll.id}
                 style={[
-                  styles.row,
-                  {
-                    backgroundColor: isEvenRow ? theme.card : 'transparent',
-                    borderBottomColor: theme.border,
-                  },
-                  isLastRow && { borderBottomWidth: 0 },
-                  isHovered && { backgroundColor: theme.primary + '12' },
+                  styles.tableRow,
+                  { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' },
+                  isHovered && { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' },
                 ]}
                 onPress={() => onPollPress(poll)}
-                // @ts-ignore - web-only props
+                activeOpacity={0.7}
+                // @ts-ignore - web only
                 onMouseEnter={Platform.OS === 'web' ? () => setHoveredRowId(poll.id) : undefined}
+                // @ts-ignore - web only
                 onMouseLeave={Platform.OS === 'web' ? () => setHoveredRowId(null) : undefined}
               >
-                {/* Title Column */}
-                <View style={[styles.cell, styles.titleColumn]}>
-                  <Text style={[styles.cellText, { color: theme.text, fontWeight: '500' }]} numberOfLines={1}>
+                {/* Title */}
+                <View style={[styles.tableCell, styles.colTitle]}>
+                  <Text style={[styles.tableCellText, { color: theme.text, fontWeight: '500' }]} numberOfLines={1}>
                     {poll.title}
                   </Text>
                 </View>
 
-                {/* Status Column */}
-                <View style={[styles.cell, styles.statusColumn]}>
+                {/* Status */}
+                <View style={[styles.tableCell, styles.colStatus]}>
                   <View style={[styles.statusBadge, { backgroundColor: getStatusColor(poll.status) }]}>
                     <Text style={styles.statusText}>{getStatusText(poll.status)}</Text>
                   </View>
                 </View>
 
-                {/* Type Column */}
-                <View style={[styles.cell, styles.typeColumn]}>
-                  <View style={styles.typeContainer}>
-                    <Ionicons name={getTypeIcon(poll.type) as any} size={14} color={theme.primary} />
-                    <Text style={[styles.cellText, { color: theme.text }]}>
-                      {getTypeText(poll.type)}
-                    </Text>
-                  </View>
+                {/* Type */}
+                <View style={[styles.tableCell, styles.colType]}>
+                  <Ionicons name={getTypeIcon(poll.type) as any} size={14} color={theme.primary} />
+                  <Text style={[styles.tableCellText, { color: theme.text }]} numberOfLines={1}>
+                    {getTypeText(poll.type)}
+                  </Text>
                 </View>
 
-                {/* Visibility Column */}
-                <View style={[styles.cell, styles.visibilityColumn]}>
-                  <View style={styles.visibilityBadge}>
-                    <Ionicons name={getVisibilityIcon(poll.visibility) as any} size={12} color={getVisibilityColor(poll.visibility)} />
-                    <Text style={[styles.cellText, { color: theme.text }]}>
-                      {getVisibilityText(poll)}
-                    </Text>
-                  </View>
+                {/* Visibility */}
+                <View style={[styles.tableCell, styles.colVisibility]}>
+                  <Ionicons name={getVisibilityIcon(poll.visibility) as any} size={12} color={getVisibilityColor(poll.visibility)} />
+                  <Text style={[styles.tableCellText, { color: theme.text }]} numberOfLines={1}>
+                    {getVisibilityText(poll)}
+                  </Text>
                 </View>
 
-                {/* Stats Column */}
-                <View style={[styles.cell, styles.statsColumn]}>
-                  <View style={styles.statItem}>
-                    <Ionicons name="people-outline" size={14} color={theme.textSecondary} />
-                    <Text style={[styles.cellText, { color: theme.text }]}>
-                      {poll.total_voters || 0}
-                    </Text>
-                  </View>
+                {/* Stats */}
+                <View style={[styles.tableCell, styles.colStats]}>
+                  <Ionicons name="people-outline" size={14} color={theme.textSecondary} />
+                  <Text style={[styles.tableCellText, { color: theme.textSecondary }]}>
+                    {poll.total_voters || 0}
+                  </Text>
                 </View>
 
-                {/* Deadline Column */}
-                <View style={[styles.cell, styles.dateColumn]}>
+                {/* Deadline */}
+                <View style={[styles.tableCell, styles.colDate]}>
                   {poll.end_time && poll.status === 'active' ? (
-                    <View style={styles.deadlineContainer}>
+                    <>
                       <Ionicons name="time-outline" size={14} color="#EF4444" />
-                      <Text style={[styles.cellText, { color: '#EF4444' }]}>
+                      <Text style={[styles.tableCellText, { color: '#EF4444' }]}>
                         {formatDate(poll.end_time)}
                       </Text>
-                    </View>
+                    </>
                   ) : (
-                    <Text style={[styles.cellText, { color: theme.textSecondary }]}>—</Text>
+                    <Text style={[styles.tableCellText, { color: theme.textTertiary }]}>—</Text>
                   )}
                 </View>
 
-                {/* Creator Column */}
-                <View style={[styles.cell, styles.creatorColumn]}>
-                  <View style={styles.creatorContainer}>
-                    <Avatar
-                      name={getCreatorName(poll)}
-                      imageUrl={poll.creator?.avatar}
-                      size={24}
-                    />
-                    <Text style={[styles.cellText, { color: theme.text }]} numberOfLines={1}>
-                      {getCreatorName(poll)}
-                    </Text>
-                  </View>
+                {/* Creator */}
+                <View style={[styles.tableCell, styles.colCreator]}>
+                  <Avatar
+                    name={getCreatorName(poll)}
+                    imageUrl={poll.creator?.avatar}
+                    size={28}
+                  />
+                  <Text style={[styles.tableCellText, { color: theme.text }]} numberOfLines={1}>
+                    {getCreatorName(poll)}
+                  </Text>
                 </View>
               </TouchableOpacity>
             );
-          })}
-        </View>
+          })
+        )}
 
         {/* Load More Indicator */}
         {isLoadingMore && hasMore && (
@@ -336,94 +320,92 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
+  // Card container matching absence listCard style
+  listCard: {
     flex: 1,
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  tableContainer: {
-    marginHorizontal: 16,
-    marginTop: 12,
     borderRadius: 12,
-    overflow: 'hidden',
     borderWidth: 1,
-    padding: 8,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    ...(Platform.OS === 'web' && {
-      position: 'sticky',
-      top: 0,
-      zIndex: 10,
+    margin: 16,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
     }),
   },
-  headerCell: {
+  // Table header row
+  tableHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  headerText: {
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    opacity: 0.7,
-  },
-  titleColumn: {
-    flex: 3,
-    minWidth: 200,
-  },
-  statusColumn: {
-    flex: 1,
-    minWidth: 100,
-  },
-  typeColumn: {
-    flex: 1.2,
-    minWidth: 120,
-  },
-  visibilityColumn: {
-    flex: 1.2,
-    minWidth: 120,
-  },
-  statsColumn: {
-    flex: 0.8,
-    minWidth: 80,
-  },
-  dateColumn: {
-    flex: 1,
-    minWidth: 100,
-  },
-  creatorColumn: {
-    flex: 1,
-    minWidth: 100,
-  },
-  row: {
-    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    minHeight: 40,
-    ...Platform.select({
-      web: {
-        // @ts-ignore
-        cursor: 'pointer',
-        transitionProperty: 'background-color',
-        transitionDuration: '0.15s',
-      },
-    }),
   },
-  cell: {
-    justifyContent: 'center',
+  tableHeaderCell: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    lineHeight: 16,
   },
-  cellText: {
+  tableScrollContent: {
+    flexGrow: 1,
+  },
+  // Table row
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+      transitionProperty: 'background-color',
+      transitionDuration: '0.2s',
+    } : {}),
+  },
+  // Table cell
+  tableCell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 12,
+  },
+  tableCellText: {
     fontSize: 13,
+    fontWeight: '400',
     lineHeight: 18,
   },
+  // Column widths
+  colTitle: {
+    flex: 2.5,
+  },
+  colStatus: {
+    flex: 1,
+  },
+  colType: {
+    flex: 1.3,
+  },
+  colVisibility: {
+    flex: 1.3,
+  },
+  colStats: {
+    width: 70,
+    justifyContent: 'center',
+  },
+  colDate: {
+    flex: 1.2,
+  },
+  colCreator: {
+    flex: 1.5,
+  },
+  // Status badge
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -436,30 +418,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 14,
   },
-  typeContainer: {
-    flexDirection: 'row',
+  // States
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
-  },
-  visibilityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  deadlineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  creatorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    paddingVertical: 48,
+    gap: 12,
+    minWidth: '100%',
   },
   loadingContainer: {
     flex: 1,
