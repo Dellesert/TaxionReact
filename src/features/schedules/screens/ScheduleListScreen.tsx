@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   SectionList,
-  ScrollView,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
@@ -37,6 +36,7 @@ import { ScheduleListContentSkeleton } from '../components/states/ScheduleListCo
 import { SCHEDULE_TYPE_LABELS, SCHEDULE_MODE_LABELS, type Schedule, type ScheduleType, type ScheduleListTab } from '../types/schedule.types';
 import { getScheduleTypeColor } from '../utils/shiftColors';
 import { formatScheduleDate } from '../utils/scheduleHelpers';
+import { DataTable, DataTableColumn } from '@shared/components/common/DataTable';
 import type { ScheduleStackParamList } from '../navigation/types';
 
 const ContentPane: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => {
@@ -95,7 +95,6 @@ export const ScheduleListScreen: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
 
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
@@ -210,6 +209,72 @@ export const ScheduleListScreen: React.FC = () => {
       return SCHEDULE_TYPE_ORDER.indexOf(a.type) - SCHEDULE_TYPE_ORDER.indexOf(b.type);
     });
   }, [filteredSchedules]);
+
+  // Column definitions for desktop DataTable
+  const scheduleColumns: DataTableColumn<Schedule>[] = useMemo(() => [
+    {
+      key: 'title',
+      title: 'Название',
+      flex: 2.5,
+      render: (schedule, theme) => (
+        <Text style={[scheduleLocalStyles.cellText, { color: theme.text, fontWeight: '500' }]} numberOfLines={1}>
+          {schedule.title}
+        </Text>
+      ),
+    },
+    {
+      key: 'type',
+      title: 'Тип',
+      flex: 1.3,
+      render: (schedule, theme) => {
+        const typeColor = schedule.color || getScheduleTypeColor(schedule.type);
+        return (
+          <>
+            <View style={[scheduleLocalStyles.typeDot, { backgroundColor: typeColor }]} />
+            <Text style={[scheduleLocalStyles.cellText, { color: theme.text }]} numberOfLines={1}>
+              {SCHEDULE_TYPE_LABELS[schedule.type]}
+            </Text>
+          </>
+        );
+      },
+    },
+    {
+      key: 'period',
+      title: 'Период',
+      flex: 1.8,
+      render: (schedule, theme) => (
+        <Text style={[scheduleLocalStyles.cellText, { color: theme.text }]}>
+          {formatScheduleDate(schedule.start_date, 'dd MMM')} — {formatScheduleDate(schedule.end_date, 'dd MMM yyyy')}
+        </Text>
+      ),
+    },
+    {
+      key: 'mode',
+      title: 'Режим',
+      flex: 1,
+      render: (schedule, theme) => (
+        <Text style={[scheduleLocalStyles.cellText, { color: theme.textSecondary }]}>
+          {SCHEDULE_MODE_LABELS[schedule.mode]}
+        </Text>
+      ),
+    },
+    {
+      key: 'status',
+      title: 'Статус',
+      flex: 1,
+      render: (schedule, theme) => {
+        const isDraft = schedule.status === 'draft';
+        return (
+          <>
+            <View style={[scheduleLocalStyles.statusDot, { backgroundColor: isDraft ? '#F59E0B' : '#10B981' }]} />
+            <Text style={[scheduleLocalStyles.cellText, { color: isDraft ? '#F59E0B' : '#10B981' }]}>
+              {isDraft ? 'Черновик' : 'Опубликован'}
+            </Text>
+          </>
+        );
+      },
+    },
+  ], []);
 
   // Handle manual pull-to-refresh
   const handleRefresh = useCallback(async () => {
@@ -381,135 +446,61 @@ export const ScheduleListScreen: React.FC = () => {
             </View>
 
             {/* Main Panel - Schedule table */}
-            <View style={[styles.listCard, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
-              {/* Card Header */}
-              <View style={[styles.listCardHeader, { borderColor: theme.border }]}>
-                <View style={styles.listCardHeaderLeft}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      const d = new Date(selectedMonth);
-                      d.setMonth(d.getMonth() - 1);
-                      handleMonthChange(d);
-                    }}
-                    style={styles.listHeaderArrow}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleMonthChange(new Date())}
-                    activeOpacity={
-                      selectedMonth.getMonth() === new Date().getMonth() &&
-                      selectedMonth.getFullYear() === new Date().getFullYear() ? 1 : 0.6
-                    }
-                    disabled={
-                      selectedMonth.getMonth() === new Date().getMonth() &&
-                      selectedMonth.getFullYear() === new Date().getFullYear()
-                    }
-                  >
-                    <Text style={[styles.listHeaderMonthText, { color: theme.text }]}>
-                      {['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'][selectedMonth.getMonth()]} {selectedMonth.getFullYear()}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => {
-                      const d = new Date(selectedMonth);
-                      d.setMonth(d.getMonth() + 1);
-                      handleMonthChange(d);
-                    }}
-                    style={styles.listHeaderArrow}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
-                  </TouchableOpacity>
+            <DataTable<Schedule>
+              columns={scheduleColumns}
+              data={sortedSchedules}
+              keyExtractor={(s) => String(s.id)}
+              onRowPress={handleSchedulePress}
+              isLoading={isLoading}
+              loadingComponent={<ScheduleListContentSkeleton />}
+              emptyIcon="calendar-outline"
+              emptyTitle="Нет графиков за этот месяц"
+              emptySubtitle={canCreate ? 'Выберите другой месяц или создайте новый график' : 'Выберите другой месяц'}
+              getRowStyle={(s) => !s.is_active ? { opacity: 0.45 } : undefined}
+              headerContent={
+                <View style={[styles.listCardHeader, { borderColor: theme.border }]}>
+                  <View style={styles.listCardHeaderLeft}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const d = new Date(selectedMonth);
+                        d.setMonth(d.getMonth() - 1);
+                        handleMonthChange(d);
+                      }}
+                      style={styles.listHeaderArrow}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleMonthChange(new Date())}
+                      activeOpacity={
+                        selectedMonth.getMonth() === new Date().getMonth() &&
+                        selectedMonth.getFullYear() === new Date().getFullYear() ? 1 : 0.6
+                      }
+                      disabled={
+                        selectedMonth.getMonth() === new Date().getMonth() &&
+                        selectedMonth.getFullYear() === new Date().getFullYear()
+                      }
+                    >
+                      <Text style={[styles.listHeaderMonthText, { color: theme.text }]}>
+                        {['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'][selectedMonth.getMonth()]} {selectedMonth.getFullYear()}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const d = new Date(selectedMonth);
+                        d.setMonth(d.getMonth() + 1);
+                        handleMonthChange(d);
+                      }}
+                      style={styles.listHeaderArrow}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-              {/* Table Header */}
-              <View style={[styles.tableHeaderRow, { borderColor: theme.border }]}>
-                <Text style={[styles.tableHeaderCell, styles.tableCellName, { color: theme.textSecondary }]}>Название</Text>
-                <Text style={[styles.tableHeaderCell, styles.tableCellType, { color: theme.textSecondary }]}>Тип</Text>
-                <Text style={[styles.tableHeaderCell, styles.tableCellPeriod, { color: theme.textSecondary }]}>Период</Text>
-                <Text style={[styles.tableHeaderCell, styles.tableCellMode, { color: theme.textSecondary }]}>Режим</Text>
-                <Text style={[styles.tableHeaderCell, styles.tableCellStatus, { color: theme.textSecondary }]}>Статус</Text>
-              </View>
-              {/* Table Body */}
-              {isLoading ? (
-                <ScheduleListContentSkeleton />
-              ) : (
-                <ContentPane>
-                  <ScrollView
-                    style={{ backgroundColor: theme.background }}
-                    contentContainerStyle={styles.tableScrollContent}
-                    showsVerticalScrollIndicator={false}
-                  >
-                    {sortedSchedules.length === 0 ? (
-                      <View style={styles.emptyContainerDesktop}>
-                        {renderEmpty()}
-                      </View>
-                    ) : (
-                      sortedSchedules.map((schedule) => {
-                        const typeColor = schedule.color || getScheduleTypeColor(schedule.type);
-                        const isDraft = schedule.status === 'draft';
-                        return (
-                          <TouchableOpacity
-                            key={schedule.id}
-                            style={[
-                              styles.tableRow,
-                              { borderColor: theme.border, backgroundColor: cardBgColor },
-                              hoveredRowId === schedule.id && { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' },
-                              !schedule.is_active && { opacity: 0.45 },
-                            ]}
-                            onPress={() => handleSchedulePress(schedule)}
-                            activeOpacity={0.7}
-                            // @ts-ignore - web only
-                            onMouseEnter={Platform.OS === 'web' ? () => setHoveredRowId(schedule.id) : undefined}
-                            // @ts-ignore - web only
-                            onMouseLeave={Platform.OS === 'web' ? () => setHoveredRowId(null) : undefined}
-                          >
-                            {/* Name */}
-                            <View style={[styles.tableCell, styles.tableCellName]}>
-                              <Text style={[styles.tableCellText, { color: theme.text, fontWeight: '500' }]} numberOfLines={1}>
-                                {schedule.title}
-                              </Text>
-                            </View>
-
-                            {/* Type */}
-                            <View style={[styles.tableCell, styles.tableCellType]}>
-                              <View style={[styles.tableTypeDot, { backgroundColor: typeColor }]} />
-                              <Text style={[styles.tableCellText, { color: theme.text }]} numberOfLines={1}>
-                                {SCHEDULE_TYPE_LABELS[schedule.type]}
-                              </Text>
-                            </View>
-
-                            {/* Period */}
-                            <View style={[styles.tableCell, styles.tableCellPeriod]}>
-                              <Text style={[styles.tableCellText, { color: theme.text }]}>
-                                {formatScheduleDate(schedule.start_date, 'dd MMM')} — {formatScheduleDate(schedule.end_date, 'dd MMM yyyy')}
-                              </Text>
-                            </View>
-
-                            {/* Mode */}
-                            <View style={[styles.tableCell, styles.tableCellMode]}>
-                              <Text style={[styles.tableCellText, { color: theme.textSecondary }]}>
-                                {SCHEDULE_MODE_LABELS[schedule.mode]}
-                              </Text>
-                            </View>
-
-                            {/* Status */}
-                            <View style={[styles.tableCell, styles.tableCellStatus]}>
-                              <View style={[styles.tableStatusDot, { backgroundColor: isDraft ? '#F59E0B' : '#10B981' }]} />
-                              <Text style={[styles.tableCellText, { color: isDraft ? '#F59E0B' : '#10B981' }]}>
-                                {isDraft ? 'Черновик' : 'Опубликован'}
-                              </Text>
-                            </View>
-                          </TouchableOpacity>
-                        );
-                      })
-                    )}
-                  </ScrollView>
-                </ContentPane>
-              )}
-            </View>
+              }
+            />
           </View>
         ) : activeTab === 'summary' ? (
           // Mobile daily summary tab
@@ -633,24 +624,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
   },
-  // Desktop list card layout (matches absence list style)
-  listCard: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    margin: 16,
-    overflow: 'hidden',
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore - web only
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
-    }),
-  },
   listCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -700,80 +673,6 @@ const styles = StyleSheet.create({
       shadowRadius: 8,
       elevation: 3,
     }),
-  },
-  // Desktop flat table layout (matches absence list)
-  tableHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-  },
-  tableHeaderCell: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    lineHeight: 16,
-  },
-  tableScrollContent: {
-    flexGrow: 1,
-  },
-  emptyContainerDesktop: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 48,
-    minWidth: '100%',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore - web only
-      cursor: 'pointer',
-      transitionProperty: 'background-color',
-      transitionDuration: '0.2s',
-    } : {}),
-  },
-  tableCell: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingRight: 12,
-  },
-  tableCellText: {
-    fontSize: 13,
-    fontWeight: '400',
-    lineHeight: 18,
-  },
-  tableCellName: {
-    flex: 2.5,
-  },
-  tableCellType: {
-    flex: 1.3,
-  },
-  tableCellPeriod: {
-    flex: 1.8,
-  },
-  tableCellMode: {
-    flex: 1,
-  },
-  tableCellStatus: {
-    flex: 1,
-  },
-  tableTypeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  tableStatusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -826,5 +725,23 @@ const styles = StyleSheet.create({
   importEmptyButtonText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+});
+
+const scheduleLocalStyles = StyleSheet.create({
+  cellText: {
+    fontSize: 13,
+    fontWeight: '400',
+    lineHeight: 18,
+  },
+  typeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });

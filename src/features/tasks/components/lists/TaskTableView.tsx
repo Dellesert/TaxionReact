@@ -1,15 +1,15 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Task } from '../../types/task.types';
 import type { TasksByStatus, TotalsByStatus, LoadingByStatus, StatusTab } from '../../hooks/useTaskListData';
-import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTaskPermissions } from '../../hooks/useTaskPermissions';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTaskActions } from '../../hooks/useTaskActions';
 import { Avatar } from '@shared/components/common/Avatar';
+import { DataTable, DataTableColumn } from '@shared/components/common/DataTable';
 import { TaskActionMenu } from '../common/TaskActionMenu';
 import EditTaskModal from '../modals/EditTaskModal';
 import { DelegateTaskModal } from '../modals/DelegateTaskModal';
@@ -23,8 +23,14 @@ interface TaskTableViewProps {
   searchQuery: string;
   advancedFilters: AdvancedTaskFilters;
   onTaskPress: (task: Task) => void;
-  onTaskUpdated?: () => void; // Callback when task is updated/deleted
+  onTaskUpdated?: () => void;
 }
+
+type TaskRow = {
+  task: Task;
+  level: number;
+  isSubtask: boolean;
+};
 
 export const TaskTableView: React.FC<TaskTableViewProps> = ({
   tasks,
@@ -35,7 +41,6 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   onTaskPress,
   onTaskUpdated,
 }) => {
-  const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
   const { showConfirm } = useActionModal();
   const { showSuccess, showError } = useNotification();
@@ -43,50 +48,38 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   // Expanded tasks state (for subtasks)
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<number>>(new Set());
 
-  // Hover state for rows (web only)
-  const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
-
   // Action menu state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [menuButtonPosition, setMenuButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
   const menuButtonRefs = useRef<{ [key: number]: any }>({});
 
-  // Modal states - keep task reference separate from menu state
+  // Modal states
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [delegatingTask, setDelegatingTask] = useState<Task | null>(null);
   const [parentTaskForSubtask, setParentTaskForSubtask] = useState<Task | null>(null);
-  const [taskForAction, setTaskForAction] = useState<Task | null>(null); // For emergency complete / delete
+  const [taskForAction, setTaskForAction] = useState<Task | null>(null);
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDelegateModal, setShowDelegateModal] = useState(false);
   const [showSubtaskModal, setShowSubtaskModal] = useState(false);
 
   // Combine all tasks from all statuses and apply client-side filters
-  // Note: Server-side sorting is already applied via advancedFilters
   const allTasks = React.useMemo(() => {
     const combined: Task[] = [];
     STATUS_TABS_ORDER.forEach(status => {
       combined.push(...tasks[status]);
     });
-    // Apply client-side filters (overdue deadline only - subtasks now filtered on server)
     return applyClientSideFilters(combined, advancedFilters);
   }, [tasks, advancedFilters]);
 
   // Build hierarchical list with subtasks
-  type TaskRow = {
-    task: Task;
-    level: number;
-    isSubtask: boolean;
-  };
-
   const tasksWithSubtasks = React.useMemo(() => {
     const result: TaskRow[] = [];
 
     const addTaskWithSubtasks = (task: Task, level: number) => {
       result.push({ task, level, isSubtask: level > 0 });
 
-      // If task is expanded and has subtasks, add them
       if (expandedTaskIds.has(task.id)) {
         const taskSubtasks = task.subtasks || [];
         taskSubtasks.forEach(subtask => {
@@ -108,8 +101,6 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   // Check if task has any available actions
   const hasAvailableActions = useCallback((task: Task) => {
     if (!task || !user) return false;
-
-    // Use permissions from backend
     if (!task.permissions) return false;
 
     const hasEditAction = task.permissions.can_edit;
@@ -121,10 +112,8 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
     return hasEditAction || hasDelegateAction || hasSubtaskAction || hasEmergencyAction || hasDeleteAction;
   }, [user]);
 
-  // Get current task for actions (prefer specific task states over selectedTask)
   const currentActionTask = taskForAction || editingTask || delegatingTask || parentTaskForSubtask || selectedTask;
 
-  // Task actions hook
   const { handleStatusChange, handleEmergencyComplete, handleDeleteTask } = useTaskActions(
     currentActionTask,
     currentActionTask?.subtasks || [],
@@ -140,7 +129,6 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
     showError
   );
 
-
   const handleToggleExpand = useCallback((taskId: number) => {
     setExpandedTaskIds(prev => {
       const newSet = new Set(prev);
@@ -154,12 +142,8 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   }, []);
 
   const handleOpenActionMenu = useCallback((task: Task, event: any) => {
-    // Check if task has any available actions
-    if (!hasAvailableActions(task)) {
-      return;
-    }
+    if (!hasAvailableActions(task)) return;
 
-    // Set the task to get permissions
     setSelectedTask(task);
 
     const button = menuButtonRefs.current[task.id];
@@ -245,7 +229,6 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
     onTaskUpdated?.();
   }, [onTaskUpdated]);
 
-
   const getStatusColor = (status: StatusTab) => {
     return STATUS_COLORS[status];
   };
@@ -262,10 +245,10 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
 
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, string> = {
-      low: '#10B981',      // green
-      medium: '#F59E0B',   // amber
-      high: '#EF4444',     // red
-      critical: '#DC2626', // dark red
+      low: '#10B981',
+      medium: '#F59E0B',
+      high: '#EF4444',
+      critical: '#DC2626',
     };
     return colors[priority] || '#6B7280';
   };
@@ -298,171 +281,158 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
 
   const isLoading = loading.new || loading.in_progress || loading.review || loading.done;
 
-  return (
-    <View style={styles.container}>
-      <View style={[styles.tableContainer, { borderColor: theme.border, backgroundColor: theme.card }]}>
-        {/* Header */}
-        <View style={[styles.headerRow, { borderColor: theme.border }]}>
-          <Text style={[styles.headerText, styles.titleColumn, { color: theme.textSecondary }]}>Название</Text>
-          <Text style={[styles.headerText, styles.statusColumn, { color: theme.textSecondary }]}>Статус</Text>
-          <Text style={[styles.headerText, styles.priorityColumn, { color: theme.textSecondary }]}>Приоритет</Text>
-          <Text style={[styles.headerText, styles.dateColumn, { color: theme.textSecondary }]}>Дедлайн</Text>
-          <Text style={[styles.headerText, styles.dateColumn, { color: theme.textSecondary }]}>Создано</Text>
-          <Text style={[styles.headerText, styles.creatorColumn, { color: theme.textSecondary }]}>Автор</Text>
-          <Text style={[styles.headerText, styles.actionsColumn, { color: theme.textSecondary }]}>Действия</Text>
-        </View>
-
-        {/* Body */}
-        <ScrollView style={[styles.bodyContainer, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
-            {isLoading && tasksWithSubtasks.length === 0 ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={theme.primary} />
-              </View>
-            ) : tasksWithSubtasks.length === 0 ? (
-              <View style={styles.emptyContainer}>
+  // Column definitions
+  const columns: DataTableColumn<TaskRow>[] = useMemo(() => [
+    {
+      key: 'title',
+      title: 'Название',
+      flex: 3,
+      minWidth: 250,
+      render: ({ task, isSubtask }, theme) => {
+        const hasSubtasks = (task.subtasks?.length || 0) > 0;
+        const isExpanded = expandedTaskIds.has(task.id);
+        return (
+          <View style={localStyles.titleRow}>
+            {hasSubtasks && !isSubtask && (
+              <TouchableOpacity
+                style={localStyles.expandButton}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleToggleExpand(task.id);
+                }}
+              >
                 <Ionicons
-                  name={searchQuery ? 'search-outline' : 'document-text-outline'}
-                  size={64}
-                  color={theme.border}
-                  style={styles.emptyIcon}
+                  name={isExpanded ? 'chevron-down' : 'chevron-forward'}
+                  size={14}
+                  color={theme.text}
                 />
-                <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                  {searchQuery ? 'Задачи не найдены' : 'Нет задач'}
-                </Text>
-                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                  {searchQuery
-                    ? 'Попробуйте изменить параметры поиска'
-                    : 'Создайте новую задачу для начала работы'}
-                </Text>
-              </View>
-            ) : (
-              tasksWithSubtasks.map(({ task, level, isSubtask }, index) => {
-                const hasSubtasks = (task.subtasks?.length || 0) > 0;
-                const isExpanded = expandedTaskIds.has(task.id);
-
-                const isHovered = hoveredRowId === task.id;
-
-                return (
-                <TouchableOpacity
-                  key={`${task.id}-${level}-${task.parent_task_id || 'root'}-${index}`}
-                  style={[
-                    styles.row,
-                    {
-                      borderColor: theme.border,
-                      backgroundColor: isDark ? theme.card : '#FFFFFF',
-                    },
-                    isHovered && { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' },
-                    isSubtask && styles.subtaskRow,
-                  ]}
-                  onPress={() => onTaskPress(task)}
-                  // @ts-ignore - web-only props
-                  onMouseEnter={Platform.OS === 'web' ? () => setHoveredRowId(task.id) : undefined}
-                  onMouseLeave={Platform.OS === 'web' ? () => setHoveredRowId(null) : undefined}
-                >
-                  <View style={[styles.cell, styles.titleColumn]}>
-                    <View style={styles.titleRow}>
-                      {/* Expand/Collapse button */}
-                      {hasSubtasks && !isSubtask && (
-                        <TouchableOpacity
-                          style={styles.expandButton}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleToggleExpand(task.id);
-                          }}
-                        >
-                          <Ionicons
-                            name={isExpanded ? 'chevron-down' : 'chevron-forward'}
-                            size={14}
-                            color={theme.text}
-                          />
-                        </TouchableOpacity>
-                      )}
-
-                      {isSubtask && (
-                        <Ionicons name="return-down-forward-outline" size={12} color={theme.textSecondary} style={{ marginRight: 4 }} />
-                      )}
-
-                      <Text style={[styles.cellText, { color: theme.text, fontWeight: isSubtask ? '400' : '500' }]} numberOfLines={1}>
-                        {task.title}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={[styles.cell, styles.statusColumn]}>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status as StatusTab) }]}>
-                      <Text style={styles.statusText}>{STATUS_LABELS[task.status as StatusTab]}</Text>
-                    </View>
-                  </View>
-
-                  <View style={[styles.cell, styles.priorityColumn]}>
-                    <View style={styles.priorityContainer}>
-                      <View style={[styles.priorityDot, { backgroundColor: getPriorityColor(task.priority) }]} />
-                      <Text style={[styles.cellText, { color: theme.text }]}>
-                        {getPriorityLabel(task.priority)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={[styles.cell, styles.dateColumn]}>
-                    {task.due_date ? (
-                      <View style={styles.deadlineContainer}>
-                        <Ionicons
-                          name="calendar-outline"
-                          size={14}
-                          color={getDeadlineColor(getDeadlineStatus(task.due_date)) || theme.textSecondary}
-                          style={styles.deadlineIcon}
-                        />
-                        <Text style={[
-                          styles.cellText,
-                          {
-                            color: getDeadlineColor(getDeadlineStatus(task.due_date)) || theme.text,
-                            fontWeight: getDeadlineStatus(task.due_date) === 'overdue' ? '600' : '400'
-                          }
-                        ]}>
-                          {formatDate(task.due_date)}
-                        </Text>
-                      </View>
-                    ) : (
-                      <Text style={[styles.cellText, { color: theme.textSecondary }]}>—</Text>
-                    )}
-                  </View>
-
-                  <View style={[styles.cell, styles.dateColumn]}>
-                    <Text style={[styles.cellText, { color: theme.text }]}>
-                      {formatDate(task.created_at)}
-                    </Text>
-                  </View>
-
-                  <View style={[styles.cell, styles.creatorColumn]}>
-                    <View style={styles.creatorContainer}>
-                      <Avatar
-                        name={task.creator?.name || '?'}
-                        imageUrl={task.creator?.avatar}
-                        size={22}
-                      />
-                      <Text style={[styles.cellText, { color: theme.text }]} numberOfLines={1}>
-                        {user && task.creator?.id === user.id ? 'Я' : (task.creator?.name?.split(' ')[0] || '—')}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={[styles.cell, styles.actionsColumn]}>
-                    {hasAvailableActions(task) && (
-                      <TouchableOpacity
-                        ref={ref => menuButtonRefs.current[task.id] = ref}
-                        style={[styles.actionButton, { backgroundColor: theme.backgroundSecondary }]}
-                        onPress={(e) => handleOpenActionMenu(task, e)}
-                      >
-                        <Ionicons name="ellipsis-horizontal" size={18} color={theme.text} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </TouchableOpacity>
-                );
-              })
+              </TouchableOpacity>
             )}
-        </ScrollView>
-      </View>
+            {isSubtask && (
+              <Ionicons name="return-down-forward-outline" size={12} color={theme.textSecondary} style={{ marginRight: 4 }} />
+            )}
+            <Text style={[localStyles.cellText, { color: theme.text, fontWeight: isSubtask ? '400' : '500' }]} numberOfLines={1}>
+              {task.title}
+            </Text>
+          </View>
+        );
+      },
+    },
+    {
+      key: 'status',
+      title: 'Статус',
+      flex: 1.5,
+      minWidth: 130,
+      render: ({ task }) => (
+        <View style={[localStyles.statusBadge, { backgroundColor: getStatusColor(task.status as StatusTab) }]}>
+          <Text style={localStyles.statusText}>{STATUS_LABELS[task.status as StatusTab]}</Text>
+        </View>
+      ),
+    },
+    {
+      key: 'priority',
+      title: 'Приоритет',
+      flex: 1,
+      minWidth: 100,
+      render: ({ task }, theme) => (
+        <View style={localStyles.priorityContainer}>
+          <View style={[localStyles.priorityDot, { backgroundColor: getPriorityColor(task.priority) }]} />
+          <Text style={[localStyles.cellText, { color: theme.text }]}>
+            {getPriorityLabel(task.priority)}
+          </Text>
+        </View>
+      ),
+    },
+    {
+      key: 'deadline',
+      title: 'Дедлайн',
+      flex: 1,
+      minWidth: 100,
+      render: ({ task }, theme) => {
+        if (task.due_date) {
+          return (
+            <View style={localStyles.deadlineContainer}>
+              <Ionicons
+                name="calendar-outline"
+                size={14}
+                color={getDeadlineColor(getDeadlineStatus(task.due_date)) || theme.textSecondary}
+              />
+              <Text style={[
+                localStyles.cellText,
+                {
+                  color: getDeadlineColor(getDeadlineStatus(task.due_date)) || theme.text,
+                  fontWeight: getDeadlineStatus(task.due_date) === 'overdue' ? '600' : '400'
+                }
+              ]}>
+                {formatDate(task.due_date)}
+              </Text>
+            </View>
+          );
+        }
+        return <Text style={[localStyles.cellText, { color: theme.textSecondary }]}>—</Text>;
+      },
+    },
+    {
+      key: 'created',
+      title: 'Создано',
+      flex: 1,
+      minWidth: 100,
+      render: ({ task }, theme) => (
+        <Text style={[localStyles.cellText, { color: theme.text }]}>
+          {formatDate(task.created_at)}
+        </Text>
+      ),
+    },
+    {
+      key: 'creator',
+      title: 'Автор',
+      flex: 1,
+      minWidth: 100,
+      render: ({ task }, theme) => (
+        <View style={localStyles.creatorContainer}>
+          <Avatar
+            name={task.creator?.name || '?'}
+            imageUrl={task.creator?.avatar}
+            size={22}
+          />
+          <Text style={[localStyles.cellText, { color: theme.text }]} numberOfLines={1}>
+            {user && task.creator?.id === user.id ? 'Я' : (task.creator?.name?.split(' ')[0] || '—')}
+          </Text>
+        </View>
+      ),
+    },
+    {
+      key: 'actions',
+      title: 'Действия',
+      width: 80,
+      render: ({ task }, theme) => {
+        if (!hasAvailableActions(task)) return null;
+        return (
+          <TouchableOpacity
+            ref={(ref: any) => { menuButtonRefs.current[task.id] = ref; }}
+            style={[localStyles.actionButton, { backgroundColor: theme.backgroundSecondary }]}
+            onPress={(e) => handleOpenActionMenu(task, e)}
+          >
+            <Ionicons name="ellipsis-horizontal" size={18} color={theme.text} />
+          </TouchableOpacity>
+        );
+      },
+    },
+  ], [expandedTaskIds, handleToggleExpand, user, hasAvailableActions, handleOpenActionMenu]);
+
+  return (
+    <View style={localStyles.container}>
+      <DataTable<TaskRow>
+        columns={columns}
+        data={tasksWithSubtasks}
+        keyExtractor={(row, index) => `${row.task.id}-${row.level}-${row.task.parent_task_id || 'root'}-${index}`}
+        onRowPress={(row) => onTaskPress(row.task)}
+        isLoading={isLoading && tasksWithSubtasks.length === 0}
+        emptyIcon={searchQuery ? 'search-outline' : 'document-text-outline'}
+        emptyTitle={searchQuery ? 'Задачи не найдены' : 'Нет задач'}
+        emptySubtitle={searchQuery ? 'Попробуйте изменить параметры поиска' : 'Создайте новую задачу для начала работы'}
+        getRowStyle={(row) => row.isSubtask ? { paddingLeft: 32 } : undefined}
+      />
 
       {/* Action Menu */}
       <TaskActionMenu
@@ -521,89 +491,9 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const localStyles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  tableContainer: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    margin: 16,
-    overflow: 'hidden',
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore - web only
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
-    }),
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-  },
-  headerText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    lineHeight: 16,
-  },
-  titleColumn: {
-    flex: 3,
-    minWidth: 250,
-  },
-  statusColumn: {
-    flex: 1.5,
-    minWidth: 130,
-  },
-  priorityColumn: {
-    flex: 1,
-    minWidth: 100,
-  },
-  dateColumn: {
-    flex: 1,
-    minWidth: 100,
-  },
-  creatorColumn: {
-    flex: 1,
-    minWidth: 100,
-  },
-  actionsColumn: {
-    width: 80,
-  },
-  bodyContainer: {
-    flex: 1,
-    flexGrow: 1,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore - web only
-      cursor: 'pointer',
-      transitionProperty: 'background-color',
-      transitionDuration: '0.2s',
-    } : {}),
-  },
-  subtaskRow: {
-    paddingLeft: 32,
-  },
-  cell: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingRight: 12,
   },
   cellText: {
     fontSize: 13,
@@ -625,16 +515,6 @@ const styles = StyleSheet.create({
       cursor: 'pointer',
     }),
   },
-  expandButtonPlaceholder: {
-    width: 20,
-    marginRight: 4,
-  },
-  titleContent: {
-    flex: 1,
-  },
-  subtaskTitle: {
-    opacity: 0.8,
-  },
   priorityContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -654,8 +534,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-  },
-  deadlineIcon: {
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -677,34 +555,5 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web' && {
       cursor: 'pointer',
     }),
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 32,
-  },
-  emptyIcon: {
-    marginBottom: 16,
-    opacity: 0.5,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 22,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
   },
 });

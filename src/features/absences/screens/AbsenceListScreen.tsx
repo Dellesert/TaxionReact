@@ -9,7 +9,7 @@ import {
   TextInput,
   Dimensions,
   ScrollView,
-  ActivityIndicator,
+
   FlatList,
 } from 'react-native';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
@@ -39,6 +39,7 @@ import {
   ABSENCE_TYPE_COLORS,
 } from '../types/absence.types';
 import { Avatar } from '@shared/components/common/Avatar';
+import { DataTable, DataTableColumn } from '@shared/components/common/DataTable';
 import { getUserColorById } from '../constants/userColors.constants';
 import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -117,8 +118,6 @@ export const AbsenceListScreen: React.FC = () => {
 
   // Search state for desktop
   const [searchQuery, setSearchQuery] = useState('');
-  // Hovered table row
-  const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -367,29 +366,88 @@ export const AbsenceListScreen: React.FC = () => {
     return Array.from(usersMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [absences]);
 
-  // Render empty state for desktop
-  const renderDesktopEmpty = useCallback(() => {
-    if (isLoading) {
-      return (
-        <View style={styles.emptyContainerDesktop}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      );
-    }
-
-    return (
-      <View style={styles.emptyContainerDesktop}>
-        <Ionicons name="calendar-outline" size={48} color={theme.textSecondary} />
-        <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-          {searchQuery
-            ? `Ничего не найдено по запросу "${searchQuery}"`
-            : selectedTypeFilter
-              ? `Нет типа "${ABSENCE_TYPE_LABELS[selectedTypeFilter]}" за ${selectedYear}`
-              : `Нет отпусков за ${selectedYear}`}
+  // Column definitions for DataTable (list view)
+  const absenceColumns: DataTableColumn<Absence>[] = useMemo(() => [
+    {
+      key: 'employee',
+      title: 'Сотрудник',
+      flex: 2.5,
+      render: (absence, theme) => {
+        const userName = absence.user?.name || `#${absence.user_id}`;
+        return (
+          <>
+            <Avatar name={userName} imageUrl={absence.user?.avatar} size={28} userId={absence.user_id} />
+            <Text style={[absenceLocalStyles.cellText, { color: theme.text }]} numberOfLines={1}>
+              {userName}
+            </Text>
+          </>
+        );
+      },
+    },
+    {
+      key: 'type',
+      title: 'Тип',
+      flex: 1.3,
+      render: (absence, theme) => (
+        <>
+          <View style={[absenceLocalStyles.typeDot, { backgroundColor: ABSENCE_TYPE_COLORS[absence.type] }]} />
+          <Text style={[absenceLocalStyles.cellText, { color: theme.text }]} numberOfLines={1}>
+            {ABSENCE_TYPE_LABELS[absence.type]}
+          </Text>
+        </>
+      ),
+    },
+    {
+      key: 'period',
+      title: 'Период',
+      flex: 1.8,
+      render: (absence, theme) => (
+        <Text style={[absenceLocalStyles.cellText, { color: theme.text }]}>
+          {formatAbsenceDate(absence.start_date)} — {formatAbsenceDate(absence.end_date)}
         </Text>
-      </View>
-    );
-  }, [isLoading, theme, searchQuery, selectedTypeFilter, selectedYear]);
+      ),
+    },
+    {
+      key: 'days',
+      title: 'Дни',
+      width: 50,
+      render: (absence, theme) => {
+        const startDate = parseLocalDate(absence.start_date);
+        const endDate = parseLocalDate(absence.end_date);
+        const duration = getDurationDays(startDate, endDate);
+        return (
+          <Text style={[absenceLocalStyles.daysText, { color: theme.textSecondary }]}>
+            {duration}
+          </Text>
+        );
+      },
+    },
+    {
+      key: 'substitution',
+      title: 'Замещение',
+      flex: 1.5,
+      render: (absence, theme) => {
+        const hasSubs = absence.substitutions && absence.substitutions.length > 0;
+        const subCount = absence.substitution_count ?? absence.substitutions?.length ?? 0;
+        if (hasSubs) {
+          return (
+            <Text style={[absenceLocalStyles.cellText, { color: theme.textSecondary }]} numberOfLines={1}>
+              {absence.substitutions![0].substitute?.name || `#${absence.substitutions![0].substitute_id}`}
+              {absence.substitutions!.length > 1 && ` +${absence.substitutions!.length - 1}`}
+            </Text>
+          );
+        }
+        if (subCount > 0) {
+          return (
+            <Text style={[absenceLocalStyles.cellText, { color: theme.textSecondary }]}>
+              {subCount} зам.
+            </Text>
+          );
+        }
+        return <Text style={[absenceLocalStyles.cellText, { color: theme.textTertiary }]}>—</Text>;
+      },
+    },
+  ], []);
 
   // Calculate menu position (under the filter button)
   const menuTop = filterButtonPosition
@@ -813,175 +871,93 @@ export const AbsenceListScreen: React.FC = () => {
               </ContentPane>
             )
           ) : (
-            <View style={[styles.listCard, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.border }]}>
-              {/* List Header - year picker left, user filter right */}
-              <View style={[styles.listCardHeader, { borderColor: theme.border }]}>
-                <View style={styles.listCardHeaderLeft}>
+            <DataTable<Absence>
+              columns={absenceColumns}
+              data={filteredAbsences}
+              keyExtractor={(a) => String(a.id)}
+              onRowPress={handleAbsencePress}
+              isLoading={isLoading}
+              loadingComponent={<AbsenceListSkeleton />}
+              emptyIcon="calendar-outline"
+              emptyTitle={
+                searchQuery
+                  ? `По запросу «${searchQuery}» ничего не найдено`
+                  : selectedTypeFilter
+                    ? `Нет записей типа «${ABSENCE_TYPE_LABELS[selectedTypeFilter]}»`
+                    : `Нет записей за ${selectedYear} год`
+              }
+              headerContent={
+                <View style={[styles.listCardHeader, { borderColor: theme.border }]}>
+                  <View style={styles.listCardHeaderLeft}>
+                    <TouchableOpacity
+                      onPress={() => handleYearChange(selectedYear - 1)}
+                      style={styles.listHeaderArrow}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleYearChange(new Date().getFullYear())}
+                      activeOpacity={selectedYear === new Date().getFullYear() ? 1 : 0.6}
+                      disabled={selectedYear === new Date().getFullYear()}
+                    >
+                      <Text style={[styles.listHeaderYearText, { color: theme.text }]}>
+                        {selectedYear}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleYearChange(selectedYear + 1)}
+                      style={styles.listHeaderArrow}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
                   <TouchableOpacity
-                    onPress={() => handleYearChange(selectedYear - 1)}
-                    style={styles.listHeaderArrow}
-                    activeOpacity={0.7}
+                    ref={userFilterButtonRef}
+                    style={[
+                      styles.listHeaderUserFilter,
+                      { borderColor: theme.border },
+                      selectedUserId ? { borderColor: theme.primary, backgroundColor: theme.primary + '10' } : null,
+                    ]}
+                    onPress={() => {
+                      if (isElectron && userFilterButtonRef.current) {
+                        const rect = userFilterButtonRef.current.getBoundingClientRect?.();
+                        if (rect) {
+                          setUserFilterButtonPosition({ x: rect.left, y: rect.top, width: rect.width, height: rect.height });
+                        }
+                      }
+                      setShowUserPicker(true);
+                    }}
                   >
-                    <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleYearChange(new Date().getFullYear())}
-                    activeOpacity={selectedYear === new Date().getFullYear() ? 1 : 0.6}
-                    disabled={selectedYear === new Date().getFullYear()}
-                  >
-                    <Text style={[styles.listHeaderYearText, { color: theme.text }]}>
-                      {selectedYear}
+                    <Ionicons
+                      name="person"
+                      size={14}
+                      color={selectedUserId ? theme.primary : theme.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.listHeaderUserFilterText,
+                        { color: selectedUserId ? theme.primary : theme.textSecondary },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {selectedUserName || 'Все сотрудники'}
                     </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleYearChange(selectedYear + 1)}
-                    style={styles.listHeaderArrow}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+                    {selectedUserId ? (
+                      <TouchableOpacity
+                        onPress={() => handleUserFilterChange(null, null)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Ionicons name="close-circle" size={16} color={theme.primary} />
+                      </TouchableOpacity>
+                    ) : (
+                      <Ionicons name="chevron-down" size={14} color={theme.textSecondary} />
+                    )}
                   </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  ref={userFilterButtonRef}
-                  style={[
-                    styles.listHeaderUserFilter,
-                    { borderColor: theme.border },
-                    selectedUserId ? { borderColor: theme.primary, backgroundColor: theme.primary + '10' } : null,
-                  ]}
-                  onPress={() => {
-                    if (isElectron && userFilterButtonRef.current) {
-                      const rect = userFilterButtonRef.current.getBoundingClientRect?.();
-                      if (rect) {
-                        setUserFilterButtonPosition({ x: rect.left, y: rect.top, width: rect.width, height: rect.height });
-                      }
-                    }
-                    setShowUserPicker(true);
-                  }}
-                >
-                  <Ionicons
-                    name="person"
-                    size={14}
-                    color={selectedUserId ? theme.primary : theme.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      styles.listHeaderUserFilterText,
-                      { color: selectedUserId ? theme.primary : theme.textSecondary },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {selectedUserName || 'Все сотрудники'}
-                  </Text>
-                  {selectedUserId ? (
-                    <TouchableOpacity
-                      onPress={() => handleUserFilterChange(null, null)}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <Ionicons name="close-circle" size={16} color={theme.primary} />
-                    </TouchableOpacity>
-                  ) : (
-                    <Ionicons name="chevron-down" size={14} color={theme.textSecondary} />
-                  )}
-                </TouchableOpacity>
-              </View>
-              {/* Table Header */}
-              <View style={[styles.tableHeaderRow, { borderColor: theme.border }]}>
-                <Text style={[styles.tableHeaderCell, styles.tableCellEmployee, { color: theme.textSecondary }]}>Сотрудник</Text>
-                <Text style={[styles.tableHeaderCell, styles.tableCellType, { color: theme.textSecondary }]}>Тип</Text>
-                <Text style={[styles.tableHeaderCell, styles.tableCellPeriod, { color: theme.textSecondary }]}>Период</Text>
-                <Text style={[styles.tableHeaderCell, styles.tableCellDays, { color: theme.textSecondary }]}>Дни</Text>
-                <Text style={[styles.tableHeaderCell, styles.tableCellSubstitution, { color: theme.textSecondary }]}>Замещение</Text>
-              </View>
-              {/* Table Body */}
-              {isLoading ? (
-                <AbsenceListSkeleton />
-              ) : (
-                <ContentPane>
-                  <ScrollView
-                    style={{ backgroundColor: theme.background }}
-                    contentContainerStyle={styles.tableScrollContent}
-                    showsVerticalScrollIndicator={false}
-                  >
-                    {filteredAbsences.length === 0 ? (
-                      renderDesktopEmpty()
-                    ) : (
-                      filteredAbsences.map((absence) => {
-                        const startDate = parseLocalDate(absence.start_date);
-                        const endDate = parseLocalDate(absence.end_date);
-                        const duration = getDurationDays(startDate, endDate);
-                        const typeColor = ABSENCE_TYPE_COLORS[absence.type];
-                        const userName = absence.user?.name || `#${absence.user_id}`;
-                        const hasSubs = absence.substitutions && absence.substitutions.length > 0;
-                        const subCount = absence.substitution_count ?? absence.substitutions?.length ?? 0;
-
-                        return (
-                          <TouchableOpacity
-                            key={absence.id}
-                            style={[
-                              styles.tableRow,
-                              { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' },
-                              hoveredRowId === absence.id && { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' },
-                            ]}
-                            onPress={() => handleAbsencePress(absence)}
-                            activeOpacity={0.7}
-                            // @ts-ignore - web only
-                            onMouseEnter={Platform.OS === 'web' ? () => setHoveredRowId(absence.id) : undefined}
-                            // @ts-ignore - web only
-                            onMouseLeave={Platform.OS === 'web' ? () => setHoveredRowId(null) : undefined}
-                          >
-                            {/* Employee */}
-                            <View style={[styles.tableCell, styles.tableCellEmployee]}>
-                              <Avatar name={userName} imageUrl={absence.user?.avatar} size={28} userId={absence.user_id} />
-                              <Text style={[styles.tableCellText, { color: theme.text }]} numberOfLines={1}>
-                                {userName}
-                              </Text>
-                            </View>
-
-                            {/* Type */}
-                            <View style={[styles.tableCell, styles.tableCellType]}>
-                              <View style={[styles.tableTypeDot, { backgroundColor: typeColor }]} />
-                              <Text style={[styles.tableCellText, { color: theme.text }]} numberOfLines={1}>
-                                {ABSENCE_TYPE_LABELS[absence.type]}
-                              </Text>
-                            </View>
-
-                            {/* Period */}
-                            <View style={[styles.tableCell, styles.tableCellPeriod]}>
-                              <Text style={[styles.tableCellText, { color: theme.text }]}>
-                                {formatAbsenceDate(absence.start_date)} — {formatAbsenceDate(absence.end_date)}
-                              </Text>
-                            </View>
-
-                            {/* Days */}
-                            <View style={[styles.tableCell, styles.tableCellDays]}>
-                              <Text style={[styles.tableCellDaysText, { color: theme.textSecondary }]}>
-                                {duration}
-                              </Text>
-                            </View>
-
-                            {/* Substitution */}
-                            <View style={[styles.tableCell, styles.tableCellSubstitution]}>
-                              {hasSubs ? (
-                                <Text style={[styles.tableCellText, { color: theme.textSecondary }]} numberOfLines={1}>
-                                  {absence.substitutions![0].substitute?.name || `#${absence.substitutions![0].substitute_id}`}
-                                  {absence.substitutions!.length > 1 && ` +${absence.substitutions!.length - 1}`}
-                                </Text>
-                              ) : subCount > 0 ? (
-                                <Text style={[styles.tableCellText, { color: theme.textSecondary }]}>
-                                  {subCount} зам.
-                                </Text>
-                              ) : (
-                                <Text style={[styles.tableCellText, { color: theme.textTertiary }]}>—</Text>
-                              )}
-                            </View>
-                          </TouchableOpacity>
-                        );
-                      })
-                    )}
-                  </ScrollView>
-                </ContentPane>
-              )}
-            </View>
+              }
+            />
           )}
           </View>
         ) : (
@@ -1456,24 +1432,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 18,
   },
-  // Desktop list card layout
-  listCard: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    margin: 16,
-    overflow: 'hidden',
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore - web only
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
-    }),
-  },
   listCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1524,90 +1482,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 18,
     maxWidth: 180,
-  },
-  // Desktop table layout
-  tableHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-  },
-  tableHeaderCell: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    lineHeight: 16,
-  },
-  tableScrollContent: {
-    flexGrow: 1,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore - web only
-      cursor: 'pointer',
-      transitionProperty: 'background-color',
-      transitionDuration: '0.2s',
-    } : {}),
-  },
-  tableCell: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingRight: 12,
-  },
-  tableCellText: {
-    fontSize: 13,
-    fontWeight: '400',
-    lineHeight: 18,
-  },
-  tableCellEmployee: {
-    flex: 2.5,
-  },
-  tableCellType: {
-    flex: 1.3,
-  },
-  tableCellPeriod: {
-    flex: 1.8,
-  },
-  tableCellDays: {
-    width: 50,
-    justifyContent: 'center',
-  },
-  tableCellDaysText: {
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  tableCellSubstitution: {
-    flex: 1.5,
-  },
-  tableTypeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  emptyContainerDesktop: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 48,
-    gap: 12,
-    minWidth: '100%',
-  },
-  emptyText: {
-    fontSize: 14,
-    fontWeight: '500',
-    textAlign: 'center',
-    maxWidth: 300,
-    lineHeight: 20,
   },
   // Calendar desktop two-panel layout
   calendarDesktopRow: {
@@ -1788,6 +1662,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginHorizontal: 12,
+  },
+});
+
+const absenceLocalStyles = StyleSheet.create({
+  cellText: {
+    fontSize: 13,
+    fontWeight: '400',
+    lineHeight: 18,
+  },
+  typeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  daysText: {
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
 
