@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
-  useWindowDimensions,
   Platform,
   Animated,
 } from 'react-native';
@@ -28,8 +27,6 @@ import * as userApi from '@api/user.api';
 import { Department } from '@/types/user.types';
 import { AdminListSkeleton } from '../states/AdminListSkeleton';
 
-const SIDEBAR_WIDTH = 320;
-
 const FadeIn: React.FC<{ children: React.ReactNode; style?: any; enabled?: boolean }> = ({ children, style, enabled = true }) => {
   const opacity = useRef(new Animated.Value(enabled ? 0 : 1)).current;
   useEffect(() => {
@@ -44,12 +41,6 @@ const DepartmentsDesktopContent: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
   const mountTime = useRef(Date.now());
-  const { width: windowWidth } = useWindowDimensions();
-  const contentWidth = windowWidth - SIDEBAR_WIDTH;
-  const isNarrow = contentWidth < 600;
-
-  const gridColumns = isNarrow ? 1 : 2;
-  const cardMaxWidth = `${(100 / gridColumns).toFixed(3)}%` as `${number}%`;
   const { user } = useAuthStore();
   const { showError, showSuccess } = useNotification();
   const { showConfirm } = useActionModal();
@@ -190,59 +181,6 @@ const DepartmentsDesktopContent: React.FC = () => {
       flex: 1,
       backgroundColor: theme.background,
     },
-    departmentCard: {
-      backgroundColor: theme.backgroundSecondary,
-      borderRadius: 12,
-      padding: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      height: '100%',
-      // @ts-ignore
-      cursor: 'pointer',
-      ...Platform.select({
-        web: {
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          transitionProperty: 'box-shadow, transform',
-          transitionDuration: '0.2s',
-        },
-        default: {
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 8,
-          elevation: 3,
-        },
-      }),
-    },
-    departmentName: {
-      fontSize: 16,
-      fontWeight: '600',
-      lineHeight: 22,
-      color: theme.text,
-      marginBottom: 6,
-    },
-    departmentDescription: {
-      fontSize: 13,
-      color: theme.textSecondary,
-      marginBottom: 8,
-      lineHeight: 18,
-    },
-    departmentMembers: {
-      fontSize: 14,
-      lineHeight: 20,
-      color: theme.textSecondary,
-    },
-    departmentList: {
-      flexDirection: isNarrow ? 'column' : 'row',
-      flexWrap: isNarrow ? undefined : 'wrap',
-      marginHorizontal: isNarrow ? 0 : -8,
-    },
-    departmentCardWrapper: {
-      width: '100%',
-      maxWidth: isNarrow ? '100%' : cardMaxWidth,
-      paddingHorizontal: isNarrow ? 0 : 8,
-      marginBottom: 8,
-    },
   });
 
   return (
@@ -308,64 +246,67 @@ const DepartmentsDesktopContent: React.FC = () => {
         <FadeIn enabled={Date.now() - mountTime.current > 150}>
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.contentInner}>
-            <View style={dynamicStyles.departmentList}>
-              {filteredDepartments.map((department) => (
-                <View key={department.id} style={dynamicStyles.departmentCardWrapper}>
-                  <TouchableOpacity
-                    style={dynamicStyles.departmentCard}
-                    onPress={() => {
-                      (navigation as any).navigate('EditDepartment', { departmentId: department.id });
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.departmentContent}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <Ionicons name="business" size={20} color={theme.primary} />
-                        <Text style={dynamicStyles.departmentName}>{department.name}</Text>
-                      </View>
+            <View style={[styles.tableCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              {/* Table header */}
+              <View style={[styles.tableRow, styles.tableHeader, { borderBottomColor: theme.border }]}>
+                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 2.5 }]}>Название</Text>
+                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 2 }]}>Руководитель</Text>
+                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 1 }]}>Сотрудники</Text>
+                <View style={{ width: 80 }} />
+              </View>
+              {/* Table rows */}
+              {filteredDepartments.map((department, index) => (
+                <View
+                  key={department.id}
+                  style={[
+                    styles.tableRow,
+                    index < filteredDepartments.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
+                  ]}
+                  // @ts-ignore - Web-only event handlers
+                  onClick={() => {
+                    (navigation as any).navigate('EditDepartment', { departmentId: department.id });
+                  }}
+                  onMouseEnter={(e: any) => {
+                    if (e.currentTarget?.style) {
+                      e.currentTarget.style.backgroundColor = theme.backgroundSecondary;
+                      e.currentTarget.style.cursor = 'pointer';
+                    }
+                  }}
+                  onMouseLeave={(e: any) => {
+                    if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <View style={{ flex: 2.5, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={[styles.departmentIcon, { backgroundColor: theme.primary + '15' }]}>
+                      <Ionicons name="business" size={16} color={theme.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.tableCellText, { color: theme.text, fontWeight: '500' }]}>{department.name}</Text>
                       {department.description && (
-                        <Text style={dynamicStyles.departmentDescription}>
+                        <Text style={[styles.tableCellSubtext, { color: theme.textTertiary }]} numberOfLines={1}>
                           {department.description}
                         </Text>
                       )}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-                        <Ionicons name="people" size={16} color={theme.textSecondary} />
-                        <Text style={dynamicStyles.departmentMembers}>
-                          {department.user_count || department.members_count || 0} сотрудников
-                        </Text>
-                      </View>
-
-                      {/* Action Buttons Row */}
-                      <View style={styles.actionButtons}>
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.1)' },
-                          ]}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            (navigation as any).navigate('EditDepartment', { departmentId: department.id });
-                          }}
-                        >
-                          <Ionicons name="create-outline" size={18} color={theme.primary} />
-                          <Text style={[styles.actionButtonText, { color: theme.primary }]}>Редактировать</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.1)' },
-                          ]}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleDeleteDepartment(department);
-                          }}
-                        >
-                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                          <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>Удалить</Text>
-                        </TouchableOpacity>
-                      </View>
                     </View>
-                  </TouchableOpacity>
+                  </View>
+                  <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 2 }]}>
+                    {department.head?.name || '—'}
+                  </Text>
+                  <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 1 }]}>
+                    {department.user_count || department.members_count || 0}
+                  </Text>
+                  <View style={{ width: 80, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                    <TouchableOpacity
+                      style={[styles.tableActionButton, { backgroundColor: theme.backgroundTertiary }]}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDeleteDepartment(department);
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                    </TouchableOpacity>
+                    <Ionicons name="chevron-forward" size={16} color={theme.textTertiary} />
+                  </View>
                 </View>
               ))}
             </View>
@@ -400,33 +341,49 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 16,
   },
-  departmentContent: {
-    flex: 1,
+  tableCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden' as const,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
-  },
-  actionButton: {
-    flex: 1,
+  tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  tableHeader: {
+    borderBottomWidth: 1,
+    paddingBottom: 10,
+  },
+  tableHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  tableCellText: {
+    fontSize: 13,
+  },
+  tableCellSubtext: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  departmentIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    minHeight: 40,
+  },
+  tableActionButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
     // @ts-ignore
     cursor: 'pointer',
-  },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
   },
   modalOverlay: {
     position: 'absolute',
