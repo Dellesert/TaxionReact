@@ -34,7 +34,9 @@ import { DailySummaryView } from '../components/DailySummaryView';
 import { TitleBarScheduleControls } from '../components/TitleBarScheduleControls';
 import { ScheduleSidebarSkeleton } from '../components/states/ScheduleSidebarSkeleton';
 import { ScheduleListContentSkeleton } from '../components/states/ScheduleListContentSkeleton';
-import { SCHEDULE_TYPE_LABELS, type Schedule, type ScheduleType, type ScheduleListTab } from '../types/schedule.types';
+import { SCHEDULE_TYPE_LABELS, SCHEDULE_MODE_LABELS, type Schedule, type ScheduleType, type ScheduleListTab } from '../types/schedule.types';
+import { getScheduleTypeColor } from '../utils/shiftColors';
+import { formatScheduleDate } from '../utils/scheduleHelpers';
 import type { ScheduleStackParamList } from '../navigation/types';
 
 const ContentPane: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => {
@@ -419,7 +421,7 @@ export const ScheduleListScreen: React.FC = () => {
                 <ContentPane>
                   <ScrollView
                     style={{ backgroundColor: theme.background }}
-                    contentContainerStyle={styles.columnsScrollContent}
+                    contentContainerStyle={styles.tableScrollContent}
                     showsVerticalScrollIndicator={false}
                   >
                     {sections.length === 0 ? (
@@ -427,31 +429,131 @@ export const ScheduleListScreen: React.FC = () => {
                         {renderEmpty()}
                       </View>
                     ) : (
-                      <View style={styles.sectionsContainer}>
-                        {sections.map((section) => (
-                          <View key={section.title} style={styles.sectionBlock}>
-                            <View style={styles.sectionBlockHeader}>
-                              <Text style={[styles.sectionBlockTitle, { color: theme.text }]}>
-                                {section.title}
-                              </Text>
-                              <View style={[styles.sectionBlockCount, { backgroundColor: theme.backgroundSecondary }]}>
-                                <Text style={[styles.sectionBlockCountText, { color: theme.textSecondary }]}>
-                                  {section.data.length}
+                      <View style={styles.tableContainer}>
+                        {sections.map((section, sectionIndex) => {
+                          // Get a representative color for this section type
+                          const sectionTypeColor = section.data[0]?.color || getScheduleTypeColor(section.data[0]?.type);
+                          return (
+                            <React.Fragment key={section.title}>
+                              {/* Section header */}
+                              {sectionIndex > 0 && <View style={{ height: 8 }} />}
+                              <View style={[styles.tableSectionHeader]}>
+                                <Text style={[styles.tableSectionTitle, { color: theme.text }]}>
+                                  {section.title}
                                 </Text>
-                              </View>
-                            </View>
-                            <View style={styles.sectionCardsRow}>
-                              {section.data.map((schedule) => (
-                                <View key={schedule.id} style={styles.sectionCardWrapper}>
-                                  <ScheduleCard
-                                    schedule={schedule}
-                                    onPress={() => handleSchedulePress(schedule)}
-                                  />
+                                <View style={[styles.tableSectionCount, { backgroundColor: sectionTypeColor + '20' }]}>
+                                  <Text style={[styles.tableSectionCountText, { color: sectionTypeColor }]}>
+                                    {section.data.length}
+                                  </Text>
                                 </View>
-                              ))}
-                            </View>
-                          </View>
-                        ))}
+                              </View>
+
+                              {/* Table card with white background */}
+                              <View style={[styles.tableSectionCard, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
+                                {/* Column headers */}
+                                <View style={[styles.tableColHeaders, { borderBottomColor: theme.border }]}>
+                                  <View style={styles.colName}>
+                                    <Text style={[styles.tableHeaderText, { color: theme.textTertiary }]}>Название</Text>
+                                  </View>
+                                  <View style={styles.colPeriod}>
+                                    <Text style={[styles.tableHeaderText, { color: theme.textTertiary }]}>Период</Text>
+                                  </View>
+                                  <View style={styles.colMode}>
+                                    <Text style={[styles.tableHeaderText, { color: theme.textTertiary }]}>Режим</Text>
+                                  </View>
+                                  <View style={styles.colStatus}>
+                                    <Text style={[styles.tableHeaderText, { color: theme.textTertiary }]}>Статус</Text>
+                                  </View>
+                                  <View style={styles.colArrow} />
+                                </View>
+
+                                {/* Data rows */}
+                                {section.data.map((schedule, index) => {
+                                  const typeColor = schedule.color || getScheduleTypeColor(schedule.type);
+                                  const isDraft = schedule.status === 'draft';
+                                  return (
+                                    <TouchableOpacity
+                                      key={schedule.id}
+                                      style={[
+                                        styles.tableDataRow,
+                                        index < section.data.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border + '40' },
+                                        !schedule.is_active && { opacity: 0.45 },
+                                      ]}
+                                      onPress={() => handleSchedulePress(schedule)}
+                                      activeOpacity={0.7}
+                                      // @ts-ignore - Web-only
+                                      onMouseEnter={(e: any) => {
+                                        if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundSecondary;
+                                      }}
+                                      onMouseLeave={(e: any) => {
+                                        if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
+                                      }}
+                                    >
+                                      {/* Left color accent bar */}
+                                      <View style={[styles.rowColorBar, { backgroundColor: typeColor }]} />
+
+                                      {/* Name cell */}
+                                      <View style={[styles.colName, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+                                        <Text style={[styles.cellTitle, { color: theme.text, flex: 1 }]} numberOfLines={1}>
+                                          {schedule.title}
+                                        </Text>
+                                        {!schedule.is_active && (
+                                          <View style={styles.tableInactiveBadge}>
+                                            <Text style={styles.tableInactiveBadgeText}>Неактивен</Text>
+                                          </View>
+                                        )}
+                                      </View>
+
+                                      {/* Period cell */}
+                                      <View style={styles.colPeriod}>
+                                        <View style={styles.cellPeriodRow}>
+                                          <Ionicons name="calendar-outline" size={14} color={theme.textSecondary} />
+                                          <Text style={[styles.cellText, { color: theme.textSecondary }]}>
+                                            {formatScheduleDate(schedule.start_date, 'dd MMM')} — {formatScheduleDate(schedule.end_date, 'dd MMM yyyy')}
+                                          </Text>
+                                        </View>
+                                      </View>
+
+                                      {/* Mode cell */}
+                                      <View style={styles.colMode}>
+                                        <View style={[styles.modeBadge, { backgroundColor: theme.backgroundSecondary }]}>
+                                          <Ionicons
+                                            name={schedule.mode === 'monthly' ? 'calendar' : 'repeat'}
+                                            size={12}
+                                            color={theme.textSecondary}
+                                          />
+                                          <Text style={[styles.modeBadgeText, { color: theme.textSecondary }]}>
+                                            {SCHEDULE_MODE_LABELS[schedule.mode]}
+                                          </Text>
+                                        </View>
+                                      </View>
+
+                                      {/* Status cell */}
+                                      <View style={styles.colStatus}>
+                                        {isDraft ? (
+                                          <View style={[styles.statusBadge, { backgroundColor: '#F59E0B20' }]}>
+                                            <View style={[styles.statusDot, { backgroundColor: '#F59E0B' }]} />
+                                            <Text style={[styles.statusText, { color: '#F59E0B' }]}>Черновик</Text>
+                                          </View>
+                                        ) : (
+                                          <View style={[styles.statusBadge, { backgroundColor: '#10B98120' }]}>
+                                            <View style={[styles.statusDot, { backgroundColor: '#10B981' }]} />
+                                            <Text style={[styles.statusText, { color: '#10B981' }]}>Опубликован</Text>
+                                          </View>
+                                        )}
+                                      </View>
+
+                                      {/* Arrow */}
+                                      <View style={styles.colArrow}>
+                                        <Ionicons name="chevron-forward" size={16} color={theme.textTertiary} />
+                                      </View>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </View>
+                            </React.Fragment>
+                          );
+                        })}
                       </View>
                     )}
                   </ScrollView>
@@ -654,49 +756,174 @@ const styles = StyleSheet.create({
       elevation: 3,
     }),
   },
-  // Desktop sections layout
-  columnsScrollContent: {
+  // Desktop table layout
+  tableScrollContent: {
     flexGrow: 1,
-    padding: 14,
+    padding: 16,
+    gap: 16,
   },
   emptyContainerDesktop: {
     flex: 1,
     minWidth: '100%',
   },
-  sectionsContainer: {
-    gap: 12,
+  tableContainer: {
+    gap: 20,
   },
-  sectionBlock: {
+  // Section header
+  tableSectionHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    paddingHorizontal: 4,
+    marginBottom: 4,
   },
-  sectionBlockHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  sectionBlockTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+  tableSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700' as const,
     lineHeight: 20,
   },
-  sectionBlockCount: {
+  tableSectionCount: {
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
   },
-  sectionBlockCountText: {
+  tableSectionCountText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600' as const,
     lineHeight: 16,
   },
-  sectionCardsRow: {
-    flexDirection: 'row' as const,
-    flexWrap: 'wrap' as const,
-    gap: 8,
+  // Section table card
+  tableSectionCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden' as const,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06,
+      shadowRadius: 4,
+      elevation: 2,
+    }),
   },
-  sectionCardWrapper: {
-    width: 300,
-    flexShrink: 0,
+  // Column headers
+  tableColHeaders: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingLeft: 22,
+    borderBottomWidth: 1,
+  },
+  tableHeaderText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+  },
+  // Column widths (shared between header and rows)
+  colName: {
+    flex: 3,
+    paddingRight: 12,
+  },
+  colPeriod: {
+    flex: 2,
+    paddingRight: 12,
+  },
+  colMode: {
+    flex: 1.2,
+    paddingRight: 12,
+  },
+  colStatus: {
+    flex: 1.2,
+    paddingRight: 12,
+  },
+  colArrow: {
+    width: 28,
+    alignItems: 'center' as const,
+  },
+  // Data rows
+  tableDataRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingLeft: 0,
+    // @ts-ignore - web only
+    cursor: 'pointer',
+    // @ts-ignore - web only
+    transitionProperty: 'background-color',
+    // @ts-ignore - web only
+    transitionDuration: '0.15s',
+  },
+  rowColorBar: {
+    width: 4,
+    alignSelf: 'stretch' as const,
+    borderRadius: 2,
+    marginRight: 12,
+    marginLeft: 6,
+    minHeight: 40,
+  },
+  // Cell styles
+  cellTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    lineHeight: 20,
+  },
+  tableInactiveBadge: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  tableInactiveBadgeText: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: '#EF4444',
+  },
+  cellPeriodRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  cellText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  modeBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    alignSelf: 'flex-start' as const,
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  modeBadgeText: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    lineHeight: 16,
+  },
+  statusBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    alignSelf: 'flex-start' as const,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    lineHeight: 16,
   },
   sectionHeader: {
     flexDirection: 'row',

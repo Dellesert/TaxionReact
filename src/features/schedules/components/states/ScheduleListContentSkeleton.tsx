@@ -1,7 +1,6 @@
 /**
  * ScheduleListContentSkeleton Component
- * Скелетон для основной панели списка графиков на десктопе
- * (заголовки секций + карточки графиков)
+ * Скелетон для таблицы списка графиков на десктопе
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -39,25 +38,80 @@ export const ScheduleListContentSkeleton: React.FC = () => {
     opacity,
   };
 
-  const renderCardSkeleton = (key: number) => (
-    <View key={key} style={[styles.card, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-      <Animated.View style={[styles.cardColorBar, line]} />
-      <View style={styles.cardContent}>
-        {/* Title row */}
-        <Animated.View style={[styles.cardTitle, line]} />
-        {/* Date row */}
-        <View style={styles.cardInfoRow}>
-          <Animated.View style={[styles.cardInfoIcon, line]} />
-          <Animated.View style={[styles.cardInfoText, line]} />
-        </View>
-        {/* Entries count */}
-        <View style={styles.cardInfoRow}>
-          <Animated.View style={[styles.cardInfoIcon, line]} />
-          <Animated.View style={[styles.cardInfoTextShort, line]} />
+  const renderRowSkeleton = (key: number) => (
+    <View
+      key={key}
+      style={[
+        styles.row,
+        key % 4 < 3 && { borderBottomWidth: 1, borderBottomColor: theme.border + '60' },
+      ]}
+    >
+      {/* Color bar */}
+      <Animated.View style={[styles.colorBar, line]} />
+
+      {/* Name col */}
+      <View style={styles.colName}>
+        <Animated.View style={[styles.titleBlock, { width: key % 2 === 0 ? '70%' : '55%' }, line]} />
+        <View style={styles.metaRow}>
+          <Animated.View style={[styles.badgeBlock, line]} />
         </View>
       </View>
-      <Animated.View style={[styles.cardChevron, line]} />
+
+      {/* Period col */}
+      <View style={styles.colPeriod}>
+        <View style={styles.periodRow}>
+          <Animated.View style={[styles.iconBlock, line]} />
+          <Animated.View style={[styles.periodText, line]} />
+        </View>
+      </View>
+
+      {/* Mode col */}
+      <View style={styles.colMode}>
+        <Animated.View style={[styles.modeBadgeBlock, line]} />
+      </View>
+
+      {/* Status col */}
+      <View style={styles.colStatus}>
+        <Animated.View style={[styles.statusBadgeBlock, line]} />
+      </View>
+
+      {/* Entries col */}
+      <View style={styles.colEntries}>
+        <View style={styles.entriesRow}>
+          <Animated.View style={[styles.iconBlock, line]} />
+          <Animated.View style={[styles.entriesNum, line]} />
+        </View>
+      </View>
+
+      {/* Arrow col */}
+      <View style={styles.colArrow}>
+        <Animated.View style={[styles.chevronBlock, line]} />
+      </View>
     </View>
+  );
+
+  const renderSection = (startKey: number, count: number) => (
+    <>
+      {/* Section header */}
+      <View style={styles.sectionHeader}>
+        <Animated.View style={[styles.sectionAccent, line]} />
+        <Animated.View style={[styles.sectionTitle, line]} />
+        <Animated.View style={[styles.sectionCount, line]} />
+      </View>
+
+      {/* Column headers */}
+      <View style={[styles.colHeaders, { borderBottomColor: theme.border }]}>
+        {[60, 42, 42, 42, 50].map((w, i) => (
+          <View key={i} style={[i === 0 ? styles.colName : i === 1 ? styles.colPeriod : i === 2 ? styles.colMode : i === 3 ? styles.colStatus : styles.colEntries]}>
+            <Animated.View style={[styles.headerBlock, { width: w }, line]} />
+          </View>
+        ))}
+        <View style={styles.colArrow} />
+      </View>
+
+      {/* Rows */}
+      {Array.from({ length: count }, (_, i) => renderRowSkeleton(startKey + i))}
+    </>
   );
 
   return (
@@ -66,38 +120,9 @@ export const ScheduleListContentSkeleton: React.FC = () => {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      {/* Section 1 */}
-      <View style={styles.sectionBlock}>
-        <View style={styles.sectionHeader}>
-          <Animated.View style={[styles.sectionTitle, line]} />
-          <Animated.View style={[styles.sectionCount, { backgroundColor: theme.backgroundSecondary }, line]} />
-        </View>
-        <View style={styles.cardsRow}>
-          {[0, 1, 2].map(renderCardSkeleton)}
-        </View>
-      </View>
-
-      {/* Section 2 */}
-      <View style={styles.sectionBlock}>
-        <View style={styles.sectionHeader}>
-          <Animated.View style={[styles.sectionTitle, line]} />
-          <Animated.View style={[styles.sectionCount, { backgroundColor: theme.backgroundSecondary }, line]} />
-        </View>
-        <View style={styles.cardsRow}>
-          {[3, 4].map(renderCardSkeleton)}
-        </View>
-      </View>
-
-      {/* Section 3 */}
-      <View style={styles.sectionBlock}>
-        <View style={styles.sectionHeader}>
-          <Animated.View style={[styles.sectionTitle, line]} />
-          <Animated.View style={[styles.sectionCount, { backgroundColor: theme.backgroundSecondary }, line]} />
-        </View>
-        <View style={styles.cardsRow}>
-          {[5, 6, 7].map(renderCardSkeleton)}
-        </View>
-      </View>
+      {renderSection(0, 4)}
+      <View style={{ height: 20 }} />
+      {renderSection(4, 3)}
     </ScrollView>
   );
 };
@@ -105,79 +130,138 @@ export const ScheduleListContentSkeleton: React.FC = () => {
 const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
-    padding: 14,
-    gap: 12,
+    padding: 16,
   },
-  sectionBlock: {},
+  // Section header
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: 10,
+    paddingHorizontal: 4,
+    marginBottom: 4,
+  },
+  sectionAccent: {
+    width: 4,
+    height: 18,
+    borderRadius: 2,
   },
   sectionTitle: {
-    height: 15,
-    width: 120,
-    borderRadius: 7,
+    height: 16,
+    width: 110,
+    borderRadius: 8,
   },
   sectionCount: {
     height: 20,
     width: 28,
     borderRadius: 10,
   },
-  cardsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  // Card skeleton (matches ScheduleCard layout)
-  card: {
-    width: 300,
+  // Column headers
+  colHeaders: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingLeft: 22,
+    borderBottomWidth: 1,
   },
-  cardColorBar: {
+  headerBlock: {
+    height: 10,
+    borderRadius: 5,
+  },
+  // Column widths (matches main table)
+  colName: {
+    flex: 3,
+    paddingRight: 12,
+  },
+  colPeriod: {
+    flex: 2,
+    paddingRight: 12,
+  },
+  colMode: {
+    flex: 1.2,
+    paddingRight: 12,
+  },
+  colStatus: {
+    flex: 1.2,
+    paddingRight: 12,
+  },
+  colEntries: {
+    width: 80,
+    alignItems: 'center',
+  },
+  colArrow: {
+    width: 28,
+    alignItems: 'center',
+  },
+  // Data row
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingLeft: 0,
+  },
+  colorBar: {
     width: 4,
-    height: 60,
+    height: 40,
     borderRadius: 2,
     marginRight: 12,
+    marginLeft: 6,
   },
-  cardContent: {
-    flex: 1,
+  // Cell blocks
+  titleBlock: {
+    height: 15,
+    borderRadius: 7,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
+    marginTop: 5,
   },
-  cardTitle: {
-    height: 16,
-    width: '70%',
-    borderRadius: 8,
+  badgeBlock: {
+    height: 18,
+    width: 80,
+    borderRadius: 6,
   },
-  cardInfoRow: {
+  periodRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  cardInfoIcon: {
+  iconBlock: {
     width: 14,
     height: 14,
     borderRadius: 7,
   },
-  cardInfoText: {
-    height: 12,
+  periodText: {
+    height: 13,
     width: 140,
     borderRadius: 6,
   },
-  cardInfoTextShort: {
-    height: 12,
-    width: 70,
+  modeBadgeBlock: {
+    height: 24,
+    width: 90,
     borderRadius: 6,
   },
-  cardChevron: {
+  statusBadgeBlock: {
+    height: 24,
+    width: 95,
+    borderRadius: 8,
+  },
+  entriesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  entriesNum: {
+    height: 13,
     width: 20,
-    height: 20,
-    borderRadius: 10,
-    marginLeft: 8,
+    borderRadius: 6,
+  },
+  chevronBlock: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
 });
