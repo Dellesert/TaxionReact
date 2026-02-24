@@ -1907,8 +1907,8 @@ const styles = StyleSheet.create({
     height: 4,
   },
   infoContent: {
-    padding: 16,
-    gap: 12,
+    padding: 12,
+    gap: 10,
   },
   infoRow: {
     flexDirection: 'row',
@@ -1943,7 +1943,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   creatorName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
   creatorTime: {
@@ -2067,12 +2067,10 @@ const styles = StyleSheet.create({
     }),
   },
   infoCardContent: {
-    padding: 16,
-    paddingTop: 20,
-    paddingVertical: 26,
+    padding: 14,
   },
   infoCardSection: {
-    marginBottom: 14,
+    marginBottom: 12,
   },
   infoCardDraftBadge: {
     flexDirection: 'row',
@@ -2106,15 +2104,15 @@ const styles = StyleSheet.create({
   },
   sidebarLabel: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 6,
   },
   sidebarValue: {
-    fontSize: 15,
-    fontWeight: '500',
-    lineHeight: 22,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   sidebarDescription: {
     fontSize: 14,
@@ -2136,7 +2134,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   sidebarCreatorName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
   // Section header actions (Добавить + info button)

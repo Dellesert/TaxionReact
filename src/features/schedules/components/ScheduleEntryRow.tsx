@@ -58,7 +58,7 @@ export const ScheduleEntryRow: React.FC<ScheduleEntryRowProps> = ({
               <Avatar
                 name={entry.user.name}
                 imageUrl={entry.user.avatar}
-                size={36}
+                size={28}
               />
               <Text style={[styles.userName, { color: theme.text }]}>
                 {entry.user.name}
@@ -137,8 +137,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   userName: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
   },
   dateText: {
     fontSize: 12,

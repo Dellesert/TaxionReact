@@ -881,7 +881,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   userName: {
-    fontSize: 13,
+    fontSize: 14,
     flex: 1,
     ...Platform.select({
       web: {

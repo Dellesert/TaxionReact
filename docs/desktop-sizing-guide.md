@@ -134,7 +134,7 @@
 - [ ] `TaskItem` / карточки задач
 - [ ] `PollCard` / карточки опросов
 - [x] `DailySummaryView.tsx` — дневная сводка графиков
-- [ ] `ScheduleEntryRow.tsx` — строки записей графика
+- [x] `ScheduleEntryRow.tsx` — строки записей графика
 - [ ] Admin screens — AnalyticsHub, Metrics, Performance
 - [ ] Chat — список чатов, сообщения
 - [ ] Profile — элементы настроек

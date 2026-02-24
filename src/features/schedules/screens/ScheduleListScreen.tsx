@@ -668,14 +668,14 @@ const styles = StyleSheet.create({
   // Desktop sections layout
   columnsScrollContent: {
     flexGrow: 1,
-    padding: 20,
+    padding: 14,
   },
   emptyContainerDesktop: {
     flex: 1,
     minWidth: '100%',
   },
   sectionsContainer: {
-    gap: 24,
+    gap: 12,
   },
   sectionBlock: {
   },
@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   sectionBlockTitle: {
     fontSize: 15,
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
   sectionCardsRow: {
     flexDirection: 'row' as const,
     flexWrap: 'wrap' as const,
-    gap: 12,
+    gap: 8,
   },
   sectionCardWrapper: {
     width: 300,

@@ -266,7 +266,7 @@ export const ScheduleShiftsView: React.FC<ScheduleShiftsViewProps> = ({
       <Avatar
         name={getUserFullName(entry)}
         imageUrl={entry.user?.avatar}
-        size={24}
+        size={28}
       />
       <Text style={[styles.nameText, { color: theme.text }]} numberOfLines={1}>
         {getUserDisplayName(entry)}
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
     }),
   },
   nameText: {
-    fontSize: 13,
+    fontSize: 14,
     flex: 1,
   },
   shiftCellClickable: {
