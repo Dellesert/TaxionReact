@@ -333,100 +333,158 @@ const EditUserGroupScreen: React.FC = () => {
           ]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={isElectron && isDesktop ? [styles.desktopCard, { backgroundColor: theme.card, borderColor: theme.border }] : undefined}>
-            {/* Group Info */}
-            <View style={[styles.section, !isDesktop && { backgroundColor: theme.card }]}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Информация о группе</Text>
+          {/* Group Info */}
+          <View style={[
+            styles.section,
+            !isDesktop && { backgroundColor: theme.card },
+            isElectron && isDesktop && [styles.desktopCard, { backgroundColor: theme.card, borderColor: theme.border }],
+          ]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Информация о группе</Text>
 
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: theme.textSecondary }]}>Название *</Text>
-                <TextInput
-                  style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Название группы"
-                  placeholderTextColor={theme.textTertiary}
-                />
-              </View>
-
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: theme.textSecondary }]}>Описание</Text>
-                <TextInput
-                  style={[styles.textArea, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder="Описание группы (необязательно)"
-                  placeholderTextColor={theme.textTertiary}
-                  multiline
-                  numberOfLines={3}
-                />
-              </View>
-
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Название *</Text>
+              <TextInput
+                style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
+                value={name}
+                onChangeText={setName}
+                placeholder="Название группы"
+                placeholderTextColor={theme.textTertiary}
+              />
             </View>
 
-            {/* Group Members */}
-            <View style={[styles.section, !isDesktop && { backgroundColor: theme.card }]}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                  Участники ({members?.length || 0})
-                </Text>
-                {!(isElectron && isDesktop) && (
-                  <TouchableOpacity
-                    style={[styles.addButton, { backgroundColor: theme.primary }]}
-                    onPress={() => setShowUserSelector(true)}
-                  >
-                    <Ionicons name="add" size={20} color="#FFF" />
-                    <Text style={styles.addButtonText}>Добавить</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Описание</Text>
+              <TextInput
+                style={[styles.textArea, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Описание группы (необязательно)"
+                placeholderTextColor={theme.textTertiary}
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+          </View>
 
-              {!members || members.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="people-outline" size={48} color={theme.textTertiary} />
-                  <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                    Нет участников в группе
-                  </Text>
+          {/* Group Members */}
+          <View style={[
+            styles.section,
+            !isDesktop && { backgroundColor: theme.card },
+            isElectron && isDesktop && [styles.desktopCard, { backgroundColor: theme.card, borderColor: theme.border }],
+          ]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                Участники ({members?.length || 0})
+              </Text>
+              {!(isElectron && isDesktop) && (
+                <TouchableOpacity
+                  style={[styles.addButton, { backgroundColor: theme.primary }]}
+                  onPress={() => setShowUserSelector(true)}
+                >
+                  <Ionicons name="add" size={20} color="#FFF" />
+                  <Text style={styles.addButtonText}>Добавить</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {!members || members.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="people-outline" size={48} color={theme.textTertiary} />
+                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                  Нет участников в группе
+                </Text>
+              </View>
+            ) : isElectron && isDesktop ? (
+              /* Desktop table view */
+              <View>
+                {/* Table header */}
+                <View style={[styles.tableRow, styles.tableHeader, { borderBottomColor: theme.border }]}>
+                  <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 2 }]}>Сотрудник</Text>
+                  <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 2 }]}>Email</Text>
+                  <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 1.5 }]}>Должность</Text>
+                  <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 1.5 }]}>Отдел</Text>
+                  <View style={{ width: 40 }} />
                 </View>
-              ) : (
-                members.map((member) => (
+                {/* Table rows */}
+                {members.map((member, index) => (
                   <View
                     key={member.id}
-                    style={[styles.userCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                    style={[
+                      styles.tableRow,
+                      index < members.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
+                    ]}
+                    // @ts-ignore - Web-only event handlers
+                    onMouseEnter={(e: any) => {
+                      if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundSecondary;
+                    }}
+                    onMouseLeave={(e: any) => {
+                      if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
                   >
-                    <Avatar imageUrl={member.avatar} name={member.name} size={40} />
-                    <View style={styles.userInfo}>
+                    <View style={[styles.tableCellUser, { flex: 2 }]}>
+                      <Avatar imageUrl={member.avatar} name={member.name} size={32} />
                       <View style={styles.userNameRow}>
-                        <Text style={[styles.userName, { color: theme.text }]}>{member.name}</Text>
+                        <Text style={[styles.tableCellText, { color: theme.text, fontWeight: '500' }]}>{member.name}</Text>
                         {member.role === 'department_head' && (
-                          <Ionicons name="shield-checkmark" size={16} color="#F59E0B" style={{ marginLeft: 6 }} />
+                          <Ionicons name="shield-checkmark" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
                         )}
                         {member.role === 'admin' && (
-                          <Ionicons name="shield" size={16} color="#3B82F6" style={{ marginLeft: 6 }} />
+                          <Ionicons name="shield" size={14} color="#3B82F6" style={{ marginLeft: 4 }} />
                         )}
                       </View>
-                      <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{member.email}</Text>
-                      {member.position && (
-                        <Text style={[styles.userPosition, { color: theme.textTertiary }]}>{member.position}</Text>
-                      )}
-                      {member.department?.name && (
-                        <Text style={[styles.userDepartment, { color: theme.textTertiary }]}>
-                          {member.department.name}
-                        </Text>
-                      )}
                     </View>
-                    <View style={styles.userActions}>
+                    <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 2 }]}>{member.email}</Text>
+                    <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 1.5 }]}>{member.position || '—'}</Text>
+                    <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 1.5 }]}>{member.department?.name || '—'}</Text>
+                    <View style={{ width: 40, alignItems: 'center' }}>
                       <TouchableOpacity
-                        style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
+                        style={[styles.tableRemoveButton, { backgroundColor: theme.backgroundTertiary }]}
                         onPress={() => handleRemoveUser(member)}
                       >
-                        <Ionicons name="close" size={18} color="#EF4444" />
+                        <Ionicons name="close" size={16} color="#EF4444" />
                       </TouchableOpacity>
                     </View>
                   </View>
-                ))
-              )}
-            </View>
+                ))}
+              </View>
+            ) : (
+              members.map((member) => (
+                <View
+                  key={member.id}
+                  style={[styles.userCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                >
+                  <Avatar imageUrl={member.avatar} name={member.name} size={40} />
+                  <View style={styles.userInfo}>
+                    <View style={styles.userNameRow}>
+                      <Text style={[styles.userName, { color: theme.text }]}>{member.name}</Text>
+                      {member.role === 'department_head' && (
+                        <Ionicons name="shield-checkmark" size={16} color="#F59E0B" style={{ marginLeft: 6 }} />
+                      )}
+                      {member.role === 'admin' && (
+                        <Ionicons name="shield" size={16} color="#3B82F6" style={{ marginLeft: 6 }} />
+                      )}
+                    </View>
+                    <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{member.email}</Text>
+                    {member.position && (
+                      <Text style={[styles.userPosition, { color: theme.textTertiary }]}>{member.position}</Text>
+                    )}
+                    {member.department?.name && (
+                      <Text style={[styles.userDepartment, { color: theme.textTertiary }]}>
+                        {member.department.name}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.userActions}>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
+                      onPress={() => handleRemoveUser(member)}
+                    >
+                      <Ionicons name="close" size={18} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            )}
           </View>
         </ScrollView>
 
@@ -613,6 +671,38 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  tableHeader: {
+    borderBottomWidth: 1,
+    paddingBottom: 8,
+    marginBottom: 2,
+  },
+  tableHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  tableCellUser: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  tableCellText: {
+    fontSize: 13,
+  },
+  tableRemoveButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
