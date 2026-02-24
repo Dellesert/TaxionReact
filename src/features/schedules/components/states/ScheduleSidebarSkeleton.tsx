@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   // DailySummary skeleton
   summaryContent: {
     flex: 1,
-    padding: 16,
+    padding: 14,
   },
   sectionTitle: {
     height: 17,

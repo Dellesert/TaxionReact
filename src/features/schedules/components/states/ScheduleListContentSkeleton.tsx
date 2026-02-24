@@ -105,15 +105,15 @@ export const ScheduleListContentSkeleton: React.FC = () => {
 const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
-    padding: 20,
-    gap: 24,
+    padding: 14,
+    gap: 12,
   },
   sectionBlock: {},
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   sectionTitle: {
     height: 15,
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   cardsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
   // Card skeleton (matches ScheduleCard layout)
   card: {

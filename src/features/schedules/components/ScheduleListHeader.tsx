@@ -211,9 +211,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 0,
-    paddingVertical: 10,
+    paddingVertical: 8,
     gap: 12,
-    minHeight: 52,
+    minHeight: 56,
   },
   desktopLeft: {
     flexShrink: 0,
@@ -230,10 +230,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   monthLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
     minWidth: 120,
     textAlign: 'center',
   },
@@ -254,10 +257,10 @@ const styles = StyleSheet.create({
   desktopSearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 44,
-    borderRadius: 22,
+    height: 40,
+    borderRadius: 20,
     paddingHorizontal: 18,
-    borderWidth: 2,
+    borderWidth: 1,
     ...Platform.select({
       web: {
         boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
@@ -278,8 +281,8 @@ const styles = StyleSheet.create({
   },
   desktopSearchInput: {
     flex: 1,
-    fontSize: 15,
-    height: 44,
+    fontSize: 14,
+    height: 40,
     ...(Platform.select({
       web: {
         outlineStyle: 'none',
@@ -306,9 +309,9 @@ const styles = StyleSheet.create({
   desktopButtonPrimary: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 44,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    minHeight: 40,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 10,
     gap: 6,
     ...Platform.select({
@@ -327,9 +330,8 @@ const styles = StyleSheet.create({
     }),
   },
   desktopButtonPrimaryText: {
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: -0.2,
+    fontSize: 13,
+    fontWeight: '700',
     color: '#FFFFFF',
     lineHeight: 18,
   },

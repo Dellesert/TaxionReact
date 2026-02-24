@@ -44,10 +44,11 @@ export const ShiftTypeBadge: React.FC<ShiftTypeBadgeProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
   },
   text: {
     fontWeight: '600',
+    lineHeight: 16,
   },
 });

@@ -155,6 +155,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 4,
     ...Platform.select({
+      web: {
+        // @ts-ignore
+        boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+      },
       ios: {
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.08,
@@ -171,6 +175,8 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   daysRow: {
     flexDirection: 'row',
@@ -185,6 +191,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 10,
     marginHorizontal: 1,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   dayName: {
     fontSize: 11,

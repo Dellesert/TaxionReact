@@ -1909,29 +1909,36 @@ const styles = StyleSheet.create({
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   compactHeaderTitle: {
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     textAlign: 'center',
   },
   headerButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   headerCenter: {
     flex: 1,
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
   },
   headerSubtitle: {
     fontSize: 13,
+    lineHeight: 18,
     marginTop: 2,
   },
   progressContainer: {
@@ -1958,13 +1965,14 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   stepTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700',
+    lineHeight: 28,
     marginBottom: 8,
   },
   stepDescription: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     marginBottom: 24,
   },
   stepContent: {
@@ -1980,15 +1988,17 @@ const styles = StyleSheet.create({
   methodCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
-    borderRadius: 16,
+    padding: 12,
+    borderRadius: 12,
     borderWidth: 1,
-    gap: 16,
+    gap: 12,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   methodIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1996,55 +2006,62 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   methodTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     marginBottom: 4,
   },
   methodDescription: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
   // Input sections
   inputSection: {
     gap: 8,
   },
   inputLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
   input: {
-    fontSize: 15,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    fontSize: 14,
+    lineHeight: 20,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderWidth: 1,
   },
   textArea: {
-    fontSize: 15,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    fontSize: 14,
+    lineHeight: 20,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     minHeight: 100,
     borderWidth: 1,
     textAlignVertical: 'top',
   },
   charCount: {
     fontSize: 12,
+    lineHeight: 16,
     textAlign: 'right',
   },
   // Type cards
   typeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 16,
+    gap: 12,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   typeIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2052,13 +2069,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   typeTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     marginBottom: 4,
   },
   typeDescription: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
   // Type buttons (small, for import)
   typeButtonsRow: {
@@ -2067,14 +2085,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   typeButtonSmall: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
     borderWidth: 1,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   typeButtonSmallText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '700',
+    lineHeight: 18,
   },
   // Month navigation
   monthNavigation: {
@@ -2090,10 +2111,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   monthLabel: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
     textTransform: 'capitalize',
     minWidth: 140,
     textAlign: 'center',
@@ -2107,21 +2131,24 @@ const styles = StyleSheet.create({
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderWidth: 1,
-    borderRadius: 12,
-    gap: 10,
+    borderRadius: 10,
+    gap: 8,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   dateButtonText: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
   },
   dateSeparator: {
     fontSize: 16,
   },
   // Shift cards
   shiftCard: {
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
     marginTop: 8,
@@ -2133,8 +2160,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   shiftLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
   },
   timeInputGroup: {
     flexDirection: 'row',
@@ -2161,15 +2189,17 @@ const styles = StyleSheet.create({
   visibilityCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 14,
+    gap: 12,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   visibilityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2177,12 +2207,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   visibilityTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
     marginBottom: 2,
   },
   visibilityDescription: {
     fontSize: 13,
+    lineHeight: 18,
   },
   // Mode selection
   modeRow: {
@@ -2193,21 +2225,24 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
     alignItems: 'center',
-    padding: 14,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
     gap: 8,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   modeIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modeLabel: {
     fontSize: 13,
     fontWeight: '500',
+    lineHeight: 18,
     textAlign: 'center',
   },
   // Color options
@@ -2217,11 +2252,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   colorOption: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   colorOptionSelected: {
     borderWidth: 3,
@@ -2234,13 +2271,14 @@ const styles = StyleSheet.create({
   },
   // Summary
   summaryCard: {
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     marginTop: 8,
   },
   summaryTitle: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     marginBottom: 12,
   },
   summaryRow: {
@@ -2248,12 +2286,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: 13,
+    lineHeight: 18,
     width: 80,
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
     flex: 1,
   },
   // Import styles
@@ -2264,6 +2304,7 @@ const styles = StyleSheet.create({
   importTitle: {
     fontSize: 20,
     fontWeight: '700',
+    lineHeight: 28,
     textAlign: 'center',
     marginBottom: 12,
   },
@@ -2278,16 +2319,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    gap: 10,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 6,
     alignSelf: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   selectFileButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   uploadingContainer: {
     alignItems: 'center',
@@ -2295,6 +2340,7 @@ const styles = StyleSheet.create({
   },
   uploadingText: {
     fontSize: 14,
+    lineHeight: 20,
   },
   supportedFormats: {
     marginTop: 24,
@@ -2302,10 +2348,12 @@ const styles = StyleSheet.create({
   },
   formatsLabel: {
     fontSize: 12,
+    lineHeight: 16,
     marginBottom: 4,
   },
   formatsText: {
     fontSize: 12,
+    lineHeight: 16,
   },
   fileInfo: {
     flexDirection: 'row',
@@ -2318,6 +2366,7 @@ const styles = StyleSheet.create({
   fileName: {
     flex: 1,
     fontSize: 14,
+    lineHeight: 20,
   },
   errorBanner: {
     flexDirection: 'row',
@@ -2331,18 +2380,22 @@ const styles = StyleSheet.create({
   errorText: {
     flex: 1,
     fontSize: 13,
+    lineHeight: 18,
   },
   importingText: {
     fontSize: 16,
+    lineHeight: 22,
     marginTop: 16,
   },
   successTitle: {
     fontSize: 20,
     fontWeight: '700',
+    lineHeight: 28,
     marginTop: 16,
   },
   successDescription: {
     fontSize: 14,
+    lineHeight: 20,
     marginTop: 8,
   },
   // Bottom nav
@@ -2364,40 +2417,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    gap: 8,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 6,
     flex: 1,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   navButtonCompact: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderRadius: 10,
     gap: 6,
   },
   backButton: {
-    borderWidth: 1,
+    borderWidth: 2,
   },
   nextButton: {},
   createButton: {},
   navButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   navButtonTextCompact: {
-    fontSize: 14,
+    fontSize: 13,
   },
   // User selector button
   userSelectorButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
+    padding: 12,
     borderRadius: 12,
-    borderWidth: 2,
+    borderWidth: 1,
     borderStyle: 'dashed',
     marginTop: 8,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   userSelectorContent: {
     flexDirection: 'row',
@@ -2405,8 +2464,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   userSelectorText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
   },
   // Input hint
   inputHint: {
@@ -2418,9 +2478,9 @@ const styles = StyleSheet.create({
   selectedGroupCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    padding: 12,
     borderRadius: 12,
-    borderWidth: 2,
+    borderWidth: 1,
   },
   selectedGroupInfo: {
     flex: 1,
@@ -2429,11 +2489,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   selectedGroupName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
   selectedGroupCount: {
     fontSize: 13,
+    lineHeight: 18,
   },
   // Group picker modal
   groupPickerOverlay: {
@@ -2475,8 +2537,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   groupPickerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
   },
   groupPickerList: {
     paddingHorizontal: 16,
@@ -2484,6 +2547,7 @@ const styles = StyleSheet.create({
   },
   groupPickerEmpty: {
     fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
     marginTop: 24,
     marginBottom: 24,
@@ -2492,19 +2556,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderBottomWidth: 1,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   groupPickerItemName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
   groupPickerItemDesc: {
     fontSize: 12,
+    lineHeight: 16,
     marginTop: 2,
   },
   groupPickerItemCount: {
     fontSize: 12,
+    lineHeight: 16,
     marginTop: 2,
   },
 });

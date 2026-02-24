@@ -613,6 +613,7 @@ const styles = StyleSheet.create({
   mainPanelTitle: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
   },
   headerMonthPicker: {
     flexDirection: 'row',
@@ -625,12 +626,14 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   headerMonthText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 20,
     marginHorizontal: 4,
   },
   summarySidebar: {
@@ -672,8 +675,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sectionBlockTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
   sectionBlockCount: {
     paddingHorizontal: 8,
@@ -683,6 +687,7 @@ const styles = StyleSheet.create({
   sectionBlockCountText: {
     fontSize: 12,
     fontWeight: '500',
+    lineHeight: 16,
   },
   sectionCardsRow: {
     flexDirection: 'row' as const,
@@ -701,8 +706,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
   sectionCount: {
     fontSize: 14,
@@ -722,9 +728,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
   },
   emptySubtext: {
     fontSize: 13,
+    lineHeight: 18,
     textAlign: 'center',
     maxWidth: 250,
     marginBottom: 16,

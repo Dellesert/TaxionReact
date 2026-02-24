@@ -1822,17 +1822,24 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
   },
   retryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
     marginTop: 8,
+    minHeight: 40,
+    justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   retryButtonText: {
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   headerRow: {
     flexDirection: 'row',
@@ -1867,11 +1874,15 @@ const styles = StyleSheet.create({
   viewButton: {
     padding: 6,
     borderRadius: 6,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   iconButton: {
     paddingHorizontal: 4,
     justifyContent: 'center',
     alignItems: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   pendingHeaderControls: {
     flexDirection: 'row',
@@ -1889,7 +1900,8 @@ const styles = StyleSheet.create({
   headerSaveText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    lineHeight: 18,
   },
   content: {
     flex: 1,
@@ -1917,10 +1929,12 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 13,
+    lineHeight: 18,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
   },
   descriptionRow: {
     gap: 4,
@@ -1945,9 +1959,11 @@ const styles = StyleSheet.create({
   creatorName: {
     fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
   creatorTime: {
     fontSize: 13,
+    lineHeight: 18,
   },
   entriesSection: {
     paddingHorizontal: 16,
@@ -1963,9 +1979,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionHeaderFullWidth: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
-    marginTop: -20,
+    marginHorizontal: -14,
+    paddingHorizontal: 14,
+    marginTop: -14,
     paddingTop: 12,
     paddingBottom: 10,
     marginBottom: 12,
@@ -1976,6 +1992,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
   },
   addEntryButton: {
     flexDirection: 'row',
@@ -1988,7 +2005,8 @@ const styles = StyleSheet.create({
   },
   addEntryText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    lineHeight: 18,
   },
   entriesLoader: {
     paddingVertical: 32,
@@ -2001,18 +2019,19 @@ const styles = StyleSheet.create({
   },
   emptyEntriesText: {
     fontSize: 14,
+    lineHeight: 20,
   },
 
   // Desktop styles
   desktopContentContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: 16,
     paddingBottom: 40,
   },
   desktopLayout: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    gap: 20,
+    gap: 16,
   },
   desktopLeftColumn: {
     flex: 1,
@@ -2028,7 +2047,7 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   desktopCard: {
-    padding: 20,
+    padding: 14,
     borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',
@@ -2105,6 +2124,7 @@ const styles = StyleSheet.create({
   sidebarLabel: {
     fontSize: 12,
     fontWeight: '700',
+    lineHeight: 16,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 6,
@@ -2121,6 +2141,7 @@ const styles = StyleSheet.create({
   sidebarDraftText: {
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
     color: '#D97706',
   },
   sidebarCreatorInfo: {
@@ -2129,13 +2150,15 @@ const styles = StyleSheet.create({
   },
   sidebarCreatorLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '500',
+    lineHeight: 14,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
   sidebarCreatorName: {
     fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
   // Section header actions (Добавить + info button)
   sectionHeaderActions: {
@@ -2149,6 +2172,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
 
   // User filter styles
@@ -2177,10 +2202,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   userFilterText: {
     fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
     maxWidth: 200,
   },
 
@@ -2200,8 +2228,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   filterModalTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     padding: 16,
     paddingBottom: 12,
   },
@@ -2214,7 +2243,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   filterModalItemText: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
     flex: 1,
   },
   filterModalList: {
@@ -2349,8 +2379,9 @@ const warningStyles = StyleSheet.create({
     flex: 1,
   },
   question: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
     textAlign: 'center',
     marginTop: 8,
   },

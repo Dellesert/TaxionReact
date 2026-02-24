@@ -251,9 +251,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
   },
   emptySubtext: {
     fontSize: 13,
+    lineHeight: 18,
     textAlign: 'center',
     maxWidth: 250,
   },
@@ -294,6 +296,7 @@ const styles = StyleSheet.create({
   },
   scheduleType: {
     fontSize: 12,
+    lineHeight: 16,
   },
   usersList: {
     gap: 0,
@@ -324,6 +327,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 12,
+    lineHeight: 16,
   },
   locationRow: {
     flexDirection: 'row',
@@ -332,6 +336,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 12,
+    lineHeight: 16,
     flex: 1,
   },
   absencesCard: {
@@ -357,5 +362,6 @@ const styles = StyleSheet.create({
   },
   absenceType: {
     fontSize: 12,
+    lineHeight: 16,
   },
 });

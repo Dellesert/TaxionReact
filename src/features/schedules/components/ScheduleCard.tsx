@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { formatScheduleDate } from '../utils/scheduleHelpers';
@@ -17,6 +17,7 @@ export const ScheduleCard: React.FC<ScheduleCardProps> = ({
 }) => {
   const { theme } = useTheme();
   const typeColor = schedule.color || getScheduleTypeColor(schedule.type);
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
     <TouchableOpacity
@@ -25,12 +26,15 @@ export const ScheduleCard: React.FC<ScheduleCardProps> = ({
         {
           backgroundColor: theme.backgroundSecondary,
           borderColor: theme.border,
-          shadowColor: theme.shadow,
         },
+        isHovered && styles.containerHovered,
       ]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
       disabled={!onPress}
+      // @ts-ignore
+      onMouseEnter={Platform.OS === 'web' ? () => setIsHovered(true) : undefined}
+      onMouseLeave={Platform.OS === 'web' ? () => setIsHovered(false) : undefined}
     >
       <View style={[styles.colorIndicator, { backgroundColor: typeColor }]} />
 
@@ -43,7 +47,7 @@ export const ScheduleCard: React.FC<ScheduleCardProps> = ({
             <View
               style={[styles.draftBadge, { backgroundColor: theme.primary + '20' }]}
             >
-              <Ionicons name="document-text-outline" size={10} color={theme.primary} />
+              <Ionicons name="document-text-outline" size={12} color={theme.primary} />
               <Text style={[styles.draftBadgeText, { color: theme.primary }]}>Черновик</Text>
             </View>
           )}
@@ -91,10 +95,35 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     marginBottom: 8,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        transitionProperty: 'box-shadow, transform',
+        transitionDuration: '0.2s',
+        cursor: 'pointer',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+      },
+    }),
+  },
+  containerHovered: {
+    transform: [{ translateY: -2 }],
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      },
+      default: {
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+    }),
   },
   colorIndicator: {
     width: 4,
@@ -115,28 +144,31 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     flex: 1,
   },
   draftBadge: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
     gap: 4,
   },
   draftBadgeText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600' as const,
+    lineHeight: 16,
   },
   inactiveBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   inactiveBadgeText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
+    lineHeight: 16,
     color: '#FFFFFF',
   },
   dateRow: {
@@ -147,6 +179,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 12,
+    lineHeight: 16,
   },
   entriesRow: {
     flexDirection: 'row',
@@ -155,5 +188,6 @@ const styles = StyleSheet.create({
   },
   entriesText: {
     fontSize: 12,
+    lineHeight: 16,
   },
 });
