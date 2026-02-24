@@ -153,8 +153,9 @@ const SharePollModal: React.FC<SharePollModalProps> = ({
     },
     headerTitle: {
       flex: 1,
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: '600',
+      lineHeight: 22,
       color: theme.text,
       marginLeft: 12,
     },
@@ -194,27 +195,30 @@ const SharePollModal: React.FC<SharePollModalProps> = ({
       borderBottomWidth: 1,
     },
     chatAvatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
     },
     chatAvatarText: {
-      fontSize: 18,
+      fontSize: 14,
       fontWeight: '600',
+      lineHeight: 20,
     },
     chatInfo: {
       flex: 1,
       marginLeft: 12,
     },
     chatName: {
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: '600',
+      lineHeight: 20,
       marginBottom: 2,
     },
     chatMembers: {
       fontSize: 13,
+      lineHeight: 18,
     },
     loadingContainer: {
       flex: 1,
@@ -233,7 +237,8 @@ const SharePollModal: React.FC<SharePollModalProps> = ({
       paddingVertical: 48,
     },
     emptyText: {
-      fontSize: 16,
+      fontSize: 14,
+      lineHeight: 20,
       color: theme.textTertiary,
       marginTop: 16,
     },

@@ -82,6 +82,7 @@ const DepartmentsDesktopContent: React.FC = () => {
       <ExpandableCreateButton
         label="Добавить"
         title="Добавить отдел"
+        labelWidth={64}
         onPress={() => setShowCreateModal(true)}
       />
     );
@@ -91,6 +92,7 @@ const DepartmentsDesktopContent: React.FC = () => {
     pageTitle: 'Управление отделами',
     centerControls: titleBarCenterControls,
     rightControls: titleBarRightControls,
+    isPageLoading: isLoading,
     enabled: isElectron,
   });
 
@@ -187,7 +189,7 @@ const DepartmentsDesktopContent: React.FC = () => {
     <View style={dynamicStyles.container}>
       {/* Create Modal */}
       {showCreateModal && (
-        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.15)' }]}>
           <View style={[styles.modal, { backgroundColor: theme.card }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>Создать отдел</Text>
 

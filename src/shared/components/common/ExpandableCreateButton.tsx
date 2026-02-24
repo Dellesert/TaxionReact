@@ -26,6 +26,8 @@ interface ExpandableCreateButtonProps {
   color?: string;
   /** Отключена ли кнопка */
   disabled?: boolean;
+  /** Ширина текста при раскрытии (по умолчанию 56 для "Создать") */
+  labelWidth?: number;
 }
 
 export const ExpandableCreateButton: React.FC<ExpandableCreateButtonProps> = ({
@@ -37,6 +39,7 @@ export const ExpandableCreateButton: React.FC<ExpandableCreateButtonProps> = ({
   backgroundColor,
   color = '#FFFFFF',
   disabled = false,
+  labelWidth = 56,
 }) => {
   const { theme } = useTheme();
   const [isHovered, setIsHovered] = useState(false);
@@ -62,7 +65,7 @@ export const ExpandableCreateButton: React.FC<ExpandableCreateButtonProps> = ({
 
   const animatedWidth = widthAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 56], // Ширина для текста "Создать"
+    outputRange: [0, labelWidth],
   });
 
   const animatedGap = widthAnim.interpolate({
