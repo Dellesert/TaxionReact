@@ -112,6 +112,7 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
   const { isCollapsed } = useSidebar();
   const { navigateToTab } = useDesktopNavigation();
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   // Global search
   const {
@@ -299,9 +300,13 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
               styles.navItem,
               isCollapsed ? styles.navItemCollapsed : styles.navItemExpanded,
               isActive && { backgroundColor: theme.primaryLight || theme.primary + '20' },
+              hoveredItem === item.name && !isActive && { backgroundColor: theme.card },
             ]}
             onPress={() => onNavigate(item.name)}
             activeOpacity={0.7}
+            // @ts-ignore - web only props
+            onMouseEnter={Platform.OS === 'web' ? () => setHoveredItem(item.name) : undefined}
+            onMouseLeave={Platform.OS === 'web' ? () => setHoveredItem(null) : undefined}
           >
             <View style={[styles.iconContainer, !isCollapsed && styles.iconContainerExpanded]}>
               <Ionicons
@@ -352,9 +357,13 @@ export const SideNavBar: React.FC<SideNavBarProps> = ({
           style={[
             styles.avatarContainer,
             isCollapsed ? styles.avatarContainerCollapsed : styles.avatarContainerExpanded,
+            hoveredItem === 'avatar' && { backgroundColor: theme.card },
           ]}
           onPress={() => setShowAccountSwitcher(true)}
           activeOpacity={0.7}
+          // @ts-ignore - web only props
+          onMouseEnter={Platform.OS === 'web' ? () => setHoveredItem('avatar') : undefined}
+          onMouseLeave={Platform.OS === 'web' ? () => setHoveredItem(null) : undefined}
         >
           <View style={[styles.avatarBorder, { borderColor: theme.primary }]}>
             <Avatar
@@ -391,12 +400,19 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderBottomRightRadius: 16,
     position: 'relative',
-    // Shadow for visual separation
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        boxShadow: '2px 0 8px rgba(0,0,0,0.08)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: 0 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 4,
+      },
+    }),
   },
   containerCollapsed: {
     width: 72,
@@ -440,6 +456,8 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: 2,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   divider: {
     height: 1,
@@ -449,6 +467,16 @@ const styles = StyleSheet.create({
   avatarContainer: {
     marginHorizontal: 8,
     borderRadius: 12,
+    // @ts-ignore
+    cursor: 'pointer',
+    ...Platform.select({
+      web: {
+        transitionProperty: 'background-color, opacity',
+        transitionDuration: '0.2s',
+        transitionTimingFunction: 'ease',
+      },
+      default: {},
+    }),
   },
   avatarContainerCollapsed: {
     alignItems: 'center',
@@ -470,6 +498,7 @@ const styles = StyleSheet.create({
   avatarName: {
     fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
     marginLeft: 12,
     flex: 1,
   },
@@ -477,6 +506,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     marginVertical: 4,
     borderRadius: 12,
+    // @ts-ignore
+    cursor: 'pointer',
+    ...Platform.select({
+      web: {
+        transitionProperty: 'background-color, opacity',
+        transitionDuration: '0.2s',
+        transitionTimingFunction: 'ease',
+      },
+      default: {},
+    }),
   },
   navItemCollapsed: {
     alignItems: 'center',
@@ -503,6 +542,7 @@ const styles = StyleSheet.create({
   labelExpanded: {
     fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
     flex: 1,
   },
   badge: {
@@ -530,5 +570,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '700',
+    lineHeight: 14,
   },
 });
