@@ -67,6 +67,7 @@ export interface DataTableProps<T> {
 
 interface DataTableRowProps<T> {
   item: T;
+  rowNumber: number;
   columns: DataTableColumn<T>[];
   onPress?: (item: T) => void;
   rowStyle?: ViewStyle;
@@ -76,6 +77,7 @@ interface DataTableRowProps<T> {
 
 function DataTableRowInner<T>({
   item,
+  rowNumber,
   columns,
   onPress,
   rowStyle,
@@ -100,6 +102,11 @@ function DataTableRowInner<T>({
       onMouseEnter={Platform.OS === 'web' ? () => setIsHovered(true) : undefined}
       onMouseLeave={Platform.OS === 'web' ? () => setIsHovered(false) : undefined}
     >
+      <View style={[styles.cell, { width: 40, minWidth: 40 }]}>
+        <Text style={{ color: theme.textSecondary, fontSize: 13 }}>
+          {rowNumber}
+        </Text>
+      </View>
       {columns.map((col) => (
         <View
           key={col.key}
@@ -155,6 +162,14 @@ export function DataTable<T>({
 
       {/* Table header row */}
       <View style={[styles.headerRow, { borderColor: theme.border }]}>
+        <Text
+          style={[
+            styles.headerText,
+            { color: theme.textSecondary, width: 40, minWidth: 40 },
+          ]}
+        >
+          #
+        </Text>
         {columns.map((col) => (
           <Text
             key={col.key}
@@ -216,6 +231,7 @@ export function DataTable<T>({
                 <DataTableRow<T>
                   key={key}
                   item={item}
+                  rowNumber={index + 1}
                   columns={columns}
                   onPress={onRowPress}
                   rowStyle={rowStyle}
