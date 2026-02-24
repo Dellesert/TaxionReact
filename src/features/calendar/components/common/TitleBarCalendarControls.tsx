@@ -65,7 +65,7 @@ export const TitleBarCalendarControls: React.FC<TitleBarCalendarControlsProps> =
         >
           <Ionicons
             name={weekDisplayMode === 'timeline' ? 'time-outline' : 'list-outline'}
-            size={14}
+            size={18}
             color={theme.text}
           />
           <Text style={[styles.buttonLabel, { color: theme.text }]}>
@@ -89,13 +89,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 28,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     cursor: 'pointer',
-    transition: 'background-color 0.15s ease',
+    transition: 'background-color 0.2s ease',
     gap: 8,
   } as any,
   buttonLabel: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '700',
+    lineHeight: 18,
   } as any,
 });

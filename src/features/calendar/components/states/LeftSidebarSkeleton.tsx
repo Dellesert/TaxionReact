@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
     borderWidth: 1,
-    padding: 14,
+    padding: 12,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
-    gap: 10,
+    gap: 8,
   },
   upcomingDot: {
     width: 8,
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   // Mini calendar
   calendarHeader: {
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   monthLabel: {
     height: 18,
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
-    gap: 10,
+    gap: 8,
   },
   statIcon: {
     width: 20,

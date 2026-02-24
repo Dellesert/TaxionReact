@@ -8,7 +8,8 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Dimensions,
-  Animated
+  Animated,
+  Platform
 } from 'react-native';
 import { Event } from '../../types/calendar.types';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -199,11 +200,13 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
+    lineHeight: 24,
     fontWeight: '700',
     textTransform: 'capitalize',
   },
   headerSubtitle: {
     fontSize: 13,
+    lineHeight: 18,
     fontWeight: '500',
     marginTop: 4,
   },
@@ -230,6 +233,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+      cursor: 'pointer',
+    } : {}),
   },
   eventColorBar: {
     width: 4,
@@ -242,11 +250,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   eventTitle: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '600',
   },
   eventTime: {
     fontSize: 13,
+    lineHeight: 18,
     fontWeight: '500',
   },
   locationRow: {
@@ -256,6 +266,7 @@ const styles = StyleSheet.create({
   },
   eventLocation: {
     fontSize: 13,
+    lineHeight: 18,
     flex: 1,
   },
   emptyContainer: {
@@ -265,7 +276,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyText: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '500',
     textAlign: 'center',
   },

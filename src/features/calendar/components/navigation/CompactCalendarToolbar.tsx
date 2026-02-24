@@ -152,17 +152,17 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 44, // Accessibility: minimum touch target
+    minHeight: 40,
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 2,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
     gap: 8,
     position: 'relative',
     ...Platform.select({
       web: {
         cursor: 'pointer',
-        transition: 'all 0.15s ease',
+        transition: 'all 0.2s ease',
         boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
       },
       default: {
@@ -175,8 +175,8 @@ const styles = StyleSheet.create({
     }),
   },
   actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     letterSpacing: -0.2,
     lineHeight: 18,
   },
@@ -205,15 +205,15 @@ const styles = StyleSheet.create({
   actionButtonPrimary: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 44, // Accessibility: minimum touch target
+    minHeight: 40,
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
     gap: 8,
     ...Platform.select({
       web: {
         cursor: 'pointer',
-        transition: 'all 0.15s ease',
+        transition: 'all 0.2s ease',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
       },
       default: {
@@ -226,8 +226,8 @@ const styles = StyleSheet.create({
     }),
   },
   actionButtonPrimaryText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     letterSpacing: -0.2,
     color: '#FFFFFF',
     lineHeight: 18,

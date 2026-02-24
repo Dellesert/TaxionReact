@@ -40,7 +40,7 @@ export const CalendarViewControlGroup: React.FC<CalendarViewControlGroupProps> =
         >
           <Ionicons
             name={option.icon as any}
-            size={16}
+            size={14}
             color={selectedView === option.value ? theme.primary : theme.textSecondary}
           />
           <Text
@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 4,
     gap: 2,
     flexShrink: 0,
@@ -78,9 +78,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 8,
-    minHeight: 44, // Accessibility: minimum touch target
+    minHeight: 40,
     ...Platform.select({
       web: {
         cursor: 'pointer',
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     }),
   },
   buttonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     letterSpacing: -0.2,
     lineHeight: 18,

@@ -475,7 +475,7 @@ const EventDetailScreen: React.FC = () => {
                         { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
                         myParticipation.status === 'accepted' && [
                           styles.responseButtonActive,
-                          { backgroundColor: '#10B981', borderColor: '#10B981' },
+                          { backgroundColor: theme.success, borderColor: theme.success },
                         ],
                       ]}
                       onPress={() => handleUpdateStatus('accepted')}
@@ -484,7 +484,7 @@ const EventDetailScreen: React.FC = () => {
                       <Ionicons
                         name="checkmark-circle"
                         size={22}
-                        color={myParticipation.status === 'accepted' ? '#FFFFFF' : '#10B981'}
+                        color={myParticipation.status === 'accepted' ? '#FFFFFF' : theme.success}
                       />
                       <Text
                         style={[
@@ -502,7 +502,7 @@ const EventDetailScreen: React.FC = () => {
                         { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
                         myParticipation.status === 'maybe' && [
                           styles.responseButtonActive,
-                          { backgroundColor: '#F59E0B', borderColor: '#F59E0B' },
+                          { backgroundColor: theme.warning, borderColor: theme.warning },
                         ],
                       ]}
                       onPress={() => handleUpdateStatus('maybe')}
@@ -511,7 +511,7 @@ const EventDetailScreen: React.FC = () => {
                       <Ionicons
                         name="help-circle"
                         size={22}
-                        color={myParticipation.status === 'maybe' ? '#FFFFFF' : '#F59E0B'}
+                        color={myParticipation.status === 'maybe' ? '#FFFFFF' : theme.warning}
                       />
                       <Text
                         style={[
@@ -529,7 +529,7 @@ const EventDetailScreen: React.FC = () => {
                         { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
                         myParticipation.status === 'declined' && [
                           styles.responseButtonActive,
-                          { backgroundColor: '#EF4444', borderColor: '#EF4444' },
+                          { backgroundColor: theme.error, borderColor: theme.error },
                         ],
                       ]}
                       onPress={() => handleUpdateStatus('declined')}
@@ -538,7 +538,7 @@ const EventDetailScreen: React.FC = () => {
                       <Ionicons
                         name="close-circle"
                         size={22}
-                        color={myParticipation.status === 'declined' ? '#FFFFFF' : '#EF4444'}
+                        color={myParticipation.status === 'declined' ? '#FFFFFF' : theme.error}
                       />
                       <Text
                         style={[
@@ -556,27 +556,27 @@ const EventDetailScreen: React.FC = () => {
 
               {/* Participation stats (not for personal or absence events) */}
               {participants.length > 0 && event.type !== 'personal' && !isAbsenceEvent && (
-                <View style={styles.statsContainer}>
+                <View style={[styles.statsContainer, { borderTopColor: theme.border }]}>
                   {acceptedParticipants.length > 0 && (
-                    <View style={[styles.statBadge, { backgroundColor: '#10B98120' }]}>
-                      <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                      <Text style={[styles.statText, { color: '#10B981' }]}>
+                    <View style={[styles.statBadge, { backgroundColor: theme.success + '20' }]}>
+                      <Ionicons name="checkmark-circle" size={16} color={theme.success} />
+                      <Text style={[styles.statText, { color: theme.success }]}>
                         {acceptedParticipants.length}
                       </Text>
                     </View>
                   )}
                   {maybeParticipants.length > 0 && (
-                    <View style={[styles.statBadge, { backgroundColor: '#F59E0B20' }]}>
-                      <Ionicons name="help-circle" size={16} color="#F59E0B" />
-                      <Text style={[styles.statText, { color: '#F59E0B' }]}>
+                    <View style={[styles.statBadge, { backgroundColor: theme.warning + '20' }]}>
+                      <Ionicons name="help-circle" size={16} color={theme.warning} />
+                      <Text style={[styles.statText, { color: theme.warning }]}>
                         {maybeParticipants.length}
                       </Text>
                     </View>
                   )}
                   {declinedParticipants.length > 0 && (
-                    <View style={[styles.statBadge, { backgroundColor: '#EF444420' }]}>
-                      <Ionicons name="close-circle" size={16} color="#EF4444" />
-                      <Text style={[styles.statText, { color: '#EF4444' }]}>
+                    <View style={[styles.statBadge, { backgroundColor: theme.error + '20' }]}>
+                      <Ionicons name="close-circle" size={16} color={theme.error} />
+                      <Text style={[styles.statText, { color: theme.error }]}>
                         {declinedParticipants.length}
                       </Text>
                     </View>
@@ -665,8 +665,8 @@ const EventDetailScreen: React.FC = () => {
             {/* Location Card */}
             {event.location && (
               <View style={[styles.infoCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <View style={[styles.infoCardIcon, { backgroundColor: '#3B82F6' + '20' }]}>
-                  <Ionicons name="location-outline" size={22} color="#3B82F6" />
+                <View style={[styles.infoCardIcon, { backgroundColor: theme.info + '20' }]}>
+                  <Ionicons name="location-outline" size={22} color={theme.info} />
                 </View>
                 <View style={styles.infoCardContent}>
                   <Text style={[styles.infoCardLabel, { color: theme.textSecondary }]}>Место</Text>
@@ -718,7 +718,7 @@ const EventDetailScreen: React.FC = () => {
                   participants={acceptedParticipants}
                   title="Принято"
                   icon="checkmark-circle"
-                  color="#10B981"
+                  color={theme.success}
                   defaultExpanded={true}
                   initialPreview={INITIAL_PREVIEW}
                   loadMoreCount={LOAD_MORE_COUNT}
@@ -730,7 +730,7 @@ const EventDetailScreen: React.FC = () => {
                   participants={maybeParticipants}
                   title="Возможно"
                   icon="help-circle"
-                  color="#F59E0B"
+                  color={theme.warning}
                   defaultExpanded={false}
                   initialPreview={INITIAL_PREVIEW}
                   loadMoreCount={LOAD_MORE_COUNT}
@@ -742,7 +742,7 @@ const EventDetailScreen: React.FC = () => {
                   participants={pendingParticipants}
                   title="Ожидание"
                   icon="time-outline"
-                  color="#6B7280"
+                  color={theme.textSecondary}
                   defaultExpanded={false}
                   initialPreview={INITIAL_PREVIEW}
                   loadMoreCount={LOAD_MORE_COUNT}
@@ -754,7 +754,7 @@ const EventDetailScreen: React.FC = () => {
                   participants={declinedParticipants}
                   title="Отклонено"
                   icon="close-circle"
-                  color="#EF4444"
+                  color={theme.error}
                   defaultExpanded={false}
                   initialPreview={INITIAL_PREVIEW}
                   loadMoreCount={LOAD_MORE_COUNT}
@@ -826,7 +826,7 @@ const EventDetailScreen: React.FC = () => {
             key: 'delete',
             icon: 'trash-outline',
             label: 'Удалить',
-            color: '#EF4444',
+            color: theme.error,
             onPress: handleDelete,
             disabled: isDeleting,
           },
@@ -866,9 +866,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+    lineHeight: 22,
   },
   headerRight: {
     width: 60,
@@ -881,9 +882,9 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   eventTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
-    lineHeight: 32,
+    lineHeight: 28,
     marginBottom: 16,
   },
   responseSection: {
@@ -895,6 +896,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
+    lineHeight: 16,
   },
   responseButtons: {
     flexDirection: 'row',
@@ -908,9 +910,9 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 2,
-    minHeight: 48,
+    minHeight: 40,
   },
   responseButtonActive: {
     shadowColor: '#000',
@@ -922,6 +924,7 @@ const styles = StyleSheet.create({
   responseButtonText: {
     fontSize: 13,
     fontWeight: '700',
+    lineHeight: 18,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -936,13 +939,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   statText: {
     fontSize: 14,
     fontWeight: '700',
+    lineHeight: 20,
   },
   content: {
     flex: 1,
@@ -956,9 +960,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     marginBottom: 14,
+    lineHeight: 20,
   },
   sectionTitleAlt: {
     fontSize: 12,
@@ -966,10 +971,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 10,
+    lineHeight: 16,
   },
   descriptionText: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
   },
   infoCard: {
     flexDirection: 'row',
@@ -978,11 +984,11 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   infoCardIcon: {
-    width: 44,
-    height: 44,
+    width: 36,
+    height: 36,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -992,13 +998,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   infoCardLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    lineHeight: 16,
   },
   infoCardValue: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     lineHeight: 20,
   },
@@ -1016,13 +1023,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   creatorName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     marginBottom: 3,
+    lineHeight: 20,
   },
   creatorLabel: {
     fontSize: 12,
     fontWeight: '500',
+    lineHeight: 16,
   },
   participantGroup: {
     marginBottom: 12,
@@ -1044,6 +1053,7 @@ const styles = StyleSheet.create({
   participantGroupTitle: {
     fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
   participantCountBadge: {
     paddingHorizontal: 8,
@@ -1056,6 +1066,7 @@ const styles = StyleSheet.create({
   participantCountText: {
     fontSize: 12,
     fontWeight: '700',
+    lineHeight: 16,
   },
   participantGrid: {
     flexDirection: 'row',
@@ -1078,6 +1089,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     flex: 1,
+    lineHeight: 18,
   },
   showMoreButton: {
     flexDirection: 'row',
@@ -1094,6 +1106,7 @@ const styles = StyleSheet.create({
   showMoreText: {
     fontSize: 12,
     fontWeight: '600',
+    lineHeight: 16,
   },
   // Skeleton styles
   skeletonContainer: {
@@ -1124,6 +1137,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     textAlign: 'center',
+    lineHeight: 22,
   },
 });
 

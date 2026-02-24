@@ -280,6 +280,7 @@ const styles = StyleSheet.create({
   dayName: {
     fontSize: 12,
     fontWeight: '600',
+    lineHeight: 16,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -296,10 +297,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    } : {}),
   },
   dayNumberText: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
   },
   dayNumberTextToday: {
     color: '#FFFFFF',
@@ -308,6 +314,7 @@ const styles = StyleSheet.create({
   holidayLabel: {
     fontSize: 11,
     fontWeight: '500',
+    lineHeight: 14,
     textAlign: 'center',
     paddingHorizontal: 4,
     opacity: 0.8,
@@ -324,6 +331,7 @@ const styles = StyleSheet.create({
   timeLabel: {
     fontSize: 12,
     fontWeight: '500',
+    lineHeight: 16,
     paddingRight: 8,
     textAlign: 'right',
     marginTop: -8,
@@ -350,6 +358,7 @@ const styles = StyleSheet.create({
     elevation: 2,
     ...(Platform.OS === 'web' ? {
       // @ts-ignore - web only
+      boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
       cursor: 'pointer',
       transition: 'all 0.2s ease',
     } : {}),

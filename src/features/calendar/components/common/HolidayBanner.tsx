@@ -15,7 +15,7 @@ export const HolidayBanner: React.FC<HolidayBannerProps> = ({ holidayName }) => 
       style={[styles.container, { backgroundColor: theme.error + '20', borderColor: theme.error + '20' }]}
       pointerEvents="none"
     >
-      <Ionicons name="gift-outline" size={16} color={theme.error} />
+      <Ionicons name="gift-outline" size={14} color={theme.error} />
       <Text style={[styles.text, { color: theme.error }]} numberOfLines={1}>
         {holidayName}
       </Text>
@@ -39,6 +39,7 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 13,
     fontWeight: '500',
+    lineHeight: 18,
     flex: 1,
   },
 });

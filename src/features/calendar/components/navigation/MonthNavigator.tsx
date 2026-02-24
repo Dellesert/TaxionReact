@@ -105,11 +105,11 @@ const styles = StyleSheet.create({
   navButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     cursor: 'pointer',
-    transition: 'background-color 0.15s ease',
+    transition: 'background-color 0.2s ease',
   } as any,
   dateButton: {
     flex: 1,
@@ -119,11 +119,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     borderRadius: 8,
     cursor: 'pointer',
-    transition: 'background-color 0.15s ease',
+    transition: 'background-color 0.2s ease',
   } as any,
   monthText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
     textTransform: 'capitalize',
   } as any,
   // Compact mode styles
@@ -133,9 +134,9 @@ const styles = StyleSheet.create({
     gap: 6,
   } as any,
   compactArrow: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
@@ -144,7 +145,7 @@ const styles = StyleSheet.create({
     cursor: 'pointer',
   } as any,
   compactMonthText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     textTransform: 'capitalize',
     lineHeight: 24,

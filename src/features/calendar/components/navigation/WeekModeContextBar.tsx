@@ -88,16 +88,17 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
   },
   selector: {
     flexDirection: 'row',
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 2,
   },
   pill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
     minWidth: 120,
     alignItems: 'center',
     justifyContent: 'center',
@@ -114,6 +115,7 @@ const styles = StyleSheet.create({
   pillText: {
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
   },
   pillTextActive: {
     color: '#FFFFFF',

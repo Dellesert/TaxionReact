@@ -582,26 +582,28 @@ const styles = StyleSheet.create({
   },
   container: {
     borderRadius: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
-    overflow: 'hidden',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {}),
   },
   containerCompact: {
     borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    } : {}),
   },
   scrollContent: {
     paddingBottom: 16,
@@ -622,11 +624,13 @@ const styles = StyleSheet.create({
   weekdayText: {
     fontSize: 11,
     fontWeight: '600',
+    lineHeight: 14,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   weekdayTextCompact: {
     fontSize: 10,
+    lineHeight: 14,
   },
   weekRow: {
     flexDirection: 'row',
@@ -655,7 +659,7 @@ const styles = StyleSheet.create({
   dayContentHovered: {
     ...(Platform.OS === 'web' ? {
       // @ts-ignore - web only
-      transform: 'scale(1.05)',
+      transform: 'translateY(-2px)',
     } : {}),
   },
   dayCircle: {
@@ -684,8 +688,9 @@ const styles = StyleSheet.create({
     opacity: 0.25,
   },
   dayText: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   todayText: {
     fontWeight: '700',
@@ -709,6 +714,7 @@ const styles = StyleSheet.create({
   moreIndicator: {
     fontSize: 7,
     fontWeight: '600',
+    lineHeight: 10,
     marginLeft: 0,
   },
 });

@@ -519,7 +519,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                         >
                           <Ionicons
                             name={type.icon as any}
-                            size={24}
+                            size={18}
                             color={eventType === type.value ? theme.primary : theme.textSecondary}
                           />
                           <Text style={[
@@ -531,7 +531,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                           </Text>
                           {eventType === type.value && (
                             <View style={[styles.checkmarkBadge, { backgroundColor: theme.primary }]}>
-                              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                             </View>
                           )}
                         </TouchableOpacity>
@@ -562,7 +562,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                           onPress={() => setColor(c.value)}
                         >
                           {color === c.value && (
-                            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                            <Ionicons name="checkmark" size={18} color="#FFFFFF" />
                           )}
                         </TouchableOpacity>
                       ))}
@@ -950,7 +950,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                         >
                           <Ionicons
                             name={type.icon as any}
-                            size={24}
+                            size={18}
                             color={eventType === type.value ? theme.primary : theme.textSecondary}
                           />
                           <Text style={[
@@ -962,7 +962,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                           </Text>
                           {eventType === type.value && (
                             <View style={[styles.checkmarkBadge, { backgroundColor: theme.primary }]}>
-                              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                             </View>
                           )}
                         </TouchableOpacity>
@@ -994,7 +994,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                           onPress={() => setColor(c.value)}
                         >
                           {color === c.value && (
-                            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                            <Ionicons name="checkmark" size={18} color="#FFFFFF" />
                           )}
                         </TouchableOpacity>
                       ))}
@@ -1235,6 +1235,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 13,
+    lineHeight: 18,
     marginTop: 4,
   },
   progressContainer: {
@@ -1257,13 +1258,14 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   stepTitle: {
-    fontSize: 24,
+    fontSize: 20,
+    lineHeight: 28,
     fontWeight: '700',
     marginBottom: 12,
   },
   stepDescription: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     marginBottom: 24,
   },
   stepContent: {
@@ -1273,19 +1275,22 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   label: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '600',
     marginBottom: 8,
   },
   input: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
   },
   textArea: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -1295,6 +1300,7 @@ const styles = StyleSheet.create({
   },
   charCount: {
     fontSize: 13,
+    lineHeight: 18,
     textAlign: 'right',
     marginTop: 4,
   },
@@ -1309,7 +1315,8 @@ const styles = StyleSheet.create({
   },
   dateButtonText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
   },
   switchRow: {
     flexDirection: 'row',
@@ -1317,12 +1324,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   switchLabel: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '600',
     flex: 1,
   },
   helperText: {
     fontSize: 13,
+    lineHeight: 18,
     marginTop: 8,
   },
   audienceRow: {
@@ -1331,14 +1340,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   audienceChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
     borderWidth: 2,
   },
   audienceChipText: {
     fontSize: 13,
-    fontWeight: '500',
+    lineHeight: 18,
+    fontWeight: '700',
   },
   infoSection: {
     flexDirection: 'row',
@@ -1349,8 +1359,8 @@ const styles = StyleSheet.create({
   },
   infoText: {
     flex: 1,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
   },
   eventTypeRow: {
     gap: 12,
@@ -1367,7 +1377,7 @@ const styles = StyleSheet.create({
   },
   eventTypeLabel: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     lineHeight: 20,
   },
   checkmarkBadge: {
@@ -1413,7 +1423,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 12,
+    borderRadius: 10,
     gap: 8,
     flex: 1,
   },
@@ -1424,7 +1434,8 @@ const styles = StyleSheet.create({
   createButton: {},
   navButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    lineHeight: 22,
+    fontWeight: '700',
   },
   // Compact styles for keyboard visible state
   keyboardAvoidingView: {
@@ -1447,6 +1458,7 @@ const styles = StyleSheet.create({
   compactHeaderTitle: {
     flex: 1,
     fontSize: 16,
+    lineHeight: 22,
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -1461,10 +1473,12 @@ const styles = StyleSheet.create({
   navButtonCompact: {
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 10,
   },
   navButtonTextCompact: {
     fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700',
   },
   // ===== Desktop Electron styles =====
   desktopElectronContainer: {
@@ -1488,7 +1502,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     // @ts-ignore
     cursor: 'pointer',
-    transition: 'background-color 0.15s ease',
+    transition: 'background-color 0.2s ease',
     WebkitAppRegion: 'no-drag',
   },
   desktopTitleBarDragArea: {
@@ -1501,6 +1515,7 @@ const styles = StyleSheet.create({
   },
   desktopTitleBarTitle: {
     fontSize: 16,
+    lineHeight: 22,
     fontWeight: '700',
   },
   desktopTitleBarSaveButton: {
@@ -1508,18 +1523,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 4,
     marginRight: 8,
     // @ts-ignore
     cursor: 'pointer',
-    transition: 'opacity 0.15s ease',
+    transition: 'opacity 0.2s ease',
     WebkitAppRegion: 'no-drag',
   },
   desktopTitleBarSaveText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '600',
+    lineHeight: 18,
+    fontWeight: '700',
   },
   desktopWindowControls: {
     flexDirection: 'row',
@@ -1563,13 +1579,14 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   desktopSection: {
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 20,
+    padding: 12,
     gap: 16,
   },
   desktopSectionTitle: {
     fontSize: 16,
+    lineHeight: 22,
     fontWeight: '700',
     marginBottom: 4,
   },

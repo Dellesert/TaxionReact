@@ -73,9 +73,9 @@ export const EventListSkeleton: React.FC = () => {
 
         {/* Participants */}
         <View style={styles.participantsRow}>
-          <Animated.View style={[styles.participantAvatar, dynamicStyles.line]} />
-          <Animated.View style={[styles.participantAvatar, dynamicStyles.line]} />
-          <Animated.View style={[styles.participantAvatar, dynamicStyles.line]} />
+          <Animated.View style={[styles.participantAvatar, dynamicStyles.line, { borderColor: theme.card }]} />
+          <Animated.View style={[styles.participantAvatar, dynamicStyles.line, { borderColor: theme.card }]} />
+          <Animated.View style={[styles.participantAvatar, dynamicStyles.line, { borderColor: theme.card }]} />
           <Animated.View style={[styles.participantCount, dynamicStyles.line]} />
         </View>
       </View>
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   eventItem: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 8,
     borderRadius: 12,
     borderWidth: 1,
     overflow: 'hidden',
@@ -160,7 +160,6 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
   participantCount: {
     width: 32,

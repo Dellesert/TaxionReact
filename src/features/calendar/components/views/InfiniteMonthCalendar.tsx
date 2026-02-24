@@ -631,13 +631,15 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 16,
     borderWidth: 1,
-    // Shadow for iOS
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    // Shadow for Android
     elevation: 3,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {}),
   },
   monthHeader: {
     paddingVertical: 16,
@@ -647,6 +649,7 @@ const styles = StyleSheet.create({
   monthHeaderText: {
     fontSize: 18,
     fontWeight: '700',
+    lineHeight: 24,
     textTransform: 'capitalize',
   },
   weekdayRow: {
@@ -662,6 +665,7 @@ const styles = StyleSheet.create({
   weekdayText: {
     fontSize: 11,
     fontWeight: '600',
+    lineHeight: 14,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -703,8 +707,9 @@ const styles = StyleSheet.create({
     opacity: 0.25,
   },
   dayText: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   todayText: {
     fontWeight: '700',
@@ -734,6 +739,7 @@ const styles = StyleSheet.create({
   moreIndicator: {
     fontSize: 7,
     fontWeight: '600',
+    lineHeight: 10,
     marginLeft: 0,
   },
 });

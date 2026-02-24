@@ -66,11 +66,11 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
   onWeekDisplayModeChange,
   hideToolbar = false,
 }) => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const navigation = useNavigation();
   const { showError } = useNotification();
   // Card background - white for light mode to stand out from gray background
-  const cardBgColor = isDark ? theme.card : '#FFFFFF';
+  const cardBgColor = theme.card;
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileUserId, setProfileUserId] = useState<number | null>(null);
@@ -404,6 +404,7 @@ const styles = StyleSheet.create({
   centerPanelTitle: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
   },
   viewSwitcher: {
     flexDirection: 'row',
@@ -422,6 +423,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    } : {}),
   },
   viewSwitcherSegmentActive: {
     // backgroundColor set dynamically
@@ -429,6 +435,7 @@ const styles = StyleSheet.create({
   viewSwitcherText: {
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
   },
   rightSidebar: {
     width: 380,

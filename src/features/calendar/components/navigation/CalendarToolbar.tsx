@@ -128,7 +128,8 @@ const styles = StyleSheet.create({
   todayButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
+    minHeight: 40,
     ...(Platform.OS === 'web' ? {
       // @ts-ignore - web only
       cursor: 'pointer',
@@ -139,6 +140,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
   },
   monthNavigation: {
     flexDirection: 'row',
@@ -148,7 +150,7 @@ const styles = StyleSheet.create({
   navButton: {
     width: 36,
     height: 36,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     ...(Platform.OS === 'web' ? {
@@ -160,13 +162,14 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     fontWeight: '700',
+    lineHeight: 22,
     textTransform: 'capitalize',
     minWidth: 150,
     textAlign: 'center',
   },
   centerSection: {
     flexDirection: 'row',
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 4,
     gap: 4,
   },
@@ -176,7 +179,8 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
+    minHeight: 40,
     ...(Platform.OS === 'web' ? {
       // @ts-ignore - web only
       cursor: 'pointer',
@@ -189,10 +193,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    } : {}),
   },
   viewButtonText: {
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
   },
   viewButtonTextActive: {
     fontWeight: '700',

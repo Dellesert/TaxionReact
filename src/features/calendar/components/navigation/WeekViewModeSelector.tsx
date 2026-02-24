@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 import { WeekDisplayMode } from '../../types/calendar.types';
 
@@ -58,17 +58,22 @@ export const WeekViewModeSelector: React.FC<WeekViewModeSelectorProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 2,
     alignSelf: 'center',
   },
   pill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
     minWidth: 120,
     alignItems: 'center',
     justifyContent: 'center',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    } : {}),
   },
   pillActive: {
     // backgroundColor set dynamically
@@ -76,6 +81,7 @@ const styles = StyleSheet.create({
   pillText: {
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
   },
   pillTextActive: {
     color: '#FFFFFF',

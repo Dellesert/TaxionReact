@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -731,9 +732,9 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   eventTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
-    lineHeight: 32,
+    lineHeight: 28,
     marginBottom: 16,
   },
   responseSection: {
@@ -742,6 +743,7 @@ const styles = StyleSheet.create({
   responseSectionLabel: {
     fontSize: 12,
     fontWeight: '600',
+    lineHeight: 16,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
@@ -758,20 +760,34 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 2,
-    minHeight: 48,
+    minHeight: 40,
+    ...(Platform.OS === 'web' ? { cursor: 'pointer' as any } : {}),
   },
   responseButtonActive: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+    }),
   },
   responseButtonText: {
     fontSize: 13,
     fontWeight: '700',
+    lineHeight: 18,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -786,53 +802,56 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   statText: {
     fontSize: 14,
     fontWeight: '700',
+    lineHeight: 20,
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    padding: 14,
     flexGrow: 1,
   },
   section: {
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
+    lineHeight: 20,
     marginBottom: 12,
   },
   sectionTitleAlt: {
     fontSize: 12,
     fontWeight: '700',
+    lineHeight: 16,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
   },
   descriptionText: {
-    fontSize: 15,
+    fontSize: 14,
     lineHeight: 22,
   },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
     marginBottom: 8,
   },
   infoCardIcon: {
-    width: 44,
-    height: 44,
+    width: 36,
+    height: 36,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -842,13 +861,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   infoCardLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
+    lineHeight: 16,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   infoCardValue: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     lineHeight: 20,
   },
@@ -866,13 +886,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   creatorName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
     marginBottom: 4,
   },
   creatorLabel: {
     fontSize: 12,
     fontWeight: '500',
+    lineHeight: 16,
   },
   participantGroup: {
     marginBottom: 12,
@@ -894,6 +916,7 @@ const styles = StyleSheet.create({
   participantGroupTitle: {
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
   },
   participantCountBadge: {
     paddingHorizontal: 8,
@@ -906,6 +929,7 @@ const styles = StyleSheet.create({
   participantCountText: {
     fontSize: 12,
     fontWeight: '700',
+    lineHeight: 16,
   },
   participantGrid: {
     flexDirection: 'row',
@@ -927,6 +951,7 @@ const styles = StyleSheet.create({
   participantName: {
     fontSize: 13,
     fontWeight: '500',
+    lineHeight: 18,
     flex: 1,
   },
   showMoreButton: {
@@ -944,6 +969,7 @@ const styles = StyleSheet.create({
   showMoreText: {
     fontSize: 12,
     fontWeight: '600',
+    lineHeight: 16,
   },
 });
 

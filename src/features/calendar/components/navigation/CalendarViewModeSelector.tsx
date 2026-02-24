@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 
 export type CalendarViewMode = 'day' | 'week';
@@ -67,16 +67,21 @@ const styles = StyleSheet.create({
   },
   pills: {
     flexDirection: 'row',
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 2,
   },
   pill: {
     paddingHorizontal: 20,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     minWidth: 80,
     alignItems: 'center',
     justifyContent: 'center',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    } : {}),
   },
   pillActive: {
     // backgroundColor set dynamically
@@ -84,6 +89,7 @@ const styles = StyleSheet.create({
   pillText: {
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
   },
   pillTextActive: {
     color: '#FFFFFF',

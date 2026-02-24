@@ -54,7 +54,7 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
           {!isElectron && onSearchChange && (
             <View style={styles.desktopCenter}>
               <View style={[styles.desktopSearchContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-                <Ionicons name="search" size={20} color={theme.textSecondary} style={styles.searchIcon} />
+                <Ionicons name="search" size={18} color={theme.textSecondary} style={styles.searchIcon} />
                 <TextInput
                   style={[styles.desktopSearchInput, { color: theme.text }]}
                   placeholder="Поиск событий..."
@@ -79,7 +79,7 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
                 onPress={onFilterPress}
                 style={[styles.desktopButton, { borderColor: theme.border }]}
               >
-                <Ionicons name="filter" size={20} color={theme.text} />
+                <Ionicons name="filter" size={18} color={theme.text} />
                 <Text style={[styles.desktopButtonText, { color: theme.text }]}>
                   Фильтры
                 </Text>
@@ -94,7 +94,7 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
               onPress={onAddPress}
               style={[styles.desktopButtonPrimary, { backgroundColor: theme.primary }]}
             >
-              <Ionicons name="add" size={20} color="#FFFFFF" />
+              <Ionicons name="add" size={18} color="#FFFFFF" />
               <Text style={styles.desktopButtonPrimaryText}>Создать событие</Text>
             </TouchableOpacity>
           </View>
@@ -145,6 +145,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 2,
     elevation: 4,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 2px rgba(0,0,0,0.06)',
+    } : {}),
     zIndex: 10,
   },
   container: {
@@ -158,6 +162,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
+    lineHeight: 24,
     flex: 1,
     textAlign: 'center',
   },
@@ -211,6 +216,7 @@ const styles = StyleSheet.create({
   desktopTitle: {
     fontSize: 24,
     fontWeight: '700',
+    lineHeight: 28,
     letterSpacing: -0.5,
   },
   desktopCenter: {
@@ -231,9 +237,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: 44,
-    borderRadius: 12,
+    borderRadius: 10,
     paddingHorizontal: 16,
-    borderWidth: 2,
+    borderWidth: 1,
     ...Platform.select({
       web: {
         boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
@@ -254,7 +260,8 @@ const styles = StyleSheet.create({
   },
   desktopSearchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
     height: 44,
     ...(Platform.select({
       web: {
@@ -282,10 +289,10 @@ const styles = StyleSheet.create({
   desktopButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 44,
+    minHeight: 40,
     paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 2,
+    borderRadius: 10,
+    borderWidth: 1,
     gap: 8,
     position: 'relative',
     ...Platform.select({
@@ -305,8 +312,9 @@ const styles = StyleSheet.create({
     }),
   },
   desktopButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
     letterSpacing: -0.2,
   },
   desktopFilterIndicator: {
@@ -334,9 +342,9 @@ const styles = StyleSheet.create({
   desktopButtonPrimary: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 44,
+    minHeight: 40,
     paddingHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: 10,
     gap: 8,
     ...Platform.select({
       web: {
@@ -355,8 +363,9 @@ const styles = StyleSheet.create({
     }),
   },
   desktopButtonPrimaryText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
     letterSpacing: -0.2,
     color: '#FFFFFF',
   },

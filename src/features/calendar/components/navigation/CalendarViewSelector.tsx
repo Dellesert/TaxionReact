@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { CalendarView } from '../../types/calendar.types';
 import { getViewLabel } from '../../utils/calendarHelpers';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -62,6 +62,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    } : {}),
   },
   pillActive: {
     // backgroundColor set dynamically
@@ -69,6 +74,7 @@ const styles = StyleSheet.create({
   pillText: {
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
   },
   pillTextActive: {
     color: '#FFFFFF',

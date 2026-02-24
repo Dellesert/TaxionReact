@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,7 +29,7 @@ export const MonthNavigationStrip: React.FC<MonthNavigationStripProps> = ({
         onPress={onPrevMonth}
         activeOpacity={0.7}
       >
-        <Ionicons name="chevron-back" size={24} color={theme.textSecondary} />
+        <Ionicons name="chevron-back" size={18} color={theme.textSecondary} />
       </TouchableOpacity>
 
       {/* Month Label */}
@@ -45,7 +45,7 @@ export const MonthNavigationStrip: React.FC<MonthNavigationStripProps> = ({
         onPress={onNextMonth}
         activeOpacity={0.7}
       >
-        <Ionicons name="chevron-forward" size={24} color={theme.textSecondary} />
+        <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
       </TouchableOpacity>
     </View>
   );
@@ -59,10 +59,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   arrowButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    } : {}),
   },
   monthLabelContainer: {
     flex: 1,
@@ -71,6 +76,7 @@ const styles = StyleSheet.create({
   monthLabel: {
     fontSize: 18,
     fontWeight: '600',
+    lineHeight: 24,
     textTransform: 'capitalize',
   },
 });

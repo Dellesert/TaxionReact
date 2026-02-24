@@ -11,8 +11,8 @@ import { LeftSidebarSkeleton } from './LeftSidebarSkeleton';
 import { EventListSkeleton } from './EventListSkeleton';
 
 export const CalendarDesktopFallback: React.FC = () => {
-  const { theme, isDark } = useTheme();
-  const cardBgColor = isDark ? theme.card : '#FFFFFF';
+  const { theme } = useTheme();
+  const cardBgColor = theme.card;
 
   return (
     <View style={styles.container}>

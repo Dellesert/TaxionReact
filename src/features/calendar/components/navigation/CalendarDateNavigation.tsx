@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 
@@ -25,7 +25,7 @@ export const CalendarDateNavigation: React.FC<CalendarDateNavigationProps> = ({
         style={styles.navButton}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Ionicons name="chevron-back" size={20} color={theme.textSecondary} />
+        <Ionicons name="chevron-back" size={18} color={theme.textSecondary} />
       </TouchableOpacity>
 
       <TouchableOpacity onPress={onToday} style={styles.todayButton}>
@@ -37,7 +37,7 @@ export const CalendarDateNavigation: React.FC<CalendarDateNavigationProps> = ({
         style={styles.navButton}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+        <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
       </TouchableOpacity>
     </View>
   );
@@ -53,20 +53,31 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   navButton: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    } : {}),
   },
   todayButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+    } : {}),
   },
   dateText: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
     textTransform: 'capitalize',
   },
 });

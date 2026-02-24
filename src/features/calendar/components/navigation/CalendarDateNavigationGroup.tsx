@@ -27,7 +27,7 @@ export const CalendarDateNavigationGroup: React.FC<CalendarDateNavigationGroupPr
         accessibilityLabel="Предыдущий период"
         accessibilityRole="button"
       >
-        <Ionicons name="chevron-back" size={16} color={theme.text} />
+        <Ionicons name="chevron-back" size={14} color={theme.text} />
       </TouchableOpacity>
 
       {/* Date Display */}
@@ -42,7 +42,7 @@ export const CalendarDateNavigationGroup: React.FC<CalendarDateNavigationGroupPr
         accessibilityLabel="Следующий период"
         accessibilityRole="button"
       >
-        <Ionicons name="chevron-forward" size={16} color={theme.text} />
+        <Ionicons name="chevron-forward" size={14} color={theme.text} />
       </TouchableOpacity>
 
       {/* Divider */}
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 4,
     gap: 2,
     flexShrink: 0,
@@ -81,8 +81,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 12,
-    borderRadius: 8,
-    minHeight: 44, // Accessibility: minimum touch target
+    borderRadius: 10,
+    minHeight: 40,
     minWidth: 38,
     ...Platform.select({
       web: {
@@ -117,8 +117,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 12,
-    borderRadius: 8,
-    minHeight: 44, // Accessibility: minimum touch target
+    borderRadius: 10,
+    minHeight: 40,
     ...Platform.select({
       web: {
         cursor: 'pointer',
@@ -128,8 +128,8 @@ const styles = StyleSheet.create({
   },
   todayButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     letterSpacing: -0.2,
     lineHeight: 18,
     ...Platform.select({

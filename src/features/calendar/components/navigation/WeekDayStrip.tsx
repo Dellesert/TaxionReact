@@ -167,7 +167,7 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
           onPress={onSwipeRight}
           activeOpacity={0.7}
         >
-          <Ionicons name="chevron-back" size={24} color={theme.textSecondary} />
+          <Ionicons name="chevron-back" size={18} color={theme.textSecondary} />
         </TouchableOpacity>
 
         {/* Week Days */}
@@ -288,7 +288,7 @@ export const WeekDayStrip: React.FC<WeekDayStripProps> = ({
           onPress={onSwipeLeft}
           activeOpacity={0.7}
         >
-          <Ionicons name="chevron-forward" size={24} color={theme.textSecondary} />
+          <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -302,7 +302,8 @@ const styles = StyleSheet.create({
   },
   monthLabel: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
+    lineHeight: 18,
     textAlign: 'center',
     textTransform: 'capitalize',
     marginBottom: 8,
@@ -312,8 +313,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   arrowButton: {
-    width: 32,
-    height: 44,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -330,7 +331,8 @@ const styles = StyleSheet.create({
   },
   dayOfWeek: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
+    lineHeight: 16,
     textTransform: 'capitalize',
     marginBottom: 8,
   },
@@ -343,7 +345,8 @@ const styles = StyleSheet.create({
   },
   dayNumber: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    lineHeight: 22,
   },
   dayNumberSelected: {
     fontWeight: '600',
