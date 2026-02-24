@@ -11,7 +11,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  useWindowDimensions,
   Modal,
   Platform,
   Animated,
@@ -29,8 +28,6 @@ import { User, UserRole } from '@/types/user.types';
 import { Avatar } from '@shared/components/common/Avatar';
 import { AdminListSkeleton } from '../states/AdminListSkeleton';
 
-const SIDEBAR_WIDTH = 320;
-
 const FadeIn: React.FC<{ children: React.ReactNode; style?: any; enabled?: boolean }> = ({ children, style, enabled = true }) => {
   const opacity = useRef(new Animated.Value(enabled ? 0 : 1)).current;
   useEffect(() => {
@@ -44,11 +41,6 @@ const FadeIn: React.FC<{ children: React.ReactNode; style?: any; enabled?: boole
 const UsersDesktopContent: React.FC = () => {
   const { theme, isDark } = useTheme();
   const mountTime = useRef(Date.now());
-  const { width: windowWidth } = useWindowDimensions();
-  const contentWidth = windowWidth - SIDEBAR_WIDTH;
-  const isNarrow = contentWidth < 600;
-  const gridColumns = isNarrow ? 1 : 2;
-  const cardMaxWidth = `${(100 / gridColumns).toFixed(3)}%` as `${number}%`;
   const { user: currentUser } = useAuthStore();
   const { showError, showSuccess } = useNotification();
   const { showOptions, showConfirm } = useActionModal();
@@ -195,7 +187,7 @@ const UsersDesktopContent: React.FC = () => {
       case 'admin':
         return 'Админ';
       case 'department_head':
-        return 'Руководитель отдела';
+        return 'Руководитель';
       case 'employee':
         return 'Сотрудник';
       default:
@@ -302,39 +294,6 @@ const UsersDesktopContent: React.FC = () => {
       flex: 1,
       backgroundColor: theme.background,
     },
-    userCard: {
-      backgroundColor: theme.backgroundSecondary,
-      borderRadius: 12,
-      padding: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      height: '100%',
-      ...Platform.select({
-        web: {
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          transitionProperty: 'box-shadow, transform',
-          transitionDuration: '0.2s',
-        },
-        default: {
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 8,
-          elevation: 3,
-        },
-      }),
-    },
-    usersList: {
-      flexDirection: isNarrow ? 'column' : 'row',
-      flexWrap: isNarrow ? undefined : 'wrap',
-      marginHorizontal: isNarrow ? 0 : -8,
-    },
-    userCardWrapper: {
-      width: '100%',
-      maxWidth: isNarrow ? '100%' : cardMaxWidth,
-      paddingHorizontal: isNarrow ? 0 : 8,
-      marginBottom: 8,
-    },
   });
 
   return (
@@ -353,91 +312,77 @@ const UsersDesktopContent: React.FC = () => {
         <FadeIn enabled={Date.now() - mountTime.current > 150}>
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.contentInner}>
-            <View style={dynamicStyles.usersList}>
-              {filteredUsers.map((user) => (
-                <View key={user.id} style={dynamicStyles.userCardWrapper}>
-                  <View
-                    style={[
-                      dynamicStyles.userCard,
-                      !user.is_active && { opacity: 0.6 },
-                    ]}
-                  >
-                    {/* User Header */}
-                    <View style={styles.userHeader}>
-                      <Avatar imageUrl={user.avatar} name={user.name} size={32} />
-                      <View style={styles.userInfo}>
-                        <View style={styles.userNameRow}>
-                          <Text style={[styles.userName, { color: theme.text }]}>{user.name}</Text>
-                          {!user.is_active && (
-                            <View style={styles.inactiveBadge}>
-                              <Text style={styles.inactiveBadgeText}>Неактивен</Text>
-                            </View>
-                          )}
+            <View style={[styles.tableCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              {/* Table header */}
+              <View style={[styles.tableRow, styles.tableHeader, { borderBottomColor: theme.border }]}>
+                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, width: 40 }]}>№</Text>
+                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 2 }]}>Сотрудник</Text>
+                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 2 }]}>Email</Text>
+                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 1.5 }]}>Должность</Text>
+                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 1.5 }]}>Отдел</Text>
+                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 1 }]}>Роль</Text>
+                <View style={{ width: 80 }} />
+              </View>
+              {/* Table rows */}
+              {filteredUsers.map((user, index) => (
+                <View
+                  key={user.id}
+                  style={[
+                    styles.tableRow,
+                    index < filteredUsers.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
+                    !user.is_active && { opacity: 0.6 },
+                  ]}
+                  // @ts-ignore - Web-only event handlers
+                  onMouseEnter={(e: any) => {
+                    if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundSecondary;
+                  }}
+                  onMouseLeave={(e: any) => {
+                    if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <Text style={[styles.tableCellText, { color: theme.textSecondary, width: 40 }]}>{index + 1}</Text>
+                  <View style={[styles.tableCellUser, { flex: 2 }]}>
+                    <Avatar imageUrl={user.avatar} name={user.name} size={32} />
+                    <View style={styles.userNameRow}>
+                      <Text style={[styles.tableCellText, { color: theme.text, fontWeight: '500' }]}>{user.name}</Text>
+                      {!user.is_active && (
+                        <View style={styles.inactiveBadge}>
+                          <Text style={styles.inactiveBadgeText}>Неактивен</Text>
                         </View>
-                        <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{user.email}</Text>
-                        {user.position && (
-                          <Text style={[styles.userPosition, { color: theme.textTertiary }]}>{user.position}</Text>
-                        )}
-                        {user.department && (
-                          <Text style={[styles.userDepartment, { color: theme.textTertiary }]}>
-                            {user.department.name}
-                          </Text>
-                        )}
-                      </View>
+                      )}
                     </View>
-
-                    {/* Role Badge and Actions */}
-                    <View style={styles.userFooter}>
-                      <View style={[styles.roleBadge, { backgroundColor: getRoleColor(user.role) + '20' }]}>
-                        <Text style={[styles.roleBadgeText, { color: getRoleColor(user.role) }]}>
-                          {getRoleLabel(user.role)}
-                        </Text>
-                      </View>
-
-                      <View style={styles.actionButtons}>
-                        {/* Only show role change button for employee and department_head */}
-                        {(user.role === 'employee' || user.role === 'department_head') && (
-                          <TouchableOpacity
-                            style={[
-                              styles.actionButton,
-                              { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.1)' },
-                            ]}
-                            onPress={() => handleChangeRole(user)}
-                          >
-                            <Ionicons name="shield-outline" size={18} color={theme.primary} />
-                            <Text style={[styles.actionButtonText, { color: theme.primary }]}>Роль</Text>
-                          </TouchableOpacity>
-                        )}
-                        {/* Only show activate/deactivate button for employee and department_head */}
-                        {(user.role === 'employee' || user.role === 'department_head') && (
-                          <TouchableOpacity
-                            style={[
-                              styles.actionButton,
-                              {
-                                backgroundColor: user.is_active
-                                  ? isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.1)'
-                                  : isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.1)',
-                              },
-                            ]}
-                            onPress={() => handleToggleUserStatus(user)}
-                          >
-                            <Ionicons
-                              name={user.is_active ? 'close-circle-outline' : 'checkmark-circle-outline'}
-                              size={18}
-                              color={user.is_active ? '#EF4444' : '#10B981'}
-                            />
-                            <Text
-                              style={[
-                                styles.actionButtonText,
-                                { color: user.is_active ? '#EF4444' : '#10B981' },
-                              ]}
-                            >
-                              {user.is_active ? 'Деактивировать' : 'Активировать'}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
+                  </View>
+                  <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 2 }]}>{user.email}</Text>
+                  <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 1.5 }]}>{user.position || '—'}</Text>
+                  <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 1.5 }]}>{user.department?.name || '—'}</Text>
+                  <View style={{ flex: 1 }}>
+                    <View style={[styles.roleBadge, { backgroundColor: getRoleColor(user.role) + '20' }]}>
+                      <Text style={[styles.roleBadgeText, { color: getRoleColor(user.role) }]}>
+                        {getRoleLabel(user.role)}
+                      </Text>
                     </View>
+                  </View>
+                  <View style={{ width: 80, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                    {(user.role === 'employee' || user.role === 'department_head') && (
+                      <TouchableOpacity
+                        style={[styles.tableActionButton, { backgroundColor: theme.backgroundTertiary }]}
+                        onPress={() => handleChangeRole(user)}
+                      >
+                        <Ionicons name="shield-outline" size={14} color={theme.primary} />
+                      </TouchableOpacity>
+                    )}
+                    {(user.role === 'employee' || user.role === 'department_head') && (
+                      <TouchableOpacity
+                        style={[styles.tableActionButton, { backgroundColor: theme.backgroundTertiary }]}
+                        onPress={() => handleToggleUserStatus(user)}
+                      >
+                        <Ionicons
+                          name={user.is_active ? 'close-circle-outline' : 'checkmark-circle-outline'}
+                          size={14}
+                          color={user.is_active ? '#EF4444' : '#10B981'}
+                        />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               ))}
@@ -529,88 +474,70 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 16,
   },
-  userHeader: {
-    flexDirection: 'row',
-    marginBottom: 12,
+  tableCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden' as const,
   },
-  userInfo: {
-    flex: 1,
-    marginLeft: 12,
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  tableHeader: {
+    borderBottomWidth: 1,
+    paddingBottom: 8,
+    marginBottom: 2,
+  },
+  tableHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  tableCellUser: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  tableCellText: {
+    fontSize: 13,
   },
   userNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 22,
+    gap: 6,
   },
   inactiveBadge: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
   },
   inactiveBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     color: '#EF4444',
   },
-  userEmail: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 2,
-  },
-  userPosition: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 2,
-  },
-  userDepartment: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  userFooter: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
-  },
   roleBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    marginBottom: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   roleBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
+    fontSize: 11,
+    fontWeight: '600',
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
+  tableActionButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    minHeight: 40,
     // @ts-ignore
     cursor: 'pointer',
-  },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
   },
   noAccessContainer: {
     flex: 1,
