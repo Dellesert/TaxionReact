@@ -67,9 +67,9 @@ const styles = StyleSheet.create({
     maxWidth: 600,
   },
   sectionHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 6,
   },
   sectionTitle: {
     fontSize: 13,

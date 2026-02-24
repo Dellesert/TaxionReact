@@ -87,11 +87,11 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
           </Text>
           {isBirthday ? (
             <View style={[styles.statusBadge, { backgroundColor: '#E91E6320' }]}>
-              <Ionicons name="gift-outline" size={16} color="#E91E63" />
+              <Ionicons name="gift-outline" size={14} color="#E91E63" />
             </View>
           ) : statusBadge ? (
             <View style={[styles.statusBadge, { backgroundColor: statusBadge.color + '20' }]}>
-              <Ionicons name={statusBadge.icon as any} size={16} color={statusBadge.color} />
+              <Ionicons name={statusBadge.icon as any} size={14} color={statusBadge.color} />
             </View>
           ) : null}
         </View>
@@ -169,7 +169,7 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 8,
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -200,33 +200,33 @@ const styles = StyleSheet.create({
     width: 4,
   },
   content: {
-    padding: 16,
-    paddingLeft: 20,
+    padding: 12,
+    paddingLeft: 16,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   title: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 24,
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
     marginRight: 8,
   },
   statusBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 8,
   },
   metadataRow: {
     flexDirection: 'row',
@@ -250,9 +250,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   metaText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
-    lineHeight: 18,
+    lineHeight: 16,
   },
 });
 
