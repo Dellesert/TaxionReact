@@ -864,7 +864,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch' as const,
     borderRadius: 2,
     marginRight: 12,
-    marginLeft: 6,
+    marginLeft: 12,
     minHeight: 40,
   },
   // Cell styles
