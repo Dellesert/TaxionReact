@@ -38,21 +38,13 @@ import {
   ABSENCE_TYPE_LABELS,
   ABSENCE_TYPE_COLORS,
 } from '../types/absence.types';
-import { AbsenceCard } from '../components/AbsenceCard';
 import { Avatar } from '@shared/components/common/Avatar';
-import { CustomScrollView } from '@shared/components/common/CustomScrollView';
 import { getUserColorById } from '../constants/userColors.constants';
+import { format, parseISO } from 'date-fns';
+import { ru } from 'date-fns/locale';
 import { AbsenceListSkeleton } from '../components/states/AbsenceListSkeleton';
 import { AbsenceCalendarSkeleton } from '../components/states/AbsenceCalendarSkeleton';
 import { AbsenceTimelineSkeleton } from '../components/states/AbsenceTimelineSkeleton';
-
-// Type for sections grouped by absence type
-interface AbsenceSection {
-  type: AbsenceType;
-  title: string;
-  color: string;
-  data: Absence[];
-}
 
 // Helper to get year date range
 const getYearRange = (year: number): { start_date: string; end_date: string } => ({
@@ -71,6 +63,15 @@ const parseLocalDate = (dateStr: string): Date => {
 const getDurationDays = (start: Date, end: Date): number => {
   const diffTime = end.getTime() - start.getTime();
   return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+};
+
+// Format date for table display
+const formatAbsenceDate = (dateStr: string): string => {
+  try {
+    return format(parseISO(dateStr), 'd MMM', { locale: ru }).replace('.', '');
+  } catch {
+    return dateStr;
+  }
 };
 
 // Storage keys
@@ -116,6 +117,8 @@ export const AbsenceListScreen: React.FC = () => {
 
   // Search state for desktop
   const [searchQuery, setSearchQuery] = useState('');
+  // Hovered table row
+  const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -363,34 +366,6 @@ export const AbsenceListScreen: React.FC = () => {
     }
     return Array.from(usersMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [absences]);
-
-  // Group absences by type for desktop columns view
-  const absenceSections = useMemo((): AbsenceSection[] => {
-    const grouped = new Map<AbsenceType, Absence[]>();
-
-    // Initialize groups for all types
-    for (const type of ABSENCE_TYPES) {
-      grouped.set(type, []);
-    }
-
-    // Group filtered absences by type
-    for (const absence of filteredAbsences) {
-      const typeAbsences = grouped.get(absence.type);
-      if (typeAbsences) {
-        typeAbsences.push(absence);
-      }
-    }
-
-    // Convert to sections, filtering out empty groups
-    return ABSENCE_TYPES
-      .filter(type => (grouped.get(type)?.length ?? 0) > 0)
-      .map(type => ({
-        type,
-        title: ABSENCE_TYPE_LABELS[type],
-        color: ABSENCE_TYPE_COLORS[type],
-        data: grouped.get(type) ?? [],
-      }));
-  }, [filteredAbsences]);
 
   // Render empty state for desktop
   const renderDesktopEmpty = useCallback(() => {
@@ -885,7 +860,7 @@ export const AbsenceListScreen: React.FC = () => {
                 >
                   <Ionicons
                     name="person"
-                    size={15}
+                    size={14}
                     color={selectedUserId ? theme.primary : theme.textSecondary}
                   />
                   <Text
@@ -909,54 +884,99 @@ export const AbsenceListScreen: React.FC = () => {
                   )}
                 </TouchableOpacity>
               </View>
-              {/* List Content */}
+              {/* Table Header */}
+              <View style={[styles.tableHeaderRow, { borderColor: theme.border }]}>
+                <Text style={[styles.tableHeaderCell, styles.tableCellEmployee, { color: theme.textSecondary }]}>Сотрудник</Text>
+                <Text style={[styles.tableHeaderCell, styles.tableCellType, { color: theme.textSecondary }]}>Тип</Text>
+                <Text style={[styles.tableHeaderCell, styles.tableCellPeriod, { color: theme.textSecondary }]}>Период</Text>
+                <Text style={[styles.tableHeaderCell, styles.tableCellDays, { color: theme.textSecondary }]}>Дни</Text>
+                <Text style={[styles.tableHeaderCell, styles.tableCellSubstitution, { color: theme.textSecondary }]}>Замещение</Text>
+              </View>
+              {/* Table Body */}
               {isLoading ? (
                 <AbsenceListSkeleton />
               ) : (
                 <ContentPane>
                   <ScrollView
                     style={{ backgroundColor: theme.background }}
-                    contentContainerStyle={styles.rowsScrollContent}
+                    contentContainerStyle={styles.tableScrollContent}
                     showsVerticalScrollIndicator={false}
                   >
-                    {absenceSections.length === 0 ? (
+                    {filteredAbsences.length === 0 ? (
                       renderDesktopEmpty()
                     ) : (
-                      <View style={styles.rowsContainer}>
-                        {absenceSections.map((section) => (
-                          <View
-                            key={section.type}
-                            style={styles.typeRow}
+                      filteredAbsences.map((absence) => {
+                        const startDate = parseLocalDate(absence.start_date);
+                        const endDate = parseLocalDate(absence.end_date);
+                        const duration = getDurationDays(startDate, endDate);
+                        const typeColor = ABSENCE_TYPE_COLORS[absence.type];
+                        const userName = absence.user?.name || `#${absence.user_id}`;
+                        const hasSubs = absence.substitutions && absence.substitutions.length > 0;
+                        const subCount = absence.substitution_count ?? absence.substitutions?.length ?? 0;
+
+                        return (
+                          <TouchableOpacity
+                            key={absence.id}
+                            style={[
+                              styles.tableRow,
+                              { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' },
+                              hoveredRowId === absence.id && { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' },
+                            ]}
+                            onPress={() => handleAbsencePress(absence)}
+                            activeOpacity={0.7}
+                            // @ts-ignore - web only
+                            onMouseEnter={Platform.OS === 'web' ? () => setHoveredRowId(absence.id) : undefined}
+                            // @ts-ignore - web only
+                            onMouseLeave={Platform.OS === 'web' ? () => setHoveredRowId(null) : undefined}
                           >
-                            <View style={[styles.rowHeader, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                              <View style={[styles.rowColorDot, { backgroundColor: section.color }]} />
-                              <Text style={[styles.rowTitle, { color: theme.text }]}>
-                                {section.title}
+                            {/* Employee */}
+                            <View style={[styles.tableCell, styles.tableCellEmployee]}>
+                              <Avatar name={userName} imageUrl={absence.user?.avatar} size={28} userId={absence.user_id} />
+                              <Text style={[styles.tableCellText, { color: theme.text }]} numberOfLines={1}>
+                                {userName}
                               </Text>
-                              <View style={[styles.rowCount, { backgroundColor: theme.background }]}>
-                                <Text style={[styles.rowCountText, { color: theme.textSecondary }]}>
-                                  {section.data.length}
-                                </Text>
-                              </View>
                             </View>
-                            <CustomScrollView
-                              horizontal
-                              thumbColor={`${section.color}66`}
-                              style={styles.rowCardsScroll}
-                            >
-                              {section.data.map((absence) => (
-                                <View key={absence.id} style={styles.rowCardWrapper}>
-                                  <AbsenceCard
-                                    absence={absence}
-                                    onPress={() => handleAbsencePress(absence)}
-                                    style={styles.rowCardStretch}
-                                  />
-                                </View>
-                              ))}
-                            </CustomScrollView>
-                          </View>
-                        ))}
-                      </View>
+
+                            {/* Type */}
+                            <View style={[styles.tableCell, styles.tableCellType]}>
+                              <View style={[styles.tableTypeDot, { backgroundColor: typeColor }]} />
+                              <Text style={[styles.tableCellText, { color: theme.text }]} numberOfLines={1}>
+                                {ABSENCE_TYPE_LABELS[absence.type]}
+                              </Text>
+                            </View>
+
+                            {/* Period */}
+                            <View style={[styles.tableCell, styles.tableCellPeriod]}>
+                              <Text style={[styles.tableCellText, { color: theme.text }]}>
+                                {formatAbsenceDate(absence.start_date)} — {formatAbsenceDate(absence.end_date)}
+                              </Text>
+                            </View>
+
+                            {/* Days */}
+                            <View style={[styles.tableCell, styles.tableCellDays]}>
+                              <Text style={[styles.tableCellDaysText, { color: theme.textSecondary }]}>
+                                {duration}
+                              </Text>
+                            </View>
+
+                            {/* Substitution */}
+                            <View style={[styles.tableCell, styles.tableCellSubstitution]}>
+                              {hasSubs ? (
+                                <Text style={[styles.tableCellText, { color: theme.textSecondary }]} numberOfLines={1}>
+                                  {absence.substitutions![0].substitute?.name || `#${absence.substitutions![0].substitute_id}`}
+                                  {absence.substitutions!.length > 1 && ` +${absence.substitutions!.length - 1}`}
+                                </Text>
+                              ) : subCount > 0 ? (
+                                <Text style={[styles.tableCellText, { color: theme.textSecondary }]}>
+                                  {subCount} зам.
+                                </Text>
+                              ) : (
+                                <Text style={[styles.tableCellText, { color: theme.textTertiary }]}>—</Text>
+                              )}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })
                     )}
                   </ScrollView>
                 </ContentPane>
@@ -1251,11 +1271,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 8,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+    } : {}),
   },
   filterMenuItemActive: {},
   filterMenuItemText: {
     fontSize: 13,
     fontWeight: '500',
+    lineHeight: 18,
   },
   // Mobile combined header bar
   mobileHeaderBar: {
@@ -1300,6 +1325,7 @@ const styles = StyleSheet.create({
   userFilterText: {
     fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
     maxWidth: 200,
   },
   // User filter dropdown styles
@@ -1323,9 +1349,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+    } : {}),
   },
   userFilterDropdownItemText: {
     fontSize: 13,
+    lineHeight: 18,
     flex: 1,
   },
   userFilterDropdownList: {
@@ -1348,6 +1379,7 @@ const styles = StyleSheet.create({
   userFilterModalTitle: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     padding: 14,
     paddingBottom: 10,
   },
@@ -1370,6 +1402,7 @@ const styles = StyleSheet.create({
   desktopTitle: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
   },
   desktopHeaderRight: {
     flexDirection: 'row',
@@ -1399,6 +1432,10 @@ const styles = StyleSheet.create({
     minHeight: 40,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+    } : {}),
   },
   desktopAddButton: {
     flexDirection: 'row',
@@ -1406,13 +1443,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 10,
-    gap: 4,
+    gap: 6,
     minHeight: 40,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+    } : {}),
   },
   desktopAddButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
+    lineHeight: 18,
   },
   // Desktop list card layout
   listCard: {
@@ -1452,12 +1494,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+    } : {}),
   },
   listHeaderYearText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 20,
     marginHorizontal: 4,
   },
   listHeaderUserFilter: {
@@ -1468,19 +1514,85 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     gap: 6,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+    } : {}),
   },
   listHeaderUserFilterText: {
     fontSize: 13,
     fontWeight: '500',
+    lineHeight: 18,
     maxWidth: 180,
   },
-  // Desktop horizontal rows layout
-  rowsScrollContent: {
+  // Desktop table layout
+  tableHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  tableHeaderCell: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    lineHeight: 16,
+  },
+  tableScrollContent: {
     flexGrow: 1,
   },
-  rowsContainer: {
-    padding: 12,
-    gap: 12,
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+      transitionProperty: 'background-color',
+      transitionDuration: '0.2s',
+    } : {}),
+  },
+  tableCell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 12,
+  },
+  tableCellText: {
+    fontSize: 13,
+    fontWeight: '400',
+    lineHeight: 18,
+  },
+  tableCellEmployee: {
+    flex: 2.5,
+  },
+  tableCellType: {
+    flex: 1.3,
+  },
+  tableCellPeriod: {
+    flex: 1.8,
+  },
+  tableCellDays: {
+    width: 50,
+    justifyContent: 'center',
+  },
+  tableCellDaysText: {
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  tableCellSubstitution: {
+    flex: 1.5,
+  },
+  tableTypeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   emptyContainerDesktop: {
     flex: 1,
@@ -1497,51 +1609,6 @@ const styles = StyleSheet.create({
     maxWidth: 300,
     lineHeight: 20,
   },
-  typeRow: {
-    gap: 8,
-  },
-  rowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignSelf: 'flex-start',
-    gap: 8,
-  },
-  rowColorDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  rowTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  rowCount: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  rowCountText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  rowCardsScroll: {
-    gap: 10,
-    paddingHorizontal: 2,
-    paddingTop: 2,
-    paddingBottom: 14,
-  },
-  rowCardWrapper: {
-    width: 280,
-    alignSelf: 'stretch' as const,
-  },
-  rowCardStretch: {
-    flex: 1,
-    marginBottom: 0,
-  },
   // Calendar desktop two-panel layout
   calendarDesktopRow: {
     flex: 1,
@@ -1549,7 +1616,7 @@ const styles = StyleSheet.create({
   },
   calendarSidebar: {
     width: 280,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     margin: 16,
     marginRight: 0,
@@ -1577,6 +1644,7 @@ const styles = StyleSheet.create({
   calendarSidebarTitle: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
   },
   calendarSidebarContent: {
     paddingHorizontal: 12,
@@ -1589,6 +1657,10 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 10,
     marginBottom: 6,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+    } : {}),
   },
   employeeAvatar: {
     width: 36,
@@ -1615,9 +1687,12 @@ const styles = StyleSheet.create({
   employeeName: {
     fontSize: 13,
     fontWeight: '500',
+    lineHeight: 18,
   },
   employeeMeta: {
     fontSize: 11,
+    fontWeight: '500',
+    lineHeight: 14,
     marginTop: 2,
   },
   sidebarLegend: {
@@ -1643,6 +1718,7 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 12,
     fontWeight: '500',
+    lineHeight: 16,
   },
   viewContent: {
     flex: 1,
@@ -1660,7 +1736,7 @@ const styles = StyleSheet.create({
   calendarMainPanel: {
     flex: 1,
     minWidth: 0,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     margin: 16,
     overflow: 'hidden',
@@ -1687,6 +1763,7 @@ const styles = StyleSheet.create({
   calendarMainTitle: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
   },
   calendarHeaderYearPicker: {
     flexDirection: 'row',
@@ -1699,13 +1776,17 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+    } : {}),
   },
   calendarHeaderYearText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     minWidth: 40,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 20,
     marginHorizontal: 12,
   },
 });
