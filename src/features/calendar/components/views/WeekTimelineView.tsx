@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   dayName: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   holidayLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
     textAlign: 'center',
     paddingHorizontal: 4,
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   timeLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     paddingRight: 8,
     textAlign: 'right',
@@ -359,19 +359,19 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   eventTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
-    lineHeight: 16,
+    lineHeight: 18,
   },
   eventTime: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.9)',
     lineHeight: 14,
   },
   eventLocation: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
     color: 'rgba(255, 255, 255, 0.8)',
     lineHeight: 14,

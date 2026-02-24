@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl, TouchableOpacity, Animated } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl, TouchableOpacity } from 'react-native';
 import { Event, CalendarView, WeekDisplayMode } from '../../types/calendar.types';
 import { EventSection, getViewLabel } from '../../utils/calendarHelpers';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -24,16 +24,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useNotification } from '@shared/contexts/NotificationContext';
 
 
-const FadeIn: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => {
-  const opacity = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(opacity, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [opacity]);
-  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
+const ContentPane: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => {
+  return <View style={[{ flex: 1 }, style]}>{children}</View>;
 };
 
 interface CalendarDesktopViewProps {
@@ -188,7 +180,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
           {isLoading ? (
             <LeftSidebarSkeleton />
           ) : (
-            <FadeIn>
+            <ContentPane>
               <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.leftSidebarContent}
@@ -216,7 +208,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
                   isCompact={false}
                 />
               </ScrollView>
-            </FadeIn>
+            </ContentPane>
           )}
         </View>
 
@@ -263,7 +255,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
             {isLoading ? (
               <EventListSkeleton />
             ) : (
-              <FadeIn>
+              <ContentPane>
                 {viewMode === 'week' ? (
                   weekDisplayMode === 'timeline' ? (
                     <WeekTimelineView
@@ -303,7 +295,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
                     onEventPress={handleEventPress}
                   />
                 )}
-              </FadeIn>
+              </ContentPane>
             )}
           </View>
         </View>

@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    padding: 14,
     paddingBottom: 120,
     flexGrow: 1,
   },
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 8,
     marginBottom: 12,
   },
@@ -258,18 +258,18 @@ const styles = StyleSheet.create({
     maxWidth: 250,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '700',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   scheduleCard: {
     flexDirection: 'row',
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 10,
+    marginBottom: 8,
     overflow: 'hidden',
   },
   colorIndicator: {
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   },
   scheduleContent: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
   },
   scheduleHeader: {
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   scheduleTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     flex: 1,
     marginRight: 8,
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   userRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 10,
   },
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   locationText: {
-    fontSize: 11,
+    fontSize: 12,
     flex: 1,
   },
   absencesCard: {
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   absenceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 10,
   },

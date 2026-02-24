@@ -3,7 +3,7 @@
  * Главная навигация с bottom tabs для авторизованных пользователей
  */
 
-import React, { Suspense, useMemo, useState, lazy } from 'react';
+import React, { Suspense, useMemo, lazy } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
@@ -48,7 +48,6 @@ const MainNavigatorContent: React.FC = () => {
   const isWideScreen = useIsWideScreen();
   const chats = useChatStore((state) => state.chats);
   const desktopNav = useDesktopNavigation();
-  const [activeTab, setActiveTab] = useState<string>('Chats');
 
   // Подсчитываем общее количество непрочитанных сообщений
   const totalUnreadCount = useMemo(() => {

@@ -93,7 +93,7 @@ export const CalendarStatsPanel: React.FC<CalendarStatsPanelProps> = ({
         {/* Day */}
         <View style={[styles.countCard, { backgroundColor: theme.card }]}>
           <View style={[styles.iconCircle, { backgroundColor: '#3B82F6' + '20' }]}>
-            <Ionicons name="today" size={16} color="#3B82F6" />
+            <Ionicons name="today" size={18} color="#3B82F6" />
           </View>
           <View style={styles.countContent}>
             <Text style={[styles.countNumber, { color: theme.text }]} numberOfLines={1}>
@@ -108,7 +108,7 @@ export const CalendarStatsPanel: React.FC<CalendarStatsPanelProps> = ({
         {/* This Week */}
         <View style={[styles.countCard, { backgroundColor: theme.card }]}>
           <View style={[styles.iconCircle, { backgroundColor: '#10B981' + '20' }]}>
-            <Ionicons name="calendar" size={16} color="#10B981" />
+            <Ionicons name="calendar" size={18} color="#10B981" />
           </View>
           <View style={styles.countContent}>
             <Text style={[styles.countNumber, { color: theme.text }]} numberOfLines={1}>
@@ -123,7 +123,7 @@ export const CalendarStatsPanel: React.FC<CalendarStatsPanelProps> = ({
         {/* This Month */}
         <View style={[styles.countCard, { backgroundColor: theme.card }]}>
           <View style={[styles.iconCircle, { backgroundColor: '#8B5CF6' + '20' }]}>
-            <Ionicons name="calendar-outline" size={16} color="#8B5CF6" />
+            <Ionicons name="calendar-outline" size={18} color="#8B5CF6" />
           </View>
           <View style={styles.countContent}>
             <Text style={[styles.countNumber, { color: theme.text }]} numberOfLines={1}>
@@ -176,14 +176,14 @@ export const CalendarStatsPanel: React.FC<CalendarStatsPanelProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 16,
-    borderRadius: 16,
-    padding: 16,
+    marginTop: 12,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
   },
   countsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   countCard: {
     flex: 1,
@@ -191,8 +191,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 12,
-    borderRadius: 12,
-    gap: 8,
+    borderRadius: 10,
+    gap: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -200,9 +200,9 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   iconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -212,20 +212,20 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   countNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 22,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   countLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     textAlign: 'center',
   },
   chartSection: {
-    marginTop: 16,
-    paddingTop: 16,
+    marginTop: 12,
+    paddingTop: 12,
   },
   sectionTitle: {
     fontSize: 12,
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   chartBars: {
-    gap: 12,
+    gap: 10,
   },
   chartRow: {
     gap: 4,

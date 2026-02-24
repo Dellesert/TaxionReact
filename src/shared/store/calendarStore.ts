@@ -21,10 +21,27 @@ interface CalendarCacheStore {
   clearCache: () => void;
 }
 
+// Pre-load eventsByRange from localStorage on web for instant display
+// (skipHydration prevents auto-rehydration, so we read manually)
+let preloadedEventsByRange: Record<string, Event[]> | null = null;
+if (!isNative) {
+  try {
+    const stored = localStorage.getItem('taxion-calendar-storage:calendar-storage');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed?.state?.eventsByRange && typeof parsed.state.eventsByRange === 'object') {
+        preloadedEventsByRange = parsed.state.eventsByRange;
+      }
+    }
+  } catch {
+    // Ignore errors, will use initial state
+  }
+}
+
 export const useCalendarStore = create<CalendarCacheStore>()(
   persist(
     (set, get) => ({
-      eventsByRange: {},
+      eventsByRange: preloadedEventsByRange || {},
       lastUpdated: null,
 
       setEventsForRange: (rangeKey: string, events: Event[]) => {

@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   header: {
     flexDirection: 'row',
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: 13,
     fontWeight: '600',
-    lineHeight: 16,
+    lineHeight: 18,
   },
   eventTime: {
     flexDirection: 'row',
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   timeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
   },
 });
