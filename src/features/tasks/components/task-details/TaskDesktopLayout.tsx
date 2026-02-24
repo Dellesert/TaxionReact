@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   },
   leftCard: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     display: 'flex',
     flexDirection: 'column',
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
         transitionProperty: 'box-shadow, transform',
         transitionDuration: '0.2s',
-        transitionTimingFunction: 'ease-out',
+        transitionTimingFunction: 'ease',
       },
       default: {
         shadowColor: '#000',
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   },
   rightCard: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     display: 'flex',
     flexDirection: 'column',
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
         transitionProperty: 'box-shadow, transform',
         transitionDuration: '0.2s',
-        transitionTimingFunction: 'ease-out',
+        transitionTimingFunction: 'ease',
       },
       default: {
         shadowColor: '#000',
@@ -446,14 +446,12 @@ const styles = StyleSheet.create({
   cardHovered: {
     ...Platform.select({
       web: {
-        boxShadow: '0 8px 20px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.06)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
         transform: 'translateY(-2px)',
       },
       default: {
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
-        elevation: 6,
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
       },
     }),
   },
@@ -512,7 +510,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabContentInner: {
-    padding: 20,
+    padding: 14,
   },
 
   // Comments specific
@@ -522,7 +520,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   commentsScrollContent: {
-    padding: 20,
+    padding: 14,
   },
   commentInputContainer: {
     flexDirection: 'row',

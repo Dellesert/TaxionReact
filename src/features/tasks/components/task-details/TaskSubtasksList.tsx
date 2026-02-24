@@ -303,7 +303,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
       borderStyle: 'dashed',
     },
     createFirstSubtaskText: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: '600',
       color: theme.primary,
     },
@@ -394,7 +394,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
       padding: 32,
     },
     emptyText: {
-      fontSize: 15,
+      fontSize: 14,
       color: theme.textTertiary,
       marginTop: 12,
       textAlign: 'center',
@@ -409,7 +409,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
       borderRadius: 12,
     },
     errorText: {
-      fontSize: 15,
+      fontSize: 14,
       color: theme.error,
       marginTop: 12,
       textAlign: 'center',

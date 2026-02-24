@@ -483,7 +483,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                         ]}>
                           <Ionicons
                             name={item.icon as any}
-                            size={28}
+                            size={18}
                             color={taskType === item.type ? '#FFFFFF' : theme.primary}
                           />
                         </View>
@@ -520,7 +520,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                         ]}
                       >
                         <View style={[styles.contentTypeIcon, { backgroundColor: contentType === item.type ? theme.primary : theme.backgroundSecondary }]}>
-                          <Ionicons name={item.icon as any} size={28} color={contentType === item.type ? '#FFFFFF' : theme.primary} />
+                          <Ionicons name={item.icon as any} size={18} color={contentType === item.type ? '#FFFFFF' : theme.primary} />
                         </View>
                         <View style={styles.contentTypeInfo}>
                           <Text style={[styles.contentTypeTitle, { color: theme.text }]}>{item.title}</Text>
@@ -821,7 +821,7 @@ const styles = StyleSheet.create({
   containerDesktop: {
     width: 700,
     maxHeight: '90%',
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
     ...Platform.select({
       web: {
@@ -875,7 +875,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
   headerSubtitle: {
@@ -906,13 +906,13 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   stepTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700',
     marginBottom: 12,
   },
   stepDescription: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     marginBottom: 24,
   },
   stepContent: {
@@ -944,9 +944,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   contentTypeIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -963,7 +963,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   input: {
-    fontSize: 15,
+    fontSize: 14,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -975,7 +975,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   checklistInput: {
-    fontSize: 15,
+    fontSize: 14,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -1011,7 +1011,7 @@ const styles = StyleSheet.create({
   },
   itemText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
   },
   removeButton: {
     padding: 8,
@@ -1023,11 +1023,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   emptyStateText: {
-    fontSize: 15,
+    fontSize: 14,
     marginTop: 12,
   },
   textArea: {
-    fontSize: 15,
+    fontSize: 14,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -1039,7 +1039,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   detailLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     marginBottom: 12,
   },
@@ -1069,7 +1069,7 @@ const styles = StyleSheet.create({
   },
   dateButtonText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
   },
   clearButton: {
     padding: 8,
@@ -1107,7 +1107,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 12,
+    borderRadius: 10,
     gap: 8,
     flex: 1,
   },
@@ -1123,8 +1123,8 @@ const styles = StyleSheet.create({
   nextButton: {},
   createButton: {},
   navButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   navButtonTextCompact: {
     fontSize: 14,

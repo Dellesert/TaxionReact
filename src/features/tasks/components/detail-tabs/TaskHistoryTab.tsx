@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyStateText: {
-    fontSize: 15,
+    fontSize: 14,
     marginTop: 12,
     textAlign: 'center',
   },
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   },
   dateSeparatorText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },

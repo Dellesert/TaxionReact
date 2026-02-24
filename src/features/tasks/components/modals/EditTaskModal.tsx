@@ -910,7 +910,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
   saveButtonText: {
@@ -923,12 +923,12 @@ const styles = StyleSheet.create({
   card: {
     margin: 16,
     marginBottom: 0,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     marginBottom: 20,
   },
@@ -941,14 +941,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    fontSize: 15,
+    fontSize: 14,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
   },
   textArea: {
-    fontSize: 15,
+    fontSize: 14,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -967,7 +967,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   priorityChip: {
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 16,
     borderWidth: 2,
@@ -987,7 +987,7 @@ const styles = StyleSheet.create({
   },
   dateButtonText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
   },
   clearButton: {
     padding: 8,
@@ -999,7 +999,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   checklistInput: {
-    fontSize: 15,
+    fontSize: 14,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -1035,7 +1035,7 @@ const styles = StyleSheet.create({
   },
   itemText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
   },
   removeButton: {
     padding: 8,
@@ -1196,13 +1196,13 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   desktopSection: {
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 20,
+    padding: 12,
     gap: 16,
   },
   desktopSectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     marginBottom: 4,
   },

@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyStateText: {
-    fontSize: 15,
+    fontSize: 14,
     marginTop: 12,
     textAlign: 'center',
   },
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    fontSize: 15,
+    fontSize: 14,
     minHeight: 44,
     maxHeight: 100,
     borderWidth: 1,
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   menuItemText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
   },
   menuDivider: {

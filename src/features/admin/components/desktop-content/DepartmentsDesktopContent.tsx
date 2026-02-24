@@ -80,8 +80,8 @@ const DepartmentsDesktopContent: React.FC = () => {
     if (!isElectron) return null;
     return (
       <ExpandableCreateButton
-        label="Создать"
-        title="Создать отдел"
+        label="Добавить"
+        title="Добавить отдел"
         onPress={() => setShowCreateModal(true)}
       />
     );

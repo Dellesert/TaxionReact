@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   taskItem: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   loadMoreContainer: {
     paddingVertical: 12,

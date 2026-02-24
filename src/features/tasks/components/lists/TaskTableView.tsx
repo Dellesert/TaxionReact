@@ -476,7 +476,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                         style={[styles.actionButton, { backgroundColor: theme.backgroundSecondary }]}
                         onPress={(e) => handleOpenActionMenu(task, e)}
                       >
-                        <Ionicons name="ellipsis-horizontal" size={20} color={theme.text} />
+                        <Ionicons name="ellipsis-horizontal" size={18} color={theme.text} />
                       </TouchableOpacity>
                     )}
                   </View>
@@ -717,8 +717,9 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     marginBottom: 8,
     textAlign: 'center',
   },
