@@ -778,13 +778,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   tableSectionTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700' as const,
     lineHeight: 20,
   },
   tableSectionCount: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 10,
   },
   tableSectionCountText: {
@@ -818,8 +818,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   tableHeaderText: {
-    fontSize: 11,
-    fontWeight: '600' as const,
+    fontSize: 12,
+    fontWeight: '700' as const,
+    lineHeight: 16,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
   },
@@ -856,7 +857,7 @@ const styles = StyleSheet.create({
     // @ts-ignore - web only
     transitionProperty: 'background-color',
     // @ts-ignore - web only
-    transitionDuration: '0.15s',
+    transitionDuration: '0.2s',
   },
   rowColorBar: {
     width: 4,
@@ -874,13 +875,14 @@ const styles = StyleSheet.create({
   },
   tableInactiveBadge: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   tableInactiveBadgeText: {
-    fontSize: 10,
-    fontWeight: '600' as const,
+    fontSize: 11,
+    fontWeight: '500' as const,
+    lineHeight: 14,
     color: '#EF4444',
   },
   cellPeriodRow: {
@@ -896,14 +898,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     alignSelf: 'flex-start' as const,
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   modeBadgeText: {
-    fontSize: 12,
-    fontWeight: '500' as const,
+    fontSize: 13,
+    fontWeight: '700' as const,
     lineHeight: 16,
   },
   statusBadge: {
@@ -912,8 +914,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start' as const,
     gap: 6,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   statusDot: {
     width: 7,
@@ -921,8 +923,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '600' as const,
+    fontSize: 13,
+    fontWeight: '700' as const,
     lineHeight: 16,
   },
   sectionHeader: {
