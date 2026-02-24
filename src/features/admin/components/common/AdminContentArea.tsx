@@ -33,12 +33,14 @@ export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
       overflow: 'hidden',
     },
     header: {
-      paddingHorizontal: 32,
-      paddingTop: 20,
-      paddingBottom: 16,
+      paddingLeft: 20,
+      paddingRight: 12,
+      paddingVertical: 8,
+      minHeight: 56,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
       backgroundColor: theme.backgroundSecondary,
+      justifyContent: 'center',
     },
     headerTop: {
       flexDirection: 'row',
@@ -50,16 +52,16 @@ export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
       flex: 1,
     },
     title: {
-      fontSize: 22,
+      fontSize: 20,
       fontWeight: '700',
+      lineHeight: 28,
       color: theme.text,
       marginBottom: 4,
-      letterSpacing: -0.3,
     },
     description: {
-      fontSize: 14,
+      fontSize: 13,
       color: theme.textSecondary,
-      lineHeight: 20,
+      lineHeight: 18,
     },
     headerActionsContainer: {
       marginTop: 20,
@@ -68,8 +70,7 @@ export const AdminContentArea: React.FC<AdminContentAreaProps> = ({
       flex: 1,
     },
     contentInner: {
-      paddingHorizontal: 32,
-      paddingVertical: 24,
+      padding: 14,
     },
   });
 

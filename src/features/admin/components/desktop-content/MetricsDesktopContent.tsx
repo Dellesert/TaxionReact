@@ -119,50 +119,53 @@ const MetricsDesktopContent: React.FC = () => {
     metricCardWrapper: {
       width: isNarrow ? '100%' : cardMaxWidth,
       paddingHorizontal: isNarrow ? 0 : 10,
-      marginBottom: isNarrow ? 12 : 20,
+      marginBottom: 8,
     },
     metricCardWrapperFull: {
       width: '100%',
       paddingHorizontal: isNarrow ? 0 : 10,
-      marginBottom: isNarrow ? 12 : 20,
+      marginBottom: 8,
     },
     metricCard: {
       backgroundColor: theme.backgroundSecondary,
-      borderRadius: 16,
-      padding: 24,
+      borderRadius: 12,
+      padding: 12,
       borderWidth: 1,
       borderColor: theme.border,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: isDark ? 0.3 : 0.08,
-      shadowRadius: 12,
-      elevation: 4,
       height: '100%',
+      ...Platform.select({
+        web: {
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        },
+        default: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          elevation: 3,
+        },
+      }),
     },
     metricHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 16,
+      marginBottom: 12,
     },
     metricIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: 12,
+      width: 36,
+      height: 36,
+      borderRadius: 10,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
-      elevation: 3,
     },
     metricLabel: {
-      fontSize: 14,
-      fontWeight: '600',
+      fontSize: 12,
+      fontWeight: '700',
+      lineHeight: 16,
       color: theme.textSecondary,
       marginBottom: 8,
-      letterSpacing: 0.3,
+      letterSpacing: 0.5,
     },
     metricValue: {
       fontSize: isNarrow ? 24 : 32,
@@ -193,6 +196,7 @@ const MetricsDesktopContent: React.FC = () => {
     growthText: {
       fontSize: 12,
       fontWeight: '600',
+      lineHeight: 16,
     },
     growthTextPositive: {
       color: '#10B981',
@@ -220,6 +224,7 @@ const MetricsDesktopContent: React.FC = () => {
     loadingText: {
       marginTop: 12,
       fontSize: 14,
+      lineHeight: 20,
       color: theme.textSecondary,
     },
     emptyState: {
@@ -228,6 +233,7 @@ const MetricsDesktopContent: React.FC = () => {
     },
     emptyStateText: {
       fontSize: 14,
+      lineHeight: 20,
       color: theme.textSecondary,
       textAlign: 'center',
       marginTop: 12,
@@ -236,8 +242,8 @@ const MetricsDesktopContent: React.FC = () => {
       flexDirection: 'row',
       flexWrap: 'wrap',
       justifyContent: 'space-around',
-      marginTop: 16,
-      paddingTop: 16,
+      marginTop: 12,
+      paddingTop: 12,
       borderTopWidth: 1,
       borderTopColor: theme.border,
       gap: isNarrow ? 12 : 0,
@@ -252,6 +258,7 @@ const MetricsDesktopContent: React.FC = () => {
     },
     detailedStatLabel: {
       fontSize: 12,
+      lineHeight: 16,
       color: theme.textSecondary,
       textAlign: 'center',
     },
@@ -282,7 +289,7 @@ const MetricsDesktopContent: React.FC = () => {
             <View style={dynamicStyles.metricCard}>
               <View style={dynamicStyles.metricHeader}>
                 <View style={[dynamicStyles.metricIcon, { backgroundColor: '#3B82F6' }]}>
-                  <Ionicons name="people" size={24} color="#FFFFFF" />
+                  <Ionicons name="people" size={18} color="#FFFFFF" />
                 </View>
                 {dashboardData.stats.active_users.growth_percent !== undefined && (
                   <View
@@ -324,7 +331,7 @@ const MetricsDesktopContent: React.FC = () => {
             <View style={dynamicStyles.metricCard}>
               <View style={dynamicStyles.metricHeader}>
                 <View style={[dynamicStyles.metricIcon, { backgroundColor: '#8B5CF6' }]}>
-                  <Ionicons name="chatbubbles" size={24} color="#FFFFFF" />
+                  <Ionicons name="chatbubbles" size={18} color="#FFFFFF" />
                 </View>
               </View>
               <Text style={dynamicStyles.metricLabel}>Сообщения</Text>
@@ -340,7 +347,7 @@ const MetricsDesktopContent: React.FC = () => {
             <View style={dynamicStyles.metricCard}>
               <View style={dynamicStyles.metricHeader}>
                 <View style={[dynamicStyles.metricIcon, { backgroundColor: '#10B981' }]}>
-                  <Ionicons name="checkbox" size={24} color="#FFFFFF" />
+                  <Ionicons name="checkbox" size={18} color="#FFFFFF" />
                 </View>
               </View>
               <Text style={dynamicStyles.metricLabel}>Задачи</Text>
@@ -369,7 +376,7 @@ const MetricsDesktopContent: React.FC = () => {
             <View style={dynamicStyles.metricCard}>
               <View style={dynamicStyles.metricHeader}>
                 <View style={[dynamicStyles.metricIcon, { backgroundColor: '#F59E0B' }]}>
-                  <Ionicons name="server" size={24} color="#FFFFFF" />
+                  <Ionicons name="server" size={18} color="#FFFFFF" />
                 </View>
               </View>
               <Text style={dynamicStyles.metricLabel}>Хранилище</Text>
@@ -398,7 +405,7 @@ const MetricsDesktopContent: React.FC = () => {
             <View style={dynamicStyles.metricCard}>
               <View style={dynamicStyles.metricHeader}>
                 <View style={[dynamicStyles.metricIcon, { backgroundColor: '#EC4899' }]}>
-                  <Ionicons name="calendar" size={24} color="#FFFFFF" />
+                  <Ionicons name="calendar" size={18} color="#FFFFFF" />
                 </View>
               </View>
               <Text style={dynamicStyles.metricLabel}>События календаря</Text>
@@ -414,7 +421,7 @@ const MetricsDesktopContent: React.FC = () => {
             <View style={dynamicStyles.metricCard}>
               <View style={dynamicStyles.metricHeader}>
                 <View style={[dynamicStyles.metricIcon, { backgroundColor: '#06B6D4' }]}>
-                  <Ionicons name="pie-chart" size={24} color="#FFFFFF" />
+                  <Ionicons name="pie-chart" size={18} color="#FFFFFF" />
                 </View>
               </View>
               <Text style={dynamicStyles.metricLabel}>Опросы</Text>
@@ -430,7 +437,7 @@ const MetricsDesktopContent: React.FC = () => {
             <View style={dynamicStyles.metricCard}>
               <View style={dynamicStyles.metricHeader}>
                 <View style={[dynamicStyles.metricIcon, { backgroundColor: '#6366F1' }]}>
-                  <Ionicons name="stats-chart" size={24} color="#FFFFFF" />
+                  <Ionicons name="stats-chart" size={18} color="#FFFFFF" />
                 </View>
               </View>
               <Text style={dynamicStyles.metricLabel}>Детальная статистика задач</Text>

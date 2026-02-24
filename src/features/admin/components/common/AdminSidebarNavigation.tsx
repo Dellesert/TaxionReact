@@ -68,11 +68,12 @@ export const AdminSidebarNavigation: React.FC<AdminSidebarNavigationProps> = ({
       paddingBottom: 12,
     },
     groupContainer: {
-      marginBottom: 20,
+      marginBottom: 16,
     },
     groupTitle: {
-      fontSize: 11,
-      fontWeight: '600',
+      fontSize: 12,
+      fontWeight: '700',
+      lineHeight: 16,
       color: theme.textTertiary,
       paddingHorizontal: 16,
       paddingVertical: 8,
@@ -85,6 +86,8 @@ export const AdminSidebarNavigation: React.FC<AdminSidebarNavigationProps> = ({
       paddingHorizontal: 16,
       marginHorizontal: 8,
       borderRadius: 8,
+      // @ts-ignore
+      cursor: 'pointer',
     },
     itemButtonActive: {
       backgroundColor: theme.primary,
@@ -100,6 +103,7 @@ export const AdminSidebarNavigation: React.FC<AdminSidebarNavigationProps> = ({
     itemText: {
       fontSize: 14,
       fontWeight: '500',
+      lineHeight: 20,
       color: theme.text,
       flex: 1,
     },
@@ -176,7 +180,7 @@ const styles = StyleSheet.create({
     width: 280,
     minWidth: 240,
     maxWidth: 320,
-    borderRadius: 16,
+    borderRadius: 12,
     margin: 16,
     marginRight: 0,
     overflow: 'hidden',

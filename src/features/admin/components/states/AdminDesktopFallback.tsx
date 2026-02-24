@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     width: 280,
     minWidth: 240,
     maxWidth: 320,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     margin: 16,
     marginRight: 0,
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     margin: 16,
     marginLeft: 16,

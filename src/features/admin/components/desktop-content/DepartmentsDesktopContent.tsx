@@ -192,27 +192,44 @@ const DepartmentsDesktopContent: React.FC = () => {
     },
     departmentCard: {
       backgroundColor: theme.backgroundSecondary,
-      borderRadius: 16,
-      padding: 20,
+      borderRadius: 12,
+      padding: 12,
       borderWidth: 1,
       borderColor: theme.border,
       height: '100%',
+      // @ts-ignore
+      cursor: 'pointer',
+      ...Platform.select({
+        web: {
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          transitionProperty: 'box-shadow, transform',
+          transitionDuration: '0.2s',
+        },
+        default: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          elevation: 3,
+        },
+      }),
     },
     departmentName: {
-      fontSize: 18,
-      fontWeight: '700',
+      fontSize: 16,
+      fontWeight: '600',
+      lineHeight: 22,
       color: theme.text,
       marginBottom: 6,
-      letterSpacing: -0.3,
     },
     departmentDescription: {
-      fontSize: 15,
+      fontSize: 13,
       color: theme.textSecondary,
       marginBottom: 8,
-      lineHeight: 22,
+      lineHeight: 18,
     },
     departmentMembers: {
       fontSize: 14,
+      lineHeight: 20,
       color: theme.textSecondary,
     },
     departmentList: {
@@ -224,7 +241,7 @@ const DepartmentsDesktopContent: React.FC = () => {
       width: '100%',
       maxWidth: isNarrow ? '100%' : cardMaxWidth,
       paddingHorizontal: isNarrow ? 0 : 8,
-      marginBottom: 16,
+      marginBottom: 8,
     },
   });
 
@@ -379,7 +396,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
+    lineHeight: 20,
     marginTop: 16,
   },
   departmentContent: {
@@ -388,7 +406,7 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     gap: 8,
-    paddingTop: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
   },
@@ -398,13 +416,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderRadius: 10,
+    minHeight: 40,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   modalOverlay: {
     position: 'absolute',
@@ -419,26 +441,34 @@ const styles = StyleSheet.create({
   modal: {
     width: '90%',
     maxWidth: 500,
-    borderRadius: 20,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
+    borderRadius: 12,
+    padding: 20,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+        elevation: 10,
+      },
+    }),
   },
   modalTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
-    marginBottom: 24,
-    letterSpacing: -0.4,
+    lineHeight: 28,
+    marginBottom: 16,
   },
   input: {
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 24,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -446,13 +476,18 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
     alignItems: 'center',
+    minHeight: 40,
+    justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   modalButtonText: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '700',
+    lineHeight: 18,
   },
   noAccessContainer: {
     flex: 1,
@@ -462,16 +497,17 @@ const styles = StyleSheet.create({
   },
   noAccessTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '700',
+    lineHeight: 28,
     color: '#EF4444',
     marginTop: 16,
   },
   noAccessText: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
     marginTop: 12,
-    lineHeight: 22,
+    lineHeight: 20,
   },
 });
 

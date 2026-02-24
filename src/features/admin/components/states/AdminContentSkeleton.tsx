@@ -67,10 +67,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   header: {
-    paddingHorizontal: 32,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingLeft: 20,
+    paddingRight: 12,
+    paddingVertical: 8,
+    minHeight: 56,
     borderBottomWidth: 1,
+    justifyContent: 'center',
   },
   headerTitle: {
     height: 22,
@@ -85,8 +87,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 32,
-    paddingVertical: 24,
+    padding: 14,
   },
   grid: {
     flexDirection: 'row',
@@ -96,22 +97,22 @@ const styles = StyleSheet.create({
   cardWrapper: {
     width: '50%',
     paddingHorizontal: 12,
-    marginBottom: 24,
+    marginBottom: 8,
   },
   card: {
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 10,
   },
   cardIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
   },
   cardTexts: {
     flex: 1,

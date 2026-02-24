@@ -144,22 +144,22 @@ const styles = StyleSheet.create({
   cardWrapper: {
     width: '50%',
     paddingHorizontal: 8,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   card: {
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
   },
   // User card
   userHeader: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   userInfo: {
     flex: 1,
@@ -216,14 +216,14 @@ const styles = StyleSheet.create({
   },
   // Footer / actions
   footer: {
-    paddingTop: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
   },
   roleBadge: {
     height: 28,
     width: 100,
-    borderRadius: 8,
+    borderRadius: 10,
     marginBottom: 12,
   },
   actionRow: {

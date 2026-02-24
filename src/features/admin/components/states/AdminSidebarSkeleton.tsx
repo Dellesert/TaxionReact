@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   group: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   groupTitle: {
     height: 10,

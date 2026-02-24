@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNavigation } from '@react-navigation/native';
@@ -12,7 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 const SIDEBAR_WIDTH = 320;
 
 const AnalyticsDesktopContent: React.FC = () => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const navigation = useNavigation<any>();
   const { width: windowWidth } = useWindowDimensions();
   const contentWidth = windowWidth - SIDEBAR_WIDTH;
@@ -77,53 +77,58 @@ const AnalyticsDesktopContent: React.FC = () => {
       width: isNarrow ? '100%' : '50%',
       maxWidth: isNarrow ? undefined : 600,
       paddingHorizontal: isNarrow ? 0 : 12,
-      marginBottom: isNarrow ? 16 : 24,
+      marginBottom: 8,
     },
     card: {
       backgroundColor: theme.backgroundSecondary,
-      borderRadius: 16,
-      padding: 24,
+      borderRadius: 12,
+      padding: 12,
       borderWidth: 1,
       borderColor: theme.border,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: isDark ? 0.3 : 0.08,
-      shadowRadius: 12,
-      elevation: 4,
       height: '100%',
+      // @ts-ignore
+      cursor: 'pointer',
+      ...Platform.select({
+        web: {
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          transitionProperty: 'box-shadow, transform',
+          transitionDuration: '0.2s',
+        },
+        default: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          elevation: 3,
+        },
+      }),
     },
     cardHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 16,
-      marginBottom: 20,
+      gap: 10,
     },
     iconContainer: {
-      width: 64,
-      height: 64,
-      borderRadius: 16,
+      width: 40,
+      height: 40,
+      borderRadius: 12,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
-      elevation: 3,
     },
     cardContent: {
       flex: 1,
     },
     cardTitle: {
-      fontSize: 20,
-      fontWeight: '700',
+      fontSize: 16,
+      fontWeight: '600',
+      lineHeight: 22,
       color: theme.text,
-      marginBottom: 6,
-      letterSpacing: -0.3,
+      marginBottom: 4,
     },
     cardSubtitle: {
-      fontSize: 14,
+      fontSize: 13,
       color: theme.textSecondary,
-      lineHeight: 20,
+      lineHeight: 18,
     },
   });
 
@@ -143,7 +148,7 @@ const AnalyticsDesktopContent: React.FC = () => {
               >
                 <View style={dynamicStyles.cardHeader}>
                   <View style={[dynamicStyles.iconContainer, { backgroundColor: section.color }]}>
-                    <Ionicons name={section.icon as any} size={32} color="#FFFFFF" />
+                    <Ionicons name={section.icon as any} size={18} color="#FFFFFF" />
                   </View>
                   <View style={dynamicStyles.cardContent}>
                     <Text style={dynamicStyles.cardTitle}>{section.title}</Text>

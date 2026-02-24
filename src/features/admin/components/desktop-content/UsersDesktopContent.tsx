@@ -304,11 +304,25 @@ const UsersDesktopContent: React.FC = () => {
     },
     userCard: {
       backgroundColor: theme.backgroundSecondary,
-      borderRadius: 16,
-      padding: 20,
+      borderRadius: 12,
+      padding: 12,
       borderWidth: 1,
       borderColor: theme.border,
       height: '100%',
+      ...Platform.select({
+        web: {
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          transitionProperty: 'box-shadow, transform',
+          transitionDuration: '0.2s',
+        },
+        default: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          elevation: 3,
+        },
+      }),
     },
     usersList: {
       flexDirection: isNarrow ? 'column' : 'row',
@@ -319,7 +333,7 @@ const UsersDesktopContent: React.FC = () => {
       width: '100%',
       maxWidth: isNarrow ? '100%' : cardMaxWidth,
       paddingHorizontal: isNarrow ? 0 : 8,
-      marginBottom: 16,
+      marginBottom: 8,
     },
   });
 
@@ -350,7 +364,7 @@ const UsersDesktopContent: React.FC = () => {
                   >
                     {/* User Header */}
                     <View style={styles.userHeader}>
-                      <Avatar imageUrl={user.avatar} name={user.name} size={48} />
+                      <Avatar imageUrl={user.avatar} name={user.name} size={32} />
                       <View style={styles.userInfo}>
                         <View style={styles.userNameRow}>
                           <Text style={[styles.userName, { color: theme.text }]}>{user.name}</Text>
@@ -511,12 +525,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
+    lineHeight: 20,
     marginTop: 16,
   },
   userHeader: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   userInfo: {
     flex: 1,
@@ -530,8 +545,8 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.2,
+    fontWeight: '600',
+    lineHeight: 22,
   },
   inactiveBadge: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -546,30 +561,34 @@ const styles = StyleSheet.create({
   },
   userEmail: {
     fontSize: 14,
+    lineHeight: 20,
     marginBottom: 2,
   },
   userPosition: {
     fontSize: 13,
+    lineHeight: 18,
     marginBottom: 2,
   },
   userDepartment: {
     fontSize: 13,
+    lineHeight: 18,
   },
   userFooter: {
-    paddingTop: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
   },
   roleBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     marginBottom: 12,
   },
   roleBadgeText: {
     fontSize: 13,
     fontWeight: '700',
+    lineHeight: 18,
   },
   actionButtons: {
     flexDirection: 'row',
@@ -581,13 +600,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderRadius: 10,
+    minHeight: 40,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   noAccessContainer: {
     flex: 1,
@@ -597,16 +620,17 @@ const styles = StyleSheet.create({
   },
   noAccessTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '700',
+    lineHeight: 28,
     color: '#EF4444',
     marginTop: 16,
   },
   noAccessText: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
     marginTop: 12,
-    lineHeight: 22,
+    lineHeight: 20,
   },
 });
 
@@ -654,12 +678,15 @@ const filterDropdownStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 14,
+    paddingVertical: 10,
     borderRadius: 8,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   menuItemText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
   },
 });
 

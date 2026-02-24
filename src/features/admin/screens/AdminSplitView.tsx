@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     margin: 16,
     marginLeft: 16,

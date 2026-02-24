@@ -15,12 +15,12 @@ export const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({ role, size = 'medi
   const getSizeStyles = () => {
     switch (size) {
       case 'small':
-        return { paddingHorizontal: 6, paddingVertical: 2, fontSize: 10 };
+        return { paddingHorizontal: 6, paddingVertical: 2, fontSize: 11 };
       case 'large':
-        return { paddingHorizontal: 12, paddingVertical: 6, fontSize: 14 };
+        return { paddingHorizontal: 10, paddingVertical: 6, fontSize: 13 };
       case 'medium':
       default:
-        return { paddingHorizontal: 8, paddingVertical: 4, fontSize: 12 };
+        return { paddingHorizontal: 10, paddingVertical: 6, fontSize: 13 };
     }
   };
 
@@ -44,11 +44,12 @@ export const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({ role, size = 'medi
 
 const styles = StyleSheet.create({
   badge: {
-    borderRadius: 12,
+    borderRadius: 10,
     alignSelf: 'flex-start',
   },
   text: {
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontWeight: '700',
+    lineHeight: 18,
   },
 });
