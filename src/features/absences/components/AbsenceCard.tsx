@@ -76,33 +76,38 @@ export const AbsenceCard: React.FC<AbsenceCardProps> = ({
 
       {/* Main content */}
       <View style={styles.content}>
-        {/* Type badge */}
-        <View style={styles.typeInfo}>
-          <AbsenceTypeIcon type={absence.type} size="small" />
-          <Text style={[styles.typeName, { color: typeColor }]}>
-            {ABSENCE_TYPE_LABELS[absence.type]}
-          </Text>
-        </View>
+        {/* Header: Avatar + Name (left) — Date (right) */}
+        <View style={styles.headerRow}>
+          <View style={styles.userInfo}>
+            <Avatar
+              name={getUserName()}
+              imageUrl={getAvatarUrl()}
+              size={36}
+              userId={absence.user_id}
+            />
+            <View style={styles.nameBlock}>
+              <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>
+                {getUserName()}
+              </Text>
+              {/* Type badge inline under name */}
+              <View style={styles.typeInfo}>
+                <AbsenceTypeIcon type={absence.type} size="small" />
+                <Text style={[styles.typeName, { color: typeColor }]}>
+                  {ABSENCE_TYPE_LABELS[absence.type]}
+                </Text>
+              </View>
+            </View>
+          </View>
 
-        {/* User row: Avatar + Name */}
-        <View style={styles.userRow}>
-          <Avatar
-            name={getUserName()}
-            imageUrl={getAvatarUrl()}
-            size={32}
-            userId={absence.user_id}
-          />
-          <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>
-            {getUserName()}
-          </Text>
-        </View>
-
-        {/* Dates */}
-        <View style={styles.dateRow}>
-          <Ionicons name="calendar-outline" size={13} color={theme.textTertiary} />
-          <Text style={[styles.dateText, { color: theme.textSecondary }]}>
-            {formatDate(absence.start_date)} — {formatDate(absence.end_date)}
-          </Text>
+          <View style={styles.dateBlock}>
+            <Text style={[styles.dateText, { color: theme.textSecondary }]}>
+              {formatDate(absence.start_date)}
+            </Text>
+            <Text style={[styles.dateSeparator, { color: theme.textTertiary }]}>—</Text>
+            <Text style={[styles.dateText, { color: theme.textSecondary }]}>
+              {formatDate(absence.end_date)}
+            </Text>
+          </View>
         </View>
 
         {/* Reason (if exists) */}
@@ -115,38 +120,57 @@ export const AbsenceCard: React.FC<AbsenceCardProps> = ({
           </Text>
         )}
 
-        {/* Substitutions row */}
+        {/* Substitutions */}
         {(hasSubstitutions || substitutionCount > 0) && (
-          <View style={[styles.substitutionsRow, { backgroundColor: theme.background }]}>
-            <View style={[styles.substitutionIcon, { backgroundColor: `${theme.primary}15` }]}>
-              <Ionicons name="people" size={12} color={theme.primary} />
-            </View>
-            {hasSubstitutions ? (
-              absence.substitutions!.length === 1 ? (
-                <Text style={[styles.substitutesText, { color: theme.textSecondary }]} numberOfLines={1}>
-                  Замещает: <Text style={{ color: theme.text, fontWeight: '500' }}>{getSubstituteName(absence.substitutions![0])}</Text>
-                </Text>
-              ) : (
-                <View style={styles.multipleSubstitutes}>
-                  {absence.substitutions!.slice(0, 2).map((sub, index) => (
-                    <Text key={sub.id} style={[styles.substituteWithDate, { color: theme.textSecondary }]} numberOfLines={1}>
-                      <Text style={{ color: theme.text, fontWeight: '500' }}>{getSubstituteName(sub)}</Text>
-                      {' '}
-                      <Text style={{ fontSize: 11 }}>({formatDate(sub.start_date)}–{formatDate(sub.end_date)})</Text>
-                      {index < Math.min(absence.substitutions!.length, 2) - 1 && ', '}
-                    </Text>
-                  ))}
-                  {absence.substitutions!.length > 2 && (
-                    <Text style={[styles.moreCount, { color: theme.textTertiary }]}>
-                      {' '}+{absence.substitutions!.length - 2}
-                    </Text>
-                  )}
-                </View>
-              )
-            ) : (
-              <Text style={[styles.substitutesText, { color: theme.textSecondary }]}>
-                {substitutionCount} замещени{substitutionCount === 1 ? 'е' : substitutionCount >= 2 && substitutionCount <= 4 ? 'я' : 'й'}
+          <View style={[styles.substitutionSection, { borderTopColor: `${theme.textTertiary}20` }]}>
+            <View style={styles.substitutionHeader}>
+              <Ionicons name="swap-horizontal" size={13} color={theme.textTertiary} />
+              <Text style={[styles.substitutionLabel, { color: theme.textTertiary }]}>
+                Замещение
               </Text>
+            </View>
+
+            {hasSubstitutions ? (
+              <View style={styles.substituteChips}>
+                {absence.substitutions!.slice(0, 3).map((sub) => (
+                  <View
+                    key={sub.id}
+                    style={[styles.substituteChip, { backgroundColor: `${theme.primary}10` }]}
+                  >
+                    <Avatar
+                      name={getSubstituteName(sub)}
+                      imageUrl={sub.substitute?.avatar || undefined}
+                      size={20}
+                      userId={sub.substitute_id}
+                    />
+                    <Text
+                      style={[styles.substituteChipName, { color: theme.text }]}
+                      numberOfLines={1}
+                    >
+                      {getSubstituteName(sub)}
+                    </Text>
+                    <Text style={[styles.substituteChipDate, { color: theme.textTertiary }]}>
+                      {formatDate(sub.start_date)}–{formatDate(sub.end_date)}
+                    </Text>
+                  </View>
+                ))}
+                {absence.substitutions!.length > 3 && (
+                  <View style={[styles.moreChip, { backgroundColor: `${theme.textTertiary}15` }]}>
+                    <Text style={[styles.moreChipText, { color: theme.textSecondary }]}>
+                      +{absence.substitutions!.length - 3}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={styles.substituteChips}>
+                <View style={[styles.substituteChip, { backgroundColor: `${theme.primary}10` }]}>
+                  <Ionicons name="people-outline" size={14} color={theme.primary} />
+                  <Text style={[styles.substituteChipName, { color: theme.textSecondary }]}>
+                    {substitutionCount} замещени{substitutionCount === 1 ? 'е' : substitutionCount >= 2 && substitutionCount <= 4 ? 'я' : 'й'}
+                  </Text>
+                </View>
+              </View>
             )}
           </View>
         )}
@@ -174,74 +198,116 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 12,
-    gap: 6,
+    gap: 8,
   },
-  userRow: {
+
+  // Header row
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
+  },
+  nameBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  userName: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   typeInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   typeName: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
-  userName: {
-    fontSize: 14,
-    fontWeight: '500',
-    flex: 1,
-  },
-  dateRow: {
+
+  // Date block
+  dateBlock: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    marginTop: 2,
+    gap: 4,
+    flexShrink: 0,
   },
   dateText: {
     fontSize: 13,
+    fontWeight: '500',
   },
+  dateSeparator: {
+    fontSize: 12,
+  },
+
+  // Reason
   reason: {
     fontSize: 12,
     lineHeight: 16,
-    marginTop: 2,
     fontStyle: 'italic',
+    paddingLeft: 46,
   },
-  substitutionsRow: {
+
+  // Substitution section
+  substitutionSection: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 8,
+    gap: 6,
+  },
+  substitutionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    gap: 4,
   },
-  substitutionIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
+  substitutionLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
-  substitutesText: {
-    fontSize: 12,
-    flex: 1,
-  },
-  multipleSubstitutes: {
-    flex: 1,
+
+  // Substitute chips
+  substituteChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: 6,
+  },
+  substituteChip: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingLeft: 4,
+    borderRadius: 16,
   },
-  substituteWithDate: {
+  substituteChipName: {
     fontSize: 12,
+    fontWeight: '500',
+    maxWidth: 120,
   },
-  moreCount: {
-    fontSize: 11,
+  substituteChipDate: {
+    fontSize: 10,
+  },
+  moreChip: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    justifyContent: 'center',
+  },
+  moreChipText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });
