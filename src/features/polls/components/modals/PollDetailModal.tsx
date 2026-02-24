@@ -239,8 +239,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     textAlign: 'center',
   },
   headerRight: {
@@ -286,7 +287,8 @@ const styles = StyleSheet.create({
   },
   desktopTitleBarTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
+    lineHeight: 22,
   },
   desktopTitleBarControls: {
     flexDirection: 'row',

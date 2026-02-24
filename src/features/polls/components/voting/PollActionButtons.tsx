@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Poll } from '../../types/poll.types';
@@ -48,7 +48,7 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
       {poll.status === 'draft' && (
         <>
           <View style={[styles.draftWarning, { borderColor: theme.warning }]}>
-            <Ionicons name="information-circle" size={24} color={theme.warning} />
+            <Ionicons name="information-circle" size={18} color={theme.warning} />
             <Text style={styles.draftWarningText}>
               Это черновик. Опрос еще не опубликован и недоступен для голосования другим
               пользователям.
@@ -65,7 +65,7 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Ionicons name="rocket" size={22} color="#FFFFFF" />
+                  <Ionicons name="rocket" size={18} color="#FFFFFF" />
                   <Text style={styles.publishButtonText}>Опубликовать опрос</Text>
                 </>
               )}
@@ -117,7 +117,7 @@ export const PollActionButtons: React.FC<PollActionButtonsProps> = ({
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <>
-                    <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
+                    <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
                     <Text style={styles.voteButtonText}>
                       {isRevoting ? 'Изменить голос' : 'Проголосовать'}
                     </Text>
@@ -157,12 +157,12 @@ const styles = StyleSheet.create({
   draftWarning: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: spacing.lg,
-    margin: spacing.lg,
+    padding: spacing.md,
+    margin: spacing.md,
     backgroundColor: '#FEF3C7',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    gap: spacing.md,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: spacing.sm,
   },
   draftWarningText: {
     flex: 1,
@@ -174,34 +174,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.lg,
-    borderRadius: 12,
-    gap: spacing.sm,
-    marginTop: spacing.lg,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 6,
+    marginTop: spacing.md,
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        cursor: 'pointer',
+        transitionProperty: 'opacity',
+        transitionDuration: '0.15s',
+      },
+    }),
     ...shadows.sm,
   },
   publishButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 24,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   commentContainer: {
-    padding: spacing.lg,
+    padding: spacing.md,
     paddingTop: 0,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 24,
-    marginBottom: spacing.md,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+    marginBottom: spacing.sm,
   },
   textInput: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 10,
     padding: spacing.md,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     minHeight: 100,
     textAlignVertical: 'top',
   },
@@ -209,30 +219,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 10,
     marginBottom: spacing.sm,
     gap: 6,
     marginTop: spacing.md,
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        cursor: 'pointer',
+        transitionProperty: 'opacity',
+        transitionDuration: '0.15s',
+      },
+    }),
   },
   voteButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   cancelRevoteButton: {
-    marginHorizontal: spacing.lg,
+    marginHorizontal: spacing.md,
     marginTop: -spacing.xs,
-    marginBottom: spacing.lg,
-    padding: spacing.md,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    marginBottom: spacing.md,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 2,
     alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        cursor: 'pointer',
+        transitionProperty: 'opacity',
+        transitionDuration: '0.15s',
+      },
+    }),
   },
   cancelRevoteButtonText: {
-    fontSize: 15,
-    fontWeight: '500',
-    lineHeight: 22,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
   },
 });

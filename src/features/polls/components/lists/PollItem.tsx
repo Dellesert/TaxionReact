@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Poll } from '../../types/poll.types';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -17,6 +17,7 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress, isDesktop = f
   const { theme } = useTheme();
   const { user } = useAuthStore();
   const { prefetchPollDelayed, cancelPrefetch } = usePollPrefetch();
+  const [isHovered, setIsHovered] = useState(false);
 
   // Предзагрузка при касании (до нажатия)
   const handlePressIn = useCallback(() => {
@@ -153,10 +154,14 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress, isDesktop = f
         styles.container,
         { backgroundColor: theme.card, borderColor: theme.border },
         isDesktop && styles.gridItem,
+        isHovered && Platform.OS === 'web' && styles.containerHovered,
       ]}
       onPress={() => onPress(poll)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      // @ts-ignore - web only props
+      onMouseEnter={Platform.OS === 'web' ? () => setIsHovered(true) : undefined}
+      onMouseLeave={Platform.OS === 'web' ? () => setIsHovered(false) : undefined}
       activeOpacity={0.7}
     >
       {/* Header with Title */}
@@ -169,7 +174,7 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress, isDesktop = f
 
             {poll.user_has_voted && (
               <View style={styles.votedIndicator}>
-                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                <Ionicons name="checkmark-circle" size={14} color="#10B981" />
               </View>
             )}
           </View>
@@ -265,48 +270,61 @@ export const PollItem: React.FC<PollItemProps> = ({ poll, onPress, isDesktop = f
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 8,
     marginHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    position: 'relative',
     borderWidth: 1,
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        transitionProperty: 'box-shadow, transform',
+        transitionDuration: '0.2s',
+        cursor: 'pointer',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+      },
+    }),
+  },
+  containerHovered: {
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      transform: 'translateY(-2px)',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    } : {}),
   },
   gridItem: {
     flex: 1,
     marginHorizontal: 8,
   },
   content: {
-    paddingLeft: 16,
-    paddingRight: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
+    padding: 12,
   },
   header: {
-    marginBottom: 14,
+    marginBottom: 8,
   },
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: 8,
   },
   title: {
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
     lineHeight: 22,
-    letterSpacing: 0.2,
   },
   votedIndicator: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#10B981' + '15',
     alignItems: 'center',
     justifyContent: 'center',
@@ -315,7 +333,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 8,
     flexWrap: 'wrap',
   },
   visibilityBadge: {
@@ -323,12 +341,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 6,
   },
   visibilityText: {
     fontSize: 12,
     fontWeight: '600',
+    lineHeight: 16,
   },
   categoryTag: {
     flexDirection: 'row',
@@ -336,39 +355,41 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 6,
     borderWidth: 1,
   },
   categoryTagText: {
     fontSize: 12,
     fontWeight: '600',
+    lineHeight: 16,
   },
   featuresPills: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   featurePill: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 6,
   },
   featurePillText: {
     fontSize: 12,
     fontWeight: '600',
+    lineHeight: 16,
   },
   metadataRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
   },
   metadataItems: {
@@ -384,9 +405,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   metaText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
-    lineHeight: 18,
+    lineHeight: 16,
   },
   deadlineChip: {
     flexDirection: 'row',
@@ -395,11 +416,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     backgroundColor: '#EF4444' + '12',
-    borderRadius: 8,
+    borderRadius: 10,
   },
   deadlineText: {
     fontSize: 11,
     fontWeight: '700',
+    lineHeight: 14,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
@@ -411,6 +433,7 @@ const styles = StyleSheet.create({
   creatorName: {
     fontSize: 13,
     fontWeight: '500',
+    lineHeight: 18,
   },
 });
 

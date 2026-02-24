@@ -100,24 +100,24 @@ export const PollInfo: React.FC<PollInfoProps> = ({ poll, onUserPress }) => {
 
 const styles = StyleSheet.create({
   pollTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
-    lineHeight: 32,
-    marginBottom: spacing.lg,
+    lineHeight: 28,
+    marginBottom: spacing.md,
   },
   badgesRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   badgeText: {
     fontSize: 12,
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   creatorInfo: {
     flexDirection: 'row',
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   deadlineInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs + 2,
+    gap: 6,
   },
   deadlineText: {
     fontSize: 14,
@@ -155,31 +155,31 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   descriptionSection: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   descriptionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 24,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
     marginBottom: spacing.sm,
   },
   descriptionText: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
   },
   statsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.lg,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs + 2,
+    gap: 6,
   },
   statText: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

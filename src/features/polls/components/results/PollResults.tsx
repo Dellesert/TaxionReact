@@ -66,7 +66,7 @@ const OverlappingAvatars: React.FC<{
           </View>
         )}
       </View>
-      <Ionicons name="chevron-forward" size={20} color={theme.iconSecondary} />
+      <Ionicons name="chevron-forward" size={18} color={theme.iconSecondary} />
     </TouchableOpacity>
   );
 };
@@ -133,23 +133,23 @@ export const PollResults: React.FC<PollResultsProps> = ({
 
 const styles = StyleSheet.create({
   resultsContainer: {
-    padding: spacing.lg,
+    padding: spacing.md,
     marginTop: spacing.xs,
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.lg,
     borderRadius: 12,
     ...shadows.sm,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 24,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
     marginBottom: spacing.md,
   },
   resultsScrollView: {
     maxHeight: 300,
   },
   resultItem: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   resultHeader: {
     flexDirection: 'row',
@@ -158,30 +158,30 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   resultText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
-    lineHeight: 22,
+    lineHeight: 20,
     flex: 1,
     marginRight: spacing.md,
   },
   resultBar: {
-    height: 12,
+    height: 10,
     borderRadius: 6,
     overflow: 'hidden',
-    marginBottom: spacing.xs + 2,
+    marginBottom: spacing.xs,
   },
   resultBarFill: {
     height: '100%',
     borderRadius: 6,
   },
   resultPercent: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   resultCount: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
   },
   votersPreviewSection: {
     marginTop: spacing.md,

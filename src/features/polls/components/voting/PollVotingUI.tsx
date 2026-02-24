@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { Poll } from '../../types/poll.types';
@@ -38,7 +38,7 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
   ) {
     return (
       <View style={styles.closedContainer}>
-        <Ionicons name="lock-closed" size={56} color={theme.textDisabled} />
+        <Ionicons name="lock-closed" size={36} color={theme.textDisabled} />
         <Text style={[styles.closedText, { color: theme.textSecondary }]}>
           Опрос завершен
         </Text>
@@ -51,7 +51,7 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
   if (poll.user_has_voted && !isRevoting) {
     return (
       <View style={styles.votedContainer}>
-        <Ionicons name="checkmark-circle" size={56} color={theme.success} />
+        <Ionicons name="checkmark-circle" size={36} color={theme.success} />
         <Text style={[styles.votedText, { color: theme.success }]}>
           Вы уже проголосовали
         </Text>
@@ -99,7 +99,7 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
                       ? 'checkbox'
                       : 'square-outline'
                   }
-                  size={24}
+                  size={18}
                   color={
                     selectedOptions.includes(option.id) ? theme.primary : theme.textTertiary
                   }
@@ -161,7 +161,7 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
               >
                 <Ionicons
                   name={ratingValue && ratingValue >= star ? 'star' : 'star-outline'}
-                  size={44}
+                  size={36}
                   color={
                     ratingValue && ratingValue >= star ? theme.warning : theme.textDisabled
                   }
@@ -210,19 +210,27 @@ export const PollVotingUI: React.FC<PollVotingUIProps> = ({
 
 const styles = StyleSheet.create({
   optionsContainer: {
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 24,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
     marginBottom: spacing.md,
   },
   optionButton: {
-    padding: spacing.lg,
-    borderRadius: 12,
-    marginBottom: spacing.md,
-    borderWidth: 1.5,
+    padding: spacing.md,
+    borderRadius: 10,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        cursor: 'pointer',
+        transitionProperty: 'background-color, border-color',
+        transitionDuration: '0.2s',
+      },
+    }),
   },
   optionSelected: {
     borderWidth: 2,
@@ -230,12 +238,12 @@ const styles = StyleSheet.create({
   optionContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   optionText: {
     flex: 1,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
   },
   optionTextSelected: {
     fontWeight: '600',
@@ -243,56 +251,56 @@ const styles = StyleSheet.create({
   optionDescription: {
     fontSize: 13,
     lineHeight: 18,
-    marginTop: spacing.sm,
-    marginLeft: 36,
+    marginTop: spacing.xs,
+    marginLeft: 26,
   },
   textInputContainer: {
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   textInput: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 10,
     padding: spacing.md,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     minHeight: 120,
     textAlignVertical: 'top',
   },
   ratingContainer: {
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   ratingStars: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: spacing.md,
-    marginVertical: spacing.xl,
+    marginVertical: spacing.lg,
   },
   ratingOptionsContainer: {
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
   },
   closedContainer: {
-    padding: spacing.xxxl,
+    padding: spacing.xxl,
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   closedText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
-    lineHeight: 26,
+    lineHeight: 20,
   },
   votedContainer: {
-    padding: spacing.xxxl,
+    padding: spacing.xxl,
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   votedText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
-    lineHeight: 26,
+    lineHeight: 20,
   },
   errorText: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 20,
     marginTop: spacing.md,
     textAlign: 'center',
   },

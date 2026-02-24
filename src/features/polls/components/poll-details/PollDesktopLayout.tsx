@@ -285,7 +285,7 @@ export const PollDesktopLayout: React.FC<PollDesktopLayoutProps> = ({
                         style={[styles.revoteButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.primary }]}
                         onPress={onRevote}
                       >
-                        <Ionicons name="refresh" size={20} color={theme.primary} />
+                        <Ionicons name="refresh" size={18} color={theme.primary} />
                         <Text style={[styles.revoteButtonText, { color: theme.primary }]}>
                           Переголосовать
                         </Text>
@@ -320,7 +320,7 @@ export const PollDesktopLayout: React.FC<PollDesktopLayoutProps> = ({
                           onPress={() => onUserPress(voter.user_id)}
                           activeOpacity={0.7}
                         >
-                          <Avatar name={voter.user_name} imageUrl={voter.avatar} size={40} />
+                          <Avatar name={voter.user_name} imageUrl={voter.avatar} size={32} />
                           <View style={styles.voterInfo}>
                             <Text
                               style={[styles.voterName, { color: theme.text }]}
@@ -330,7 +330,7 @@ export const PollDesktopLayout: React.FC<PollDesktopLayoutProps> = ({
                             </Text>
                             {voter.options && voter.options.length > 0 && (
                               <View style={styles.voterOptions}>
-                                {voter.options.map((option, index) => (
+                                {voter.options.map((option: string, index: number) => (
                                   <View
                                     key={index}
                                     style={[styles.optionChip, { backgroundColor: theme.primary + '20', borderColor: theme.primary }]}
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     padding: 16,
-    gap: 16,
+    gap: 24,
   },
 
   // Left column
@@ -399,17 +399,17 @@ const styles = StyleSheet.create({
   },
   leftCard: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
     ...Platform.select({
       web: {
+        // @ts-ignore
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
         transitionProperty: 'box-shadow, transform',
         transitionDuration: '0.2s',
-        transitionTimingFunction: 'ease-out',
       },
       default: {
         shadowColor: '#000',
@@ -424,21 +424,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingLeft: 20,
+    paddingRight: 12,
+    paddingVertical: 8,
+    minHeight: 56,
     borderBottomWidth: 1,
   },
   leftCardTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.3,
+    fontWeight: '600',
+    lineHeight: 22,
   },
   leftCardScroll: {
     flex: 1,
   },
   leftCardContent: {
-    padding: 20,
-    paddingBottom: 24,
+    padding: 14,
   },
 
   // Right column
@@ -446,14 +447,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingLeft: 20,
+    paddingRight: 12,
+    paddingVertical: 8,
+    minHeight: 56,
     borderBottomWidth: 1,
   },
   rightCardTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.3,
+    fontWeight: '600',
+    lineHeight: 22,
   },
   rightColumn: {
     flex: 3,
@@ -461,17 +464,17 @@ const styles = StyleSheet.create({
   },
   rightCard: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
     ...Platform.select({
       web: {
+        // @ts-ignore
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
         transitionProperty: 'box-shadow, transform',
         transitionDuration: '0.2s',
-        transitionTimingFunction: 'ease-out',
       },
       default: {
         shadowColor: '#000',
@@ -486,14 +489,13 @@ const styles = StyleSheet.create({
   cardHovered: {
     ...Platform.select({
       web: {
-        boxShadow: '0 8px 20px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.06)',
+        // @ts-ignore
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
         transform: 'translateY(-2px)',
       },
       default: {
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
-        elevation: 6,
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
       },
     }),
   },
@@ -506,14 +508,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingTop: 16,
+    paddingTop: 12,
     marginBottom: 12,
     borderTopWidth: 1,
   },
   votingSectionTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    letterSpacing: -0.2,
+    lineHeight: 20,
   },
 
   // Tab bar
@@ -528,12 +530,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 12,
-    borderBottomWidth: 3,
+    borderBottomWidth: 2,
     borderBottomColor: 'transparent',
     ...Platform.select({
       web: {
+        // @ts-ignore
         cursor: 'pointer',
         transitionProperty: 'border-color, background-color',
         transitionDuration: '0.15s',
@@ -550,7 +553,7 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 14,
     fontWeight: '600',
-    letterSpacing: -0.2,
+    lineHeight: 20,
   },
   tabBadge: {
     minWidth: 22,
@@ -563,6 +566,7 @@ const styles = StyleSheet.create({
   tabBadgeText: {
     fontSize: 12,
     fontWeight: '700',
+    lineHeight: 16,
   },
 
   // Tab content
@@ -570,12 +574,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabContentInner: {
-    padding: 20,
+    padding: 14,
   },
 
   // Results
   resultItem: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   resultHeader: {
     flexDirection: 'row',
@@ -584,15 +588,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   resultText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
     flex: 1,
     marginRight: 12,
   },
   resultPercent: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '700',
-    letterSpacing: -0.3,
+    lineHeight: 20,
   },
   resultBar: {
     height: 10,
@@ -601,6 +606,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     ...Platform.select({
       web: {
+        // @ts-ignore
         boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.1)',
       },
     }),
@@ -612,39 +618,45 @@ const styles = StyleSheet.create({
   resultCount: {
     fontSize: 13,
     fontWeight: '500',
+    lineHeight: 18,
   },
   totalVotes: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 2,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
   },
   totalVotesText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
   revoteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     borderWidth: 2,
-    gap: 8,
-    marginTop: 20,
+    gap: 6,
+    marginTop: 12,
     ...Platform.select({
       web: {
+        // @ts-ignore
         cursor: 'pointer',
-        transitionProperty: 'background-color, border-color',
+        transitionProperty: 'background-color, border-color, opacity',
         transitionDuration: '0.15s',
       },
     }),
   },
   revoteButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
   },
 
   // Voters
@@ -654,7 +666,7 @@ const styles = StyleSheet.create({
   voterItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: 10,
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
@@ -663,6 +675,7 @@ const styles = StyleSheet.create({
       web: {
         transitionProperty: 'background-color',
         transitionDuration: '0.15s',
+        // @ts-ignore
         cursor: 'pointer',
       },
     }),
@@ -672,8 +685,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   voterName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
   voterOptions: {
     flexDirection: 'row',
@@ -684,24 +698,13 @@ const styles = StyleSheet.create({
   optionChip: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 1,
-      },
-    }),
   },
   optionChipText: {
     fontSize: 12,
     fontWeight: '600',
+    lineHeight: 16,
   },
   voterComment: {
     fontSize: 13,
@@ -713,22 +716,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: 16,
-    padding: 14,
-    borderRadius: 12,
+    gap: 6,
+    marginTop: 12,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     borderWidth: 2,
     ...Platform.select({
       web: {
+        // @ts-ignore
         cursor: 'pointer',
-        transitionProperty: 'transform, box-shadow',
+        transitionProperty: 'transform, box-shadow, opacity',
         transitionDuration: '0.15s',
       },
     }),
   },
   viewAllText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
   },
 
   // Empty state
@@ -742,6 +749,7 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
     textAlign: 'center',
     marginTop: 12,
   },

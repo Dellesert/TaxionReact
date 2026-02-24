@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Poll } from '../../types/poll.types';
@@ -166,18 +166,6 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
     return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  const formatDateTime = (dateString?: string) => {
-    if (!dateString) return '—';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   // Error state
   if (error) {
     return <PollListErrorState error={error} onRetry={onRetry} />;
@@ -324,7 +312,7 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
                     <Avatar
                       name={getCreatorName(poll)}
                       imageUrl={poll.creator?.avatar}
-                      size={22}
+                      size={24}
                     />
                     <Text style={[styles.cellText, { color: theme.text }]} numberOfLines={1}>
                       {getCreatorName(poll)}
@@ -381,6 +369,7 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 12,
     fontWeight: '700',
+    lineHeight: 16,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     opacity: 0.7,
@@ -419,8 +408,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
     minHeight: 40,
-    ...(Platform.OS === 'web' && {
-      cursor: 'pointer',
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        cursor: 'pointer',
+        transitionProperty: 'background-color',
+        transitionDuration: '0.15s',
+      },
     }),
   },
   cell: {
@@ -433,13 +427,14 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 4,
+    borderRadius: 10,
     alignSelf: 'flex-start',
   },
   statusText: {
     color: '#fff',
     fontSize: 11,
     fontWeight: '600',
+    lineHeight: 14,
   },
   typeContainer: {
     flexDirection: 'row',

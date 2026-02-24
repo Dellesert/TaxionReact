@@ -46,7 +46,7 @@ export const PollDesktopHeader: React.FC<PollDesktopHeaderProps> = ({
             onPress={onBack}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color={theme.text} />
+            <Ionicons name="arrow-back" size={18} color={theme.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>
             Опрос
@@ -66,7 +66,7 @@ export const PollDesktopHeader: React.FC<PollDesktopHeaderProps> = ({
                 <ActivityIndicator size="small" color={theme.primary} />
               ) : (
                 <>
-                  <Ionicons name="checkmark-circle-outline" size={20} color={theme.primary} />
+                  <Ionicons name="checkmark-circle-outline" size={18} color={theme.primary} />
                   <Text style={[styles.actionButtonText, { color: theme.primary }]}>
                     Опубликовать
                   </Text>
@@ -81,7 +81,7 @@ export const PollDesktopHeader: React.FC<PollDesktopHeaderProps> = ({
               style={[styles.actionButton, { borderColor: theme.border }]}
               onPress={onClose}
             >
-              <Ionicons name="lock-closed-outline" size={20} color="#F59E0B" />
+              <Ionicons name="lock-closed-outline" size={18} color="#F59E0B" />
               <Text style={[styles.actionButtonText, { color: '#F59E0B' }]}>
                 Завершить
               </Text>
@@ -94,7 +94,7 @@ export const PollDesktopHeader: React.FC<PollDesktopHeaderProps> = ({
               style={[styles.actionButton, { borderColor: theme.border }]}
               onPress={onEdit}
             >
-              <Ionicons name="create-outline" size={20} color={theme.text} />
+              <Ionicons name="create-outline" size={18} color={theme.text} />
               <Text style={[styles.actionButtonText, { color: theme.text }]}>
                 Редактировать
               </Text>
@@ -112,7 +112,7 @@ export const PollDesktopHeader: React.FC<PollDesktopHeaderProps> = ({
                 <ActivityIndicator size="small" color="#EF4444" />
               ) : (
                 <>
-                  <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
                   <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>
                     Удалить
                   </Text>
@@ -128,11 +128,14 @@ export const PollDesktopHeader: React.FC<PollDesktopHeaderProps> = ({
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    minHeight: 56,
+    paddingLeft: 20,
+    paddingRight: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     ...Platform.select({
       web: {
+        // @ts-ignore
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
       },
       default: {
@@ -148,12 +151,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 24,
+    gap: 16,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
     flex: 1,
     minWidth: 0,
   },
@@ -165,6 +168,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     ...Platform.select({
       web: {
+        // @ts-ignore
         cursor: 'pointer',
         transitionProperty: 'background-color',
         transitionDuration: '0.15s',
@@ -172,31 +176,31 @@ const styles = StyleSheet.create({
     }),
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: -0.4,
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
     flex: 1,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
     flexShrink: 0,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 40,
+    minHeight: 40,
     paddingHorizontal: 16,
     borderRadius: 10,
     borderWidth: 2,
-    gap: 8,
+    gap: 6,
     ...Platform.select({
       web: {
+        // @ts-ignore
         cursor: 'pointer',
-        transitionProperty: 'background-color, border-color, transform',
+        transitionProperty: 'background-color, border-color, opacity',
         transitionDuration: '0.15s',
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.06)',
       },
       default: {
         shadowColor: '#000',
@@ -209,17 +213,10 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     borderColor: '#FEE2E2',
-    ...Platform.select({
-      web: {
-        '&:hover': {
-          backgroundColor: '#FEE2E2',
-        },
-      },
-    }),
   },
   actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: -0.2,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
   },
 });
