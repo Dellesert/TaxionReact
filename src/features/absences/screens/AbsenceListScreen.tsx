@@ -11,7 +11,6 @@ import {
   ScrollView,
   ActivityIndicator,
   FlatList,
-  Animated,
 } from 'react-native';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -84,17 +83,9 @@ const FILTER_OPTIONS: { key: AbsenceType | 'all'; label: string }[] = [
   ...ABSENCE_TYPES.map((type) => ({ key: type, label: ABSENCE_TYPE_LABELS[type] })),
 ];
 
-// Плавное появление контента при переходе от скелетона
-const FadeIn: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => {
-  const opacity = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(opacity, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [opacity]);
-  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
+// Simple content pane (no FadeIn animation — instant display for cached data)
+const ContentPane: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => {
+  return <View style={[{ flex: 1 }, style]}>{children}</View>;
 };
 
 export const AbsenceListScreen: React.FC = () => {
@@ -659,7 +650,7 @@ export const AbsenceListScreen: React.FC = () => {
             isLoading ? (
               <AbsenceCalendarSkeleton />
             ) : (
-            <FadeIn>
+            <ContentPane>
             <View style={styles.calendarDesktopRow}>
               {/* Left Sidebar - Employees */}
               <View style={[styles.calendarSidebar, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.border }]}>
@@ -829,13 +820,13 @@ export const AbsenceListScreen: React.FC = () => {
                 </View>
               </View>
             </View>
-            </FadeIn>
+            </ContentPane>
             )
           ) : displayedViewMode === 'timeline' ? (
             isLoading ? (
               <AbsenceTimelineSkeleton />
             ) : (
-              <FadeIn>
+              <ContentPane>
                 <AbsenceTimeline
                   year={selectedYear}
                   absences={filteredAbsences}
@@ -844,7 +835,7 @@ export const AbsenceListScreen: React.FC = () => {
                   onAbsencePress={handleAbsencePress}
                   onYearChange={handleYearChange}
                 />
-              </FadeIn>
+              </ContentPane>
             )
           ) : (
             <View style={[styles.listCard, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.border }]}>
@@ -922,7 +913,7 @@ export const AbsenceListScreen: React.FC = () => {
               {isLoading ? (
                 <AbsenceListSkeleton />
               ) : (
-                <FadeIn>
+                <ContentPane>
                   <ScrollView
                     style={{ backgroundColor: theme.background }}
                     contentContainerStyle={styles.rowsScrollContent}
@@ -968,7 +959,7 @@ export const AbsenceListScreen: React.FC = () => {
                       </View>
                     )}
                   </ScrollView>
-                </FadeIn>
+                </ContentPane>
               )}
             </View>
           )}

@@ -98,7 +98,9 @@ export const useAbsenceStore = create<AbsenceState>((set, get) => ({
 
     const offset = reset ? 0 : state.absences.length;
 
-    set({ isLoading: true, error: null });
+    // Stale-while-revalidate: only show skeleton when no cached data
+    const hasCachedData = state.absences.length > 0;
+    set({ isLoading: !hasCachedData, error: null });
 
     try {
       const mergedFilters = { ...state.filters, ...filters };
