@@ -1,18 +1,20 @@
 /**
  * TitleBarDepartmentControls
- * Кнопка меню (три точки) для отображения в Electron TitleBar при редактировании отдела
+ * Кнопки управления для Electron TitleBar при редактировании отдела
  */
 
 import React, { useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 
 interface TitleBarDepartmentControlsProps {
+  onAddMembers: () => void;
   onOpenMenu: (position: { x: number; y: number; width: number; height: number }) => void;
 }
 
 export const TitleBarDepartmentControls: React.FC<TitleBarDepartmentControlsProps> = ({
+  onAddMembers,
   onOpenMenu,
 }) => {
   const { theme } = useTheme();
@@ -35,6 +37,22 @@ export const TitleBarDepartmentControls: React.FC<TitleBarDepartmentControlsProp
 
   return (
     <View style={styles.container}>
+      {/* Add members button */}
+      <View
+        style={[styles.addButton, { borderColor: theme.border }]}
+        // @ts-ignore - Web-only event handlers
+        onClick={onAddMembers}
+        onMouseEnter={(e: any) => {
+          if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
+        }}
+        onMouseLeave={(e: any) => {
+          if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
+        }}
+      >
+        <Ionicons name="add" size={14} color={theme.primary} />
+        <Text style={{ fontSize: 12, fontWeight: '600', color: theme.primary }}>Добавить</Text>
+      </View>
+      {/* Menu button */}
       <View
         // @ts-ignore - ref type
         ref={menuButtonRef}
@@ -59,6 +77,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  } as any,
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    cursor: 'pointer',
+    transition: 'background-color 0.15s ease',
   } as any,
   menuButton: {
     width: 32,

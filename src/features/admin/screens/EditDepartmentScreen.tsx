@@ -105,6 +105,7 @@ const EditDepartmentScreen: React.FC = () => {
     if (!isElectron || !isDesktop) return null;
     return (
       <TitleBarDepartmentControls
+        onAddMembers={() => setShowUserSelector(true)}
         onOpenMenu={handleOpenMenuFromTitleBar}
       />
     );
@@ -287,11 +288,18 @@ const EditDepartmentScreen: React.FC = () => {
 
         <ScrollView
           style={styles.content}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={[
+            { paddingBottom: 120 },
+            isElectron && isDesktop && styles.desktopScrollContent,
+          ]}
           showsVerticalScrollIndicator={false}
         >
           {/* Department Info */}
-          <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <View style={[
+            styles.section,
+            !isDesktop && { backgroundColor: theme.card },
+            isElectron && isDesktop && [styles.desktopCard, { backgroundColor: theme.card, borderColor: theme.border }],
+          ]}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Информация об отделе</Text>
 
             <View style={styles.field}>
@@ -307,18 +315,24 @@ const EditDepartmentScreen: React.FC = () => {
           </View>
 
           {/* Department Members */}
-          <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <View style={[
+            styles.section,
+            !isDesktop && { backgroundColor: theme.card },
+            isElectron && isDesktop && [styles.desktopCard, { backgroundColor: theme.card, borderColor: theme.border }],
+          ]}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>
                 Сотрудники ({departmentUsers?.length || 0})
               </Text>
-              <TouchableOpacity
-                style={[styles.addButton, { backgroundColor: theme.primary }]}
-                onPress={() => setShowUserSelector(true)}
-              >
-                <Ionicons name="add" size={20} color="#FFF" />
-                <Text style={styles.addButtonText}>Добавить</Text>
-              </TouchableOpacity>
+              {!(isElectron && isDesktop) && (
+                <TouchableOpacity
+                  style={[styles.addButton, { backgroundColor: theme.primary }]}
+                  onPress={() => setShowUserSelector(true)}
+                >
+                  <Ionicons name="add" size={20} color="#FFF" />
+                  <Text style={styles.addButtonText}>Добавить</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {!departmentUsers || !Array.isArray(departmentUsers) || departmentUsers.length === 0 ? (
@@ -327,6 +341,72 @@ const EditDepartmentScreen: React.FC = () => {
                 <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
                   Нет сотрудников в отделе
                 </Text>
+              </View>
+            ) : isElectron && isDesktop ? (
+              /* Desktop table view */
+              <View>
+                {/* Table header */}
+                <View style={[styles.tableRow, styles.tableHeader, { borderBottomColor: theme.border }]}>
+                  <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 2 }]}>Сотрудник</Text>
+                  <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 2 }]}>Email</Text>
+                  <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 1.5 }]}>Должность</Text>
+                  <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 1 }]}>Роль</Text>
+                  <View style={{ width: 80 }} />
+                </View>
+                {/* Table rows */}
+                {departmentUsers.map((user, index) => (
+                  <View
+                    key={user.id}
+                    style={[
+                      styles.tableRow,
+                      index < departmentUsers.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
+                    ]}
+                    // @ts-ignore - Web-only event handlers
+                    onMouseEnter={(e: any) => {
+                      if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundSecondary;
+                    }}
+                    onMouseLeave={(e: any) => {
+                      if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <View style={[styles.tableCellUser, { flex: 2 }]}>
+                      <Avatar imageUrl={user.avatar} name={user.name} size={32} />
+                      <View style={styles.userNameRow}>
+                        <Text style={[styles.tableCellText, { color: theme.text, fontWeight: '500' }]}>{user.name}</Text>
+                        {headId === user.id && (
+                          <Ionicons name="shield-checkmark" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
+                        )}
+                      </View>
+                    </View>
+                    <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 2 }]}>{user.email}</Text>
+                    <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 1.5 }]}>{user.position || '—'}</Text>
+                    <View style={{ flex: 1 }}>
+                      {headId === user.id ? (
+                        <View style={[styles.headBadge, { backgroundColor: theme.primary + '20' }]}>
+                          <Text style={[styles.headBadgeText, { color: theme.primary }]}>Руководитель</Text>
+                        </View>
+                      ) : (
+                        <Text style={[styles.tableCellText, { color: theme.textSecondary }]}>—</Text>
+                      )}
+                    </View>
+                    <View style={{ width: 80, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                      {headId !== user.id && (
+                        <TouchableOpacity
+                          style={[styles.tableRemoveButton, { backgroundColor: theme.backgroundTertiary }]}
+                          onPress={() => handleSetHead(user)}
+                        >
+                          <Ionicons name="star-outline" size={16} color={theme.primary} />
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={[styles.tableRemoveButton, { backgroundColor: theme.backgroundTertiary }]}
+                        onPress={() => handleRemoveUser(user)}
+                      >
+                        <Ionicons name="close" size={16} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
               </View>
             ) : (
               departmentUsers.map((user) => (
@@ -387,7 +467,7 @@ const EditDepartmentScreen: React.FC = () => {
               disabled: isDeleting,
             },
           ]}
-          isDesktop={isDesktop}
+          isDesktop={isElectron && isDesktop}
           buttonPosition={menuButtonPosition}
         />
 
@@ -439,6 +519,15 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  desktopScrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  desktopCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden' as const,
   },
   centerContainer: {
     flex: 1,
@@ -539,6 +628,38 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  tableHeader: {
+    borderBottomWidth: 1,
+    paddingBottom: 8,
+    marginBottom: 2,
+  },
+  tableHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  tableCellUser: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  tableCellText: {
+    fontSize: 13,
+  },
+  tableRemoveButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
