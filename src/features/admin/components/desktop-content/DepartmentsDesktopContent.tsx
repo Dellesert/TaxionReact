@@ -215,21 +215,18 @@ const DepartmentsDesktopContent: React.FC = () => {
     },
     {
       key: 'actions',
-      title: '',
-      width: 80,
-      render: (dept, t, dark) => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-          <TouchableOpacity
-            style={[styles.tableActionButton, { backgroundColor: dark ? '#374151' : '#F3F4F6' }]}
-            onPress={(e) => {
-              e.stopPropagation();
-              handleDeleteDepartment(dept);
-            }}
-          >
-            <Ionicons name="trash-outline" size={14} color="#EF4444" />
-          </TouchableOpacity>
-          <Ionicons name="chevron-forward" size={16} color={t.textTertiary} />
-        </View>
+      title: 'Действия',
+      width: 120,
+      render: (dept, t) => (
+        <TouchableOpacity
+          style={[styles.deleteButton, { backgroundColor: t.error + '15' }]}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleDeleteDepartment(dept);
+          }}
+        >
+          <Text style={{ fontSize: 12, color: t.error, fontWeight: '600' }}>Удалить</Text>
+        </TouchableOpacity>
       ),
     },
   ], []);
@@ -296,6 +293,7 @@ const DepartmentsDesktopContent: React.FC = () => {
         emptyIcon="business-outline"
         emptyTitle={searchQuery ? 'Отделы не найдены' : 'Нет отделов'}
         emptySubtitle={searchQuery ? 'Попробуйте изменить запрос' : 'Создайте первый отдел'}
+        containerStyle={{ margin: 0, borderWidth: 0, borderRadius: 0 }}
       />
     </View>
   );
@@ -309,9 +307,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tableActionButton: {
-    width: 28,
-    height: 28,
+  deleteButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
