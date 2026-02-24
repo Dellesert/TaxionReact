@@ -35,7 +35,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   onTaskPress,
   onTaskUpdated,
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
   const { showConfirm } = useActionModal();
   const { showSuccess, showError } = useNotification();
@@ -302,38 +302,18 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
     <View style={styles.container}>
       <View style={[styles.tableContainer, { borderColor: theme.border, backgroundColor: theme.card }]}>
         {/* Header */}
-        <View style={[styles.headerRow, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <View style={[styles.headerCell, styles.titleColumn]}>
-            <Text style={[styles.headerText, { color: theme.text }]}>Название</Text>
-          </View>
-
-          <View style={[styles.headerCell, styles.statusColumn]}>
-            <Text style={[styles.headerText, { color: theme.text }]}>Статус</Text>
-          </View>
-
-          <View style={[styles.headerCell, styles.priorityColumn]}>
-            <Text style={[styles.headerText, { color: theme.text }]}>Приоритет</Text>
-          </View>
-
-          <View style={[styles.headerCell, styles.dateColumn]}>
-            <Text style={[styles.headerText, { color: theme.text }]}>Дедлайн</Text>
-          </View>
-
-          <View style={[styles.headerCell, styles.dateColumn]}>
-            <Text style={[styles.headerText, { color: theme.text }]}>Создано</Text>
-          </View>
-
-          <View style={[styles.headerCell, styles.creatorColumn]}>
-            <Text style={[styles.headerText, { color: theme.text }]}>Автор</Text>
-          </View>
-
-          <View style={[styles.headerCell, styles.actionsColumn]}>
-            <Text style={[styles.headerText, { color: theme.text }]}>Действия</Text>
-          </View>
+        <View style={[styles.headerRow, { borderColor: theme.border }]}>
+          <Text style={[styles.headerText, styles.titleColumn, { color: theme.textSecondary }]}>Название</Text>
+          <Text style={[styles.headerText, styles.statusColumn, { color: theme.textSecondary }]}>Статус</Text>
+          <Text style={[styles.headerText, styles.priorityColumn, { color: theme.textSecondary }]}>Приоритет</Text>
+          <Text style={[styles.headerText, styles.dateColumn, { color: theme.textSecondary }]}>Дедлайн</Text>
+          <Text style={[styles.headerText, styles.dateColumn, { color: theme.textSecondary }]}>Создано</Text>
+          <Text style={[styles.headerText, styles.creatorColumn, { color: theme.textSecondary }]}>Автор</Text>
+          <Text style={[styles.headerText, styles.actionsColumn, { color: theme.textSecondary }]}>Действия</Text>
         </View>
 
         {/* Body */}
-        <ScrollView style={styles.bodyContainer}>
+        <ScrollView style={[styles.bodyContainer, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
             {isLoading && tasksWithSubtasks.length === 0 ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={theme.primary} />
@@ -361,8 +341,6 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                 const isExpanded = expandedTaskIds.has(task.id);
 
                 const isHovered = hoveredRowId === task.id;
-                const isEvenRow = index % 2 === 0;
-                const isLastRow = index === tasksWithSubtasks.length - 1;
 
                 return (
                 <TouchableOpacity
@@ -370,11 +348,10 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                   style={[
                     styles.row,
                     {
-                      backgroundColor: isEvenRow ? theme.card : 'transparent',
-                      borderBottomColor: theme.border,
+                      borderColor: theme.border,
+                      backgroundColor: isDark ? theme.card : '#FFFFFF',
                     },
-                    isLastRow && { borderBottomWidth: 0 },
-                    isHovered && { backgroundColor: theme.primary + '12' },
+                    isHovered && { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' },
                     isSubtask && styles.subtaskRow,
                   ]}
                   onPress={() => onTaskPress(task)}
@@ -549,35 +526,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tableContainer: {
-    marginHorizontal: 16,
-    marginTop: 12,
+    flex: 1,
     borderRadius: 12,
-    overflow: 'hidden',
     borderWidth: 1,
-    padding: 8,
+    margin: 16,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+    }),
   },
   headerRow: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    ...(Platform.OS === 'web' && {
-      position: 'sticky',
-      top: 0,
-      zIndex: 10,
-    }),
-  },
-  headerCell: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
   },
   headerText: {
     fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontWeight: '600',
     textTransform: 'uppercase',
-    opacity: 0.7,
+    letterSpacing: 0.5,
+    lineHeight: 16,
   },
   titleColumn: {
     flex: 3,
@@ -604,31 +581,33 @@ const styles = StyleSheet.create({
   },
   bodyContainer: {
     flex: 1,
+    flexGrow: 1,
   },
   row: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    minHeight: 40,
-    ...(Platform.OS === 'web' && {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
       cursor: 'pointer',
-    }),
+      transitionProperty: 'background-color',
+      transitionDuration: '0.2s',
+    } : {}),
   },
-  rowHovered: Platform.select({
-    web: {
-      opacity: 0.85,
-    },
-    default: {},
-  }),
   subtaskRow: {
     paddingLeft: 32,
   },
   cell: {
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 12,
   },
   cellText: {
     fontSize: 13,
+    fontWeight: '400',
     lineHeight: 18,
   },
   titleRow: {
