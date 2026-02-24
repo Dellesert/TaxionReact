@@ -95,6 +95,7 @@ export const ScheduleListScreen: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
 
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
@@ -200,6 +201,14 @@ export const ScheduleListScreen: React.FC = () => {
     }
 
     return sectionList;
+  }, [filteredSchedules]);
+
+  // Flat sorted list for desktop table view
+  const sortedSchedules = useMemo(() => {
+    return [...filteredSchedules].sort((a, b) => {
+      if (a.mode !== b.mode) return a.mode === 'monthly' ? -1 : 1;
+      return SCHEDULE_TYPE_ORDER.indexOf(a.type) - SCHEDULE_TYPE_ORDER.indexOf(b.type);
+    });
   }, [filteredSchedules]);
 
   // Handle manual pull-to-refresh
@@ -371,18 +380,18 @@ export const ScheduleListScreen: React.FC = () => {
               )}
             </View>
 
-            {/* Main Panel - Schedule columns */}
-            <View style={[styles.mainPanel, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
-              <View style={[styles.mainPanelHeader, { borderColor: theme.border }]}>
-                <Text style={[styles.mainPanelTitle, { color: theme.text }]}>Список графиков</Text>
-                <View style={styles.headerMonthPicker}>
+            {/* Main Panel - Schedule table */}
+            <View style={[styles.listCard, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
+              {/* Card Header */}
+              <View style={[styles.listCardHeader, { borderColor: theme.border }]}>
+                <View style={styles.listCardHeaderLeft}>
                   <TouchableOpacity
                     onPress={() => {
                       const d = new Date(selectedMonth);
                       d.setMonth(d.getMonth() - 1);
                       handleMonthChange(d);
                     }}
-                    style={styles.headerMonthArrow}
+                    style={styles.listHeaderArrow}
                     activeOpacity={0.7}
                   >
                     <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
@@ -398,7 +407,7 @@ export const ScheduleListScreen: React.FC = () => {
                       selectedMonth.getFullYear() === new Date().getFullYear()
                     }
                   >
-                    <Text style={[styles.headerMonthText, { color: theme.text }]}>
+                    <Text style={[styles.listHeaderMonthText, { color: theme.text }]}>
                       {['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'][selectedMonth.getMonth()]} {selectedMonth.getFullYear()}
                     </Text>
                   </TouchableOpacity>
@@ -408,13 +417,22 @@ export const ScheduleListScreen: React.FC = () => {
                       d.setMonth(d.getMonth() + 1);
                       handleMonthChange(d);
                     }}
-                    style={styles.headerMonthArrow}
+                    style={styles.listHeaderArrow}
                     activeOpacity={0.7}
                   >
                     <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
                   </TouchableOpacity>
                 </View>
               </View>
+              {/* Table Header */}
+              <View style={[styles.tableHeaderRow, { borderColor: theme.border }]}>
+                <Text style={[styles.tableHeaderCell, styles.tableCellName, { color: theme.textSecondary }]}>Название</Text>
+                <Text style={[styles.tableHeaderCell, styles.tableCellType, { color: theme.textSecondary }]}>Тип</Text>
+                <Text style={[styles.tableHeaderCell, styles.tableCellPeriod, { color: theme.textSecondary }]}>Период</Text>
+                <Text style={[styles.tableHeaderCell, styles.tableCellMode, { color: theme.textSecondary }]}>Режим</Text>
+                <Text style={[styles.tableHeaderCell, styles.tableCellStatus, { color: theme.textSecondary }]}>Статус</Text>
+              </View>
+              {/* Table Body */}
               {isLoading ? (
                 <ScheduleListContentSkeleton />
               ) : (
@@ -424,137 +442,69 @@ export const ScheduleListScreen: React.FC = () => {
                     contentContainerStyle={styles.tableScrollContent}
                     showsVerticalScrollIndicator={false}
                   >
-                    {sections.length === 0 ? (
+                    {sortedSchedules.length === 0 ? (
                       <View style={styles.emptyContainerDesktop}>
                         {renderEmpty()}
                       </View>
                     ) : (
-                      <View style={styles.tableContainer}>
-                        {sections.map((section, sectionIndex) => {
-                          // Get a representative color for this section type
-                          const sectionTypeColor = section.data[0]?.color || getScheduleTypeColor(section.data[0]?.type);
-                          return (
-                            <React.Fragment key={section.title}>
-                              {/* Section header */}
-                              {sectionIndex > 0 && <View style={{ height: 8 }} />}
-                              <View style={[styles.tableSectionHeader]}>
-                                <Text style={[styles.tableSectionTitle, { color: theme.text }]}>
-                                  {section.title}
-                                </Text>
-                                <View style={[styles.tableSectionCount, { backgroundColor: sectionTypeColor + '20' }]}>
-                                  <Text style={[styles.tableSectionCountText, { color: sectionTypeColor }]}>
-                                    {section.data.length}
-                                  </Text>
-                                </View>
-                              </View>
+                      sortedSchedules.map((schedule) => {
+                        const typeColor = schedule.color || getScheduleTypeColor(schedule.type);
+                        const isDraft = schedule.status === 'draft';
+                        return (
+                          <TouchableOpacity
+                            key={schedule.id}
+                            style={[
+                              styles.tableRow,
+                              { borderColor: theme.border, backgroundColor: cardBgColor },
+                              hoveredRowId === schedule.id && { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' },
+                              !schedule.is_active && { opacity: 0.45 },
+                            ]}
+                            onPress={() => handleSchedulePress(schedule)}
+                            activeOpacity={0.7}
+                            // @ts-ignore - web only
+                            onMouseEnter={Platform.OS === 'web' ? () => setHoveredRowId(schedule.id) : undefined}
+                            // @ts-ignore - web only
+                            onMouseLeave={Platform.OS === 'web' ? () => setHoveredRowId(null) : undefined}
+                          >
+                            {/* Name */}
+                            <View style={[styles.tableCell, styles.tableCellName]}>
+                              <Text style={[styles.tableCellText, { color: theme.text, fontWeight: '500' }]} numberOfLines={1}>
+                                {schedule.title}
+                              </Text>
+                            </View>
 
-                              {/* Table card with white background */}
-                              <View style={[styles.tableSectionCard, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
-                                {/* Column headers */}
-                                <View style={[styles.tableColHeaders, { borderBottomColor: theme.border }]}>
-                                  <View style={styles.colName}>
-                                    <Text style={[styles.tableHeaderText, { color: theme.textTertiary }]}>Название</Text>
-                                  </View>
-                                  <View style={styles.colPeriod}>
-                                    <Text style={[styles.tableHeaderText, { color: theme.textTertiary }]}>Период</Text>
-                                  </View>
-                                  <View style={styles.colMode}>
-                                    <Text style={[styles.tableHeaderText, { color: theme.textTertiary }]}>Режим</Text>
-                                  </View>
-                                  <View style={styles.colStatus}>
-                                    <Text style={[styles.tableHeaderText, { color: theme.textTertiary }]}>Статус</Text>
-                                  </View>
-                                  <View style={styles.colArrow} />
-                                </View>
+                            {/* Type */}
+                            <View style={[styles.tableCell, styles.tableCellType]}>
+                              <View style={[styles.tableTypeDot, { backgroundColor: typeColor }]} />
+                              <Text style={[styles.tableCellText, { color: theme.text }]} numberOfLines={1}>
+                                {SCHEDULE_TYPE_LABELS[schedule.type]}
+                              </Text>
+                            </View>
 
-                                {/* Data rows */}
-                                {section.data.map((schedule, index) => {
-                                  const typeColor = schedule.color || getScheduleTypeColor(schedule.type);
-                                  const isDraft = schedule.status === 'draft';
-                                  return (
-                                    <TouchableOpacity
-                                      key={schedule.id}
-                                      style={[
-                                        styles.tableDataRow,
-                                        index < section.data.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border + '40' },
-                                        !schedule.is_active && { opacity: 0.45 },
-                                      ]}
-                                      onPress={() => handleSchedulePress(schedule)}
-                                      activeOpacity={0.7}
-                                      // @ts-ignore - Web-only
-                                      onMouseEnter={(e: any) => {
-                                        if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundSecondary;
-                                      }}
-                                      onMouseLeave={(e: any) => {
-                                        if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
-                                      }}
-                                    >
-                                      {/* Left color accent bar */}
-                                      <View style={[styles.rowColorBar, { backgroundColor: typeColor }]} />
+                            {/* Period */}
+                            <View style={[styles.tableCell, styles.tableCellPeriod]}>
+                              <Text style={[styles.tableCellText, { color: theme.text }]}>
+                                {formatScheduleDate(schedule.start_date, 'dd MMM')} — {formatScheduleDate(schedule.end_date, 'dd MMM yyyy')}
+                              </Text>
+                            </View>
 
-                                      {/* Name cell */}
-                                      <View style={[styles.colName, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
-                                        <Text style={[styles.cellTitle, { color: theme.text, flex: 1 }]} numberOfLines={1}>
-                                          {schedule.title}
-                                        </Text>
-                                        {!schedule.is_active && (
-                                          <View style={styles.tableInactiveBadge}>
-                                            <Text style={styles.tableInactiveBadgeText}>Неактивен</Text>
-                                          </View>
-                                        )}
-                                      </View>
+                            {/* Mode */}
+                            <View style={[styles.tableCell, styles.tableCellMode]}>
+                              <Text style={[styles.tableCellText, { color: theme.textSecondary }]}>
+                                {SCHEDULE_MODE_LABELS[schedule.mode]}
+                              </Text>
+                            </View>
 
-                                      {/* Period cell */}
-                                      <View style={styles.colPeriod}>
-                                        <View style={styles.cellPeriodRow}>
-                                          <Ionicons name="calendar-outline" size={14} color={theme.textSecondary} />
-                                          <Text style={[styles.cellText, { color: theme.textSecondary }]}>
-                                            {formatScheduleDate(schedule.start_date, 'dd MMM')} — {formatScheduleDate(schedule.end_date, 'dd MMM yyyy')}
-                                          </Text>
-                                        </View>
-                                      </View>
-
-                                      {/* Mode cell */}
-                                      <View style={styles.colMode}>
-                                        <View style={[styles.modeBadge, { backgroundColor: theme.backgroundSecondary }]}>
-                                          <Ionicons
-                                            name={schedule.mode === 'monthly' ? 'calendar' : 'repeat'}
-                                            size={12}
-                                            color={theme.textSecondary}
-                                          />
-                                          <Text style={[styles.modeBadgeText, { color: theme.textSecondary }]}>
-                                            {SCHEDULE_MODE_LABELS[schedule.mode]}
-                                          </Text>
-                                        </View>
-                                      </View>
-
-                                      {/* Status cell */}
-                                      <View style={styles.colStatus}>
-                                        {isDraft ? (
-                                          <View style={[styles.statusBadge, { backgroundColor: '#F59E0B20' }]}>
-                                            <View style={[styles.statusDot, { backgroundColor: '#F59E0B' }]} />
-                                            <Text style={[styles.statusText, { color: '#F59E0B' }]}>Черновик</Text>
-                                          </View>
-                                        ) : (
-                                          <View style={[styles.statusBadge, { backgroundColor: '#10B98120' }]}>
-                                            <View style={[styles.statusDot, { backgroundColor: '#10B981' }]} />
-                                            <Text style={[styles.statusText, { color: '#10B981' }]}>Опубликован</Text>
-                                          </View>
-                                        )}
-                                      </View>
-
-                                      {/* Arrow */}
-                                      <View style={styles.colArrow}>
-                                        <Ionicons name="chevron-forward" size={16} color={theme.textTertiary} />
-                                      </View>
-                                    </TouchableOpacity>
-                                  );
-                                })}
-                              </View>
-                            </React.Fragment>
-                          );
-                        })}
-                      </View>
+                            {/* Status */}
+                            <View style={[styles.tableCell, styles.tableCellStatus]}>
+                              <View style={[styles.tableStatusDot, { backgroundColor: isDraft ? '#F59E0B' : '#10B981' }]} />
+                              <Text style={[styles.tableCellText, { color: isDraft ? '#F59E0B' : '#10B981' }]}>
+                                {isDraft ? 'Черновик' : 'Опубликован'}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })
                     )}
                   </ScrollView>
                 </ContentPane>
@@ -683,13 +633,12 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
   },
-  mainPanel: {
+  // Desktop list card layout (matches absence list style)
+  listCard: {
     flex: 1,
-    minWidth: 0,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     margin: 16,
-    marginLeft: 16,
     overflow: 'hidden',
     ...(Platform.OS === 'web' ? {
       // @ts-ignore - web only
@@ -702,36 +651,32 @@ const styles = StyleSheet.create({
       elevation: 3,
     }),
   },
-  mainPanelHeader: {
+  listCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingLeft: 20,
-    paddingRight: 12,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
     minHeight: 56,
   },
-  mainPanelTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 22,
-  },
-  headerMonthPicker: {
+  listCardHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  headerMonthArrow: {
+  listHeaderArrow: {
     width: 24,
     height: 24,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    // @ts-ignore
-    cursor: 'pointer',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - web only
+      cursor: 'pointer',
+    } : {}),
   },
-  headerMonthText: {
+  listHeaderMonthText: {
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
@@ -756,176 +701,79 @@ const styles = StyleSheet.create({
       elevation: 3,
     }),
   },
-  // Desktop table layout
+  // Desktop flat table layout (matches absence list)
+  tableHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  tableHeaderCell: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    lineHeight: 16,
+  },
   tableScrollContent: {
     flexGrow: 1,
-    padding: 16,
-    gap: 16,
   },
   emptyContainerDesktop: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 48,
     minWidth: '100%',
   },
-  tableContainer: {
-    gap: 20,
-  },
-  // Section header
-  tableSectionHeader: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 10,
-    paddingHorizontal: 4,
-    marginBottom: 4,
-  },
-  tableSectionTitle: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    lineHeight: 20,
-  },
-  tableSectionCount: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  tableSectionCountText: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    lineHeight: 16,
-  },
-  // Section table card
-  tableSectionCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden' as const,
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     ...(Platform.OS === 'web' ? {
       // @ts-ignore - web only
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.06,
-      shadowRadius: 4,
-      elevation: 2,
-    }),
+      cursor: 'pointer',
+      transitionProperty: 'background-color',
+      transitionDuration: '0.2s',
+    } : {}),
   },
-  // Column headers
-  tableColHeaders: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    paddingLeft: 22,
-    borderBottomWidth: 1,
-  },
-  tableHeaderText: {
-    fontSize: 12,
-    fontWeight: '700' as const,
-    lineHeight: 16,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
-  },
-  // Column widths (shared between header and rows)
-  colName: {
-    flex: 3,
+  tableCell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingRight: 12,
   },
-  colPeriod: {
-    flex: 2,
-    paddingRight: 12,
-  },
-  colMode: {
-    flex: 1.2,
-    paddingRight: 12,
-  },
-  colStatus: {
-    flex: 1.2,
-    paddingRight: 12,
-  },
-  colArrow: {
-    width: 28,
-    alignItems: 'center' as const,
-  },
-  // Data rows
-  tableDataRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    paddingLeft: 0,
-    // @ts-ignore - web only
-    cursor: 'pointer',
-    // @ts-ignore - web only
-    transitionProperty: 'background-color',
-    // @ts-ignore - web only
-    transitionDuration: '0.2s',
-  },
-  rowColorBar: {
-    width: 4,
-    alignSelf: 'stretch' as const,
-    borderRadius: 2,
-    marginRight: 12,
-    marginLeft: 12,
-    minHeight: 40,
-  },
-  // Cell styles
-  cellTitle: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    lineHeight: 20,
-  },
-  tableInactiveBadge: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  tableInactiveBadgeText: {
-    fontSize: 11,
-    fontWeight: '500' as const,
-    lineHeight: 14,
-    color: '#EF4444',
-  },
-  cellPeriodRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 6,
-  },
-  cellText: {
+  tableCellText: {
     fontSize: 13,
+    fontWeight: '400',
     lineHeight: 18,
   },
-  modeBadge: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    alignSelf: 'flex-start' as const,
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+  tableCellName: {
+    flex: 2.5,
   },
-  modeBadgeText: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-    lineHeight: 16,
+  tableCellType: {
+    flex: 1.3,
   },
-  statusBadge: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    alignSelf: 'flex-start' as const,
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+  tableCellPeriod: {
+    flex: 1.8,
   },
-  statusDot: {
-    width: 7,
-    height: 7,
+  tableCellMode: {
+    flex: 1,
+  },
+  tableCellStatus: {
+    flex: 1,
+  },
+  tableTypeDot: {
+    width: 8,
+    height: 8,
     borderRadius: 4,
   },
-  statusText: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-    lineHeight: 16,
+  tableStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   sectionHeader: {
     flexDirection: 'row',
