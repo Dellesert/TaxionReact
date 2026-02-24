@@ -167,11 +167,12 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 6,
   },
   sectionHeaderText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 16,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -190,14 +191,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     marginBottom: 8,
   },
   emptySubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   footer: {
     paddingVertical: 16,

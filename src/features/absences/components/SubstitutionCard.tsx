@@ -54,7 +54,7 @@ export const SubstitutionCard: React.FC<SubstitutionCardProps> = ({
       <Avatar
         name={getSubstituteName()}
         imageUrl={getAvatarUrl()}
-        size={40}
+        size={32}
         userId={substitution.substitute_id}
       />
 
@@ -65,7 +65,7 @@ export const SubstitutionCard: React.FC<SubstitutionCardProps> = ({
         </Text>
 
         <View style={styles.dateRow}>
-          <Ionicons name="calendar-outline" size={13} color={theme.textTertiary} />
+          <Ionicons name="calendar-outline" size={14} color={theme.textTertiary} />
           <Text style={[styles.dateText, { color: theme.textSecondary }]}>
             {formatDate(substitution.start_date)} — {formatDate(substitution.end_date)}
           </Text>
@@ -121,20 +121,23 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   name: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
   },
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   dateText: {
     fontSize: 13,
+    lineHeight: 18,
   },
   note: {
     fontSize: 12,
     fontStyle: 'italic',
+    lineHeight: 16,
   },
   actions: {
     flexDirection: 'row',

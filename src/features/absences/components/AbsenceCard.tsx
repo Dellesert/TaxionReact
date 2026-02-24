@@ -84,25 +84,25 @@ export const AbsenceCard: React.FC<AbsenceCardProps> = ({
           </Text>
         </View>
 
-        {/* User name */}
-        <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>
-          {getUserName()}
-        </Text>
-
-        {/* Bottom row: Dates ... Avatar */}
-        <View style={styles.bottomRow}>
-          <View style={styles.dateRow}>
-            <Ionicons name="calendar-outline" size={13} color={theme.textTertiary} />
-            <Text style={[styles.dateText, { color: theme.textSecondary }]}>
-              {formatDate(absence.start_date)} — {formatDate(absence.end_date)}
-            </Text>
-          </View>
+        {/* User row: Avatar + Name */}
+        <View style={styles.userRow}>
           <Avatar
             name={getUserName()}
             imageUrl={getAvatarUrl()}
             size={32}
             userId={absence.user_id}
           />
+          <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>
+            {getUserName()}
+          </Text>
+        </View>
+
+        {/* Dates */}
+        <View style={styles.dateRow}>
+          <Ionicons name="calendar-outline" size={13} color={theme.textTertiary} />
+          <Text style={[styles.dateText, { color: theme.textSecondary }]}>
+            {formatDate(absence.start_date)} — {formatDate(absence.end_date)}
+          </Text>
         </View>
 
         {/* Reason (if exists) */}
@@ -176,11 +176,10 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 6,
   },
-  bottomRow: {
+  userRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
+    gap: 8,
   },
   typeInfo: {
     flexDirection: 'row',
@@ -196,7 +195,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 14,
     fontWeight: '500',
-    marginTop: 2,
+    flex: 1,
   },
   dateRow: {
     flexDirection: 'row',

@@ -91,7 +91,7 @@ export const SubstitutionsSection: React.FC<SubstitutionsSectionProps> = ({
         <View style={styles.headerLeft}>
           <Ionicons
             name="people-outline"
-            size={20}
+            size={18}
             color={theme.primary}
           />
           <Text style={[styles.headerTitle, { color: theme.text }]}>
@@ -188,8 +188,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
   },
   badge: {
     minWidth: 20,

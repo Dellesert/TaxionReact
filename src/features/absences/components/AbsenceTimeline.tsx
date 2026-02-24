@@ -469,7 +469,7 @@ export const AbsenceTimeline: React.FC<AbsenceTimelineProps> = ({
                   name={row.user.name || ''}
                   imageUrl={row.user.avatar}
                   userId={row.user.id}
-                  size={36}
+                  size={32}
                 />
                 <View style={[styles.userColorDot, { backgroundColor: userColor }]} />
               </View>
@@ -714,8 +714,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
   },
   // Main content
   mainContent: {
@@ -725,15 +726,23 @@ const styles = StyleSheet.create({
   // Sidebar styles
   sidebar: {
     width: SIDEBAR_WIDTH,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     margin: 16,
     marginRight: 0,
     overflow: 'hidden',
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    } : {}),
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+      },
+    }),
   },
   sidebarHeader: {
     flexDirection: 'row',
@@ -747,6 +756,7 @@ const styles = StyleSheet.create({
   sidebarHeaderText: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
   },
   sidebarList: {
     flex: 1,
@@ -782,9 +792,11 @@ const styles = StyleSheet.create({
   sidebarUserName: {
     fontSize: 13,
     fontWeight: '500',
+    lineHeight: 18,
   },
   sidebarUserMeta: {
     fontSize: 11,
+    lineHeight: 14,
     marginTop: 2,
   },
   timelineHeader: {
@@ -799,6 +811,7 @@ const styles = StyleSheet.create({
   timelineHeaderText: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
   },
   timelineHeaderYearPicker: {
     flexDirection: 'row',
@@ -811,27 +824,37 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   timelineHeaderYearText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     minWidth: 40,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 20,
     marginHorizontal: 12,
   },
   // Timeline styles
   timelineContainer: {
     flex: 1,
     overflow: 'hidden',
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     margin: 16,
     marginLeft: 16,
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    } : {}),
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+      },
+    }),
   },
   timelineScroll: {
     flex: 1,
@@ -993,16 +1016,17 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   popupTypeIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   popupTypeLabel: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   popupDurationBadge: {
     paddingHorizontal: 10,
@@ -1027,9 +1051,11 @@ const styles = StyleSheet.create({
   popupUserName: {
     fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
   popupUserPosition: {
     fontSize: 12,
+    lineHeight: 16,
     marginTop: 2,
   },
   popupDates: {
@@ -1045,12 +1071,14 @@ const styles = StyleSheet.create({
   },
   popupDateLabel: {
     fontSize: 12,
+    lineHeight: 16,
     width: 50,
   },
   popupDateValue: {
     flex: 1,
     fontSize: 13,
     fontWeight: '500',
+    lineHeight: 18,
   },
   popupReason: {
     flexDirection: 'row',
@@ -1068,6 +1096,7 @@ const styles = StyleSheet.create({
   },
   popupHint: {
     fontSize: 11,
+    lineHeight: 14,
     textAlign: 'center',
     paddingVertical: 8,
     fontStyle: 'italic',

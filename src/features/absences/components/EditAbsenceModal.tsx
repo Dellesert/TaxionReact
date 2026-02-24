@@ -235,7 +235,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                   { backgroundColor: theme.card, borderColor: theme.border },
                 ]}
               >
-                <Ionicons name="person-outline" size={20} color={theme.primary} />
+                <Ionicons name="person-outline" size={18} color={theme.primary} />
                 <Text style={[styles.infoText, { color: theme.text }]}>
                   {userName}
                 </Text>
@@ -297,7 +297,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                   ]}
                   onPress={() => setShowStartDatePicker(true)}
                 >
-                  <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                  <Ionicons name="calendar-outline" size={18} color={theme.primary} />
                   <Text style={[styles.dateButtonText, { color: theme.text }]}>
                     {format(startDate, 'dd MMM yyyy', { locale: ru })}
                   </Text>
@@ -312,7 +312,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                   ]}
                   onPress={() => setShowEndDatePicker(true)}
                 >
-                  <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                  <Ionicons name="calendar-outline" size={18} color={theme.primary} />
                   <Text style={[styles.dateButtonText, { color: theme.text }]}>
                     {format(endDate, 'dd MMM yyyy', { locale: ru })}
                   </Text>
@@ -363,7 +363,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
               style={[styles.deleteButton, { borderColor: theme.error }]}
               onPress={handleDelete}
             >
-              <Ionicons name="trash-outline" size={20} color={theme.error} />
+              <Ionicons name="trash-outline" size={18} color={theme.error} />
               <Text style={[styles.deleteButtonText, { color: theme.error }]}>
                 Удалить
               </Text>
@@ -403,7 +403,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                  <Ionicons name="checkmark" size={18} color="#FFFFFF" />
                   <Text style={styles.submitButtonText}>Сохранить</Text>
                 </>
               )}
@@ -514,8 +514,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
   },
   headerTitleDesktop: {
     fontSize: 16,
@@ -524,28 +525,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
-    gap: 20,
+    padding: 14,
+    gap: 16,
   },
   inputSection: {
     gap: 8,
   },
   inputLabel: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
   },
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderWidth: 1,
-    borderRadius: 12,
-    gap: 10,
+    borderRadius: 10,
+    gap: 8,
   },
   infoText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
   },
   typeGrid: {
     flexDirection: 'row',
@@ -582,23 +585,25 @@ const styles = StyleSheet.create({
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderWidth: 1,
-    borderRadius: 12,
-    gap: 10,
+    borderRadius: 10,
+    gap: 6,
   },
   dateButtonText: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
   },
   dateSeparator: {
     fontSize: 16,
   },
   textArea: {
-    fontSize: 15,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    fontSize: 14,
+    lineHeight: 20,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     minHeight: 80,
     borderWidth: 1,
     textAlignVertical: 'top',
@@ -619,40 +624,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
     borderWidth: 1,
+    minHeight: 40,
   },
   cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   submitButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
+    minHeight: 40,
   },
   submitButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    gap: 8,
+    gap: 6,
     marginTop: 12,
+    minHeight: 40,
   },
   deleteButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

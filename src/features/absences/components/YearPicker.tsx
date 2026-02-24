@@ -45,7 +45,7 @@ export const YearPicker: React.FC<YearPickerProps> = React.memo(({
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           activeOpacity={0.7}
         >
-          <Ionicons name="chevron-back" size={20} color={theme.text} />
+          <Ionicons name="chevron-back" size={18} color={theme.text} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -65,7 +65,7 @@ export const YearPicker: React.FC<YearPickerProps> = React.memo(({
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           activeOpacity={0.7}
         >
-          <Ionicons name="chevron-forward" size={20} color={theme.text} />
+          <Ionicons name="chevron-forward" size={18} color={theme.text} />
         </TouchableOpacity>
       </View>
     </View>
@@ -85,13 +85,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 12,
     ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
+      web: {
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
       },
-      android: {
-        elevation: 2,
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
       },
     }),
   },
@@ -101,16 +103,21 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   yearButton: {
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 4,
     minWidth: 140,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   yearText: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     letterSpacing: 0.2,
   },
 });

@@ -341,7 +341,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
                         onPress={() => setShowUserPicker(true)}
                       >
                         <View style={[styles.selectorIcon, { backgroundColor: selectedUserId ? theme.primary : theme.backgroundSecondary }]}>
-                          <Ionicons name="person" size={28} color={selectedUserId ? '#FFFFFF' : theme.primary} />
+                          <Ionicons name="person" size={18} color={selectedUserId ? '#FFFFFF' : theme.primary} />
                         </View>
                         <View style={styles.selectorInfo}>
                           <Text style={[styles.selectorTitle, { color: theme.text }]}>
@@ -411,7 +411,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
                             ]}
                             onPress={() => setShowStartDatePicker(true)}
                           >
-                            <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                            <Ionicons name="calendar-outline" size={18} color={theme.primary} />
                             <Text style={[styles.dateButtonText, { color: theme.text }]}>
                               {format(startDate, 'dd MMM yyyy', { locale: ru })}
                             </Text>
@@ -426,7 +426,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
                             ]}
                             onPress={() => setShowEndDatePicker(true)}
                           >
-                            <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                            <Ionicons name="calendar-outline" size={18} color={theme.primary} />
                             <Text style={[styles.dateButtonText, { color: theme.text }]}>
                               {format(endDate, 'dd MMM yyyy', { locale: ru })}
                             </Text>
@@ -659,11 +659,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
   },
   headerSubtitle: {
     fontSize: 13,
+    lineHeight: 18,
     marginTop: 2,
   },
   progressContainer: {
@@ -683,20 +685,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stepContainer: {
-    padding: 20,
+    padding: 14,
   },
   stepContainerCompact: {
     padding: 12,
     paddingTop: 8,
   },
   stepTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700',
+    lineHeight: 28,
     marginBottom: 12,
   },
   stepDescription: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     marginBottom: 24,
   },
   stepContent: {
@@ -705,15 +708,15 @@ const styles = StyleSheet.create({
   selectorCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 16,
+    gap: 12,
   },
   selectorIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -721,26 +724,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   selectorTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     marginBottom: 4,
   },
   selectorDescription: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
   typeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 16,
+    gap: 12,
   },
   typeIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -762,8 +766,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   detailLabel: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
     marginBottom: 12,
   },
   dateRow: {
@@ -774,23 +779,25 @@ const styles = StyleSheet.create({
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderWidth: 1,
-    borderRadius: 12,
-    gap: 10,
+    borderRadius: 10,
+    gap: 6,
   },
   dateButtonText: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
   },
   dateSeparator: {
     fontSize: 16,
   },
   textArea: {
-    fontSize: 15,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    fontSize: 14,
+    lineHeight: 20,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     minHeight: 80,
     borderWidth: 1,
     textAlignVertical: 'top',
@@ -818,14 +825,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 6,
     flex: 1,
+    minHeight: 40,
   },
   navButtonCompact: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 10,
     gap: 6,
@@ -836,10 +844,10 @@ const styles = StyleSheet.create({
   nextButton: {},
   createButton: {},
   navButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   navButtonTextCompact: {
-    fontSize: 14,
+    fontSize: 13,
   },
 });
