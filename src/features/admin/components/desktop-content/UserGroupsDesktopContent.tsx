@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
-  useWindowDimensions,
   Platform,
   Animated,
 } from 'react-native';
@@ -29,8 +28,6 @@ import { getUserGroups, createUserGroup, updateUserGroupMembers, deleteUserGroup
 import { UserGroup } from '@/types/user.types';
 import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import { AdminListSkeleton } from '../states/AdminListSkeleton';
-
-const SIDEBAR_WIDTH = 320;
 
 const FadeIn: React.FC<{ children: React.ReactNode; style?: any; enabled?: boolean }> = ({ children, style, enabled = true }) => {
   const opacity = useRef(new Animated.Value(enabled ? 0 : 1)).current;
@@ -115,11 +112,6 @@ const UserGroupsDesktopContent: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
   const mountTime = useRef(Date.now());
-  const { width: windowWidth } = useWindowDimensions();
-  const contentWidth = windowWidth - SIDEBAR_WIDTH;
-  const isNarrow = contentWidth < 600;
-  const gridColumns = isNarrow ? 1 : 2;
-  const cardMaxWidth = `${(100 / gridColumns).toFixed(3)}%` as `${number}%`;
   const { user } = useAuthStore();
   const { showError, showSuccess } = useNotification();
   const { showConfirm } = useActionModal();
@@ -349,30 +341,6 @@ const UserGroupsDesktopContent: React.FC = () => {
       flex: 1,
       backgroundColor: theme.background,
     },
-    groupCard: {
-      backgroundColor: theme.backgroundSecondary,
-      borderRadius: 12,
-      padding: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      height: '100%',
-      // @ts-ignore
-      cursor: 'pointer',
-      ...Platform.select({
-        web: {
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          transitionProperty: 'box-shadow, transform',
-          transitionDuration: '0.2s',
-        },
-        default: {
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 8,
-          elevation: 3,
-        },
-      }),
-    },
     groupCardReorder: {
       backgroundColor: theme.backgroundSecondary,
       borderRadius: 12,
@@ -382,34 +350,23 @@ const UserGroupsDesktopContent: React.FC = () => {
       flexDirection: 'row',
       alignItems: 'center',
     },
-    groupName: {
+    groupNameReorder: {
       fontSize: 16,
       fontWeight: '600',
       lineHeight: 22,
       color: theme.text,
       marginBottom: 6,
     },
-    groupDescription: {
+    groupDescriptionReorder: {
       fontSize: 13,
       color: theme.textSecondary,
       marginBottom: 8,
       lineHeight: 18,
     },
-    groupMembers: {
+    groupMembersReorder: {
       fontSize: 14,
       lineHeight: 20,
       color: theme.textSecondary,
-    },
-    groupList: {
-      flexDirection: isNarrow ? 'column' : 'row',
-      flexWrap: isNarrow ? undefined : 'wrap',
-      marginHorizontal: isNarrow ? 0 : -8,
-    },
-    groupCardWrapper: {
-      width: '100%',
-      maxWidth: isNarrow ? '100%' : cardMaxWidth,
-      paddingHorizontal: isNarrow ? 0 : 8,
-      marginBottom: 8,
     },
   });
 
@@ -466,16 +423,16 @@ const UserGroupsDesktopContent: React.FC = () => {
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <Ionicons name="people-circle" size={20} color="#10B981" />
-            <Text style={dynamicStyles.groupName}>{group.name}</Text>
+            <Text style={dynamicStyles.groupNameReorder}>{group.name}</Text>
           </View>
           {group.description ? (
-            <Text style={dynamicStyles.groupDescription} numberOfLines={1}>
+            <Text style={dynamicStyles.groupDescriptionReorder} numberOfLines={1}>
               {group.description}
             </Text>
           ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Ionicons name="people" size={16} color={theme.textSecondary} />
-            <Text style={dynamicStyles.groupMembers}>
+            <Text style={dynamicStyles.groupMembersReorder}>
               {group.member_count || 0} участников
             </Text>
           </View>
@@ -602,66 +559,62 @@ const UserGroupsDesktopContent: React.FC = () => {
         <FadeIn enabled={Date.now() - mountTime.current > 150}>
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.contentInner}>
-            <View style={dynamicStyles.groupList}>
-              {filteredGroups.map((group) => (
-                <View key={group.id} style={dynamicStyles.groupCardWrapper}>
-                  <TouchableOpacity
-                    style={dynamicStyles.groupCard}
-                    onPress={() => {
-                      (navigation as any).navigate('EditUserGroup', { groupId: group.id });
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.groupContent}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <Ionicons name="people-circle" size={20} color="#10B981" />
-                        <Text style={[dynamicStyles.groupName, { flex: 1 }]}>{group.name}</Text>
-                      </View>
-                      {group.description ? (
-                        <Text style={dynamicStyles.groupDescription} numberOfLines={2}>
-                          {group.description}
-                        </Text>
-                      ) : null}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-                        <Ionicons name="people" size={16} color={theme.textSecondary} />
-                        <Text style={dynamicStyles.groupMembers}>
-                          {group.member_count || 0} участников
-                        </Text>
-                      </View>
-
-                      {/* Action Buttons Row */}
-                      {canManageGroup(group) && (
-                        <View style={styles.actionButtons}>
-                          <TouchableOpacity
-                            style={[
-                              styles.actionButton,
-                              { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.1)' },
-                            ]}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              (navigation as any).navigate('EditUserGroup', { groupId: group.id });
-                            }}
-                          >
-                            <Ionicons name="create-outline" size={18} color={theme.primary} />
-                            <Text style={[styles.actionButtonText, { color: theme.primary }]}>Редактировать</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[
-                              styles.actionButton,
-                              { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.1)' },
-                            ]}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              handleDeleteGroup(group);
-                            }}
-                          >
-                            <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                            <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>Удалить</Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
+            <View style={[styles.tableCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              {/* Table header */}
+              <View style={[styles.tableRow, styles.tableHeader, { borderBottomColor: theme.border }]}>
+                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 2.5 }]}>Название</Text>
+                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 2 }]}>Описание</Text>
+                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 1 }]}>Участники</Text>
+                <View style={{ width: 80 }} />
+              </View>
+              {/* Table rows */}
+              {filteredGroups.map((group, index) => (
+                <View
+                  key={group.id}
+                  style={[
+                    styles.tableRow,
+                    index < filteredGroups.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
+                  ]}
+                  // @ts-ignore - Web-only event handlers
+                  onClick={() => {
+                    (navigation as any).navigate('EditUserGroup', { groupId: group.id });
+                  }}
+                  onMouseEnter={(e: any) => {
+                    if (e.currentTarget?.style) {
+                      e.currentTarget.style.backgroundColor = theme.backgroundSecondary;
+                      e.currentTarget.style.cursor = 'pointer';
+                    }
+                  }}
+                  onMouseLeave={(e: any) => {
+                    if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <View style={{ flex: 2.5, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={[styles.groupIcon, { backgroundColor: '#10B98115' }]}>
+                      <Ionicons name="people-circle" size={16} color="#10B981" />
                     </View>
-                  </TouchableOpacity>
+                    <Text style={[styles.tableCellText, { color: theme.text, fontWeight: '500' }]}>{group.name}</Text>
+                  </View>
+                  <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 2 }]} numberOfLines={1}>
+                    {group.description || '—'}
+                  </Text>
+                  <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 1 }]}>
+                    {group.member_count || 0}
+                  </Text>
+                  <View style={{ width: 80, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                    {canManageGroup(group) && (
+                      <TouchableOpacity
+                        style={[styles.tableActionButton, { backgroundColor: theme.backgroundTertiary }]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleDeleteGroup(group);
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                      </TouchableOpacity>
+                    )}
+                    <Ionicons name="chevron-forward" size={16} color={theme.textTertiary} />
+                  </View>
                 </View>
               ))}
             </View>
@@ -726,33 +679,45 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 16,
   },
-  groupContent: {
-    flex: 1,
+  tableCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden' as const,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
-  },
-  actionButton: {
-    flex: 1,
+  tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  tableHeader: {
+    borderBottomWidth: 1,
+    paddingBottom: 10,
+  },
+  tableHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  tableCellText: {
+    fontSize: 13,
+  },
+  groupIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    minHeight: 40,
+  },
+  tableActionButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
     // @ts-ignore
     cursor: 'pointer',
-  },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 18,
   },
   modalOverlay: {
     position: 'absolute',
