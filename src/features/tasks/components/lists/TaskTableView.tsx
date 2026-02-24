@@ -325,6 +325,11 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       title: 'Статус',
       flex: 1.5,
       minWidth: 130,
+      sortable: true,
+      sortValue: (row) => {
+        const order: Record<string, number> = { new: 0, in_progress: 1, review: 2, done: 3, cancelled: 4 };
+        return order[row.task.status] ?? 5;
+      },
       render: ({ task }) => (
         <View style={[localStyles.statusBadge, { backgroundColor: getStatusColor(task.status as StatusTab) }]}>
           <Text style={localStyles.statusText}>{STATUS_LABELS[task.status as StatusTab]}</Text>
@@ -399,6 +404,8 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       title: 'Автор',
       flex: 1,
       minWidth: 100,
+      sortable: true,
+      sortValue: (row) => row.task.creator?.name?.toLowerCase() || '',
       render: ({ task }, theme) => (
         <View style={localStyles.creatorContainer}>
           <Avatar

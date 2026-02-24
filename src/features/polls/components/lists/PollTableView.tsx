@@ -154,6 +154,8 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
       key: 'type',
       title: 'Тип',
       flex: 1.3,
+      sortable: true,
+      sortValue: (poll) => getTypeText(poll.type),
       render: (poll, theme) => (
         <>
           <Ionicons name={getTypeIcon(poll.type) as any} size={14} color={theme.primary} />
@@ -167,6 +169,8 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
       key: 'visibility',
       title: 'Видимость',
       flex: 1.3,
+      sortable: true,
+      sortValue: (poll) => getVisibilityText(poll),
       render: (poll, theme) => (
         <>
           <Ionicons name={getVisibilityIcon(poll.visibility) as any} size={12} color={getVisibilityColor(poll.visibility)} />
@@ -215,6 +219,8 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
       key: 'creator',
       title: 'Автор',
       flex: 1.5,
+      sortable: true,
+      sortValue: (poll) => getCreatorName(poll).toLowerCase(),
       render: (poll, theme) => (
         <>
           <Avatar
