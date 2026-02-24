@@ -372,6 +372,8 @@ export const AbsenceListScreen: React.FC = () => {
       key: 'employee',
       title: 'Сотрудник',
       flex: 2.5,
+      sortable: true,
+      sortValue: (absence) => absence.user?.name?.toLowerCase() || '',
       render: (absence, theme) => {
         const userName = absence.user?.name || `#${absence.user_id}`;
         return (
@@ -388,6 +390,8 @@ export const AbsenceListScreen: React.FC = () => {
       key: 'type',
       title: 'Тип',
       flex: 1.3,
+      sortable: true,
+      sortValue: (absence) => ABSENCE_TYPE_LABELS[absence.type] || '',
       render: (absence, theme) => (
         <>
           <View style={[absenceLocalStyles.typeDot, { backgroundColor: ABSENCE_TYPE_COLORS[absence.type] }]} />
@@ -401,6 +405,8 @@ export const AbsenceListScreen: React.FC = () => {
       key: 'period',
       title: 'Период',
       flex: 1.8,
+      sortable: true,
+      sortValue: (absence) => absence.start_date,
       render: (absence, theme) => (
         <Text style={[absenceLocalStyles.cellText, { color: theme.text }]}>
           {formatAbsenceDate(absence.start_date)} — {formatAbsenceDate(absence.end_date)}
@@ -411,6 +417,8 @@ export const AbsenceListScreen: React.FC = () => {
       key: 'days',
       title: 'Дни',
       width: 50,
+      sortable: true,
+      sortValue: (absence) => getDurationDays(parseLocalDate(absence.start_date), parseLocalDate(absence.end_date)),
       render: (absence, theme) => {
         const startDate = parseLocalDate(absence.start_date);
         const endDate = parseLocalDate(absence.end_date);

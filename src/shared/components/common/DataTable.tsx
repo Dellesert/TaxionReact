@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,10 @@ export interface DataTableColumn<T> {
   minWidth?: number;
   /** Render function for each cell */
   render: (item: T, theme: Theme, isDark: boolean) => React.ReactNode;
+  /** Enable sorting for this column */
+  sortable?: boolean;
+  /** Extract a comparable value for sorting. Required when `sortable` is true. */
+  sortValue?: (item: T) => string | number;
 }
 
 export interface DataTableProps<T> {
@@ -56,11 +60,17 @@ export interface DataTableProps<T> {
   /** Return additional styles for a row */
   getRowStyle?: (item: T) => ViewStyle | undefined;
   /** Pull-to-refresh control element */
-  refreshControl?: React.ReactElement;
+  refreshControl?: React.ReactElement<any>;
   /** Content rendered after all rows inside the ScrollView */
   renderAfterRows?: React.ReactNode;
   /** Override the outer card container style */
   containerStyle?: ViewStyle;
+}
+
+type SortDirection = 'asc' | 'desc';
+interface SortState {
+  columnKey: string;
+  direction: SortDirection;
 }
 
 // ─── Row Sub-Component (memoized, per-row hover state) ───────────
@@ -146,6 +156,33 @@ export function DataTable<T>({
   containerStyle,
 }: DataTableProps<T>) {
   const { theme, isDark } = useTheme();
+  const [sort, setSort] = useState<SortState | null>(null);
+
+  const handleHeaderPress = (col: DataTableColumn<T>) => {
+    if (!col.sortable || !col.sortValue) return;
+    setSort((prev) =>
+      prev?.columnKey === col.key
+        ? prev.direction === 'asc'
+          ? { columnKey: col.key, direction: 'desc' }
+          : null
+        : { columnKey: col.key, direction: 'asc' },
+    );
+  };
+
+  const sortedData = useMemo(() => {
+    if (!sort) return data;
+    const col = columns.find((c) => c.key === sort.columnKey);
+    if (!col?.sortValue) return data;
+    const getValue = col.sortValue;
+    const dir = sort.direction === 'asc' ? 1 : -1;
+    return [...data].sort((a, b) => {
+      const va = getValue(a);
+      const vb = getValue(b);
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+  }, [data, sort, columns]);
 
   const cardBg = isDark ? theme.card : '#FFFFFF';
 
@@ -170,20 +207,55 @@ export function DataTable<T>({
         >
           #
         </Text>
-        {columns.map((col) => (
-          <Text
-            key={col.key}
-            style={[
-              styles.headerText,
-              { color: theme.textSecondary },
-              col.flex != null ? { flex: col.flex } : undefined,
-              col.width != null ? { width: col.width } : undefined,
-              col.minWidth != null ? { minWidth: col.minWidth } : undefined,
-            ]}
-          >
-            {col.title}
-          </Text>
-        ))}
+        {columns.map((col) => {
+          const isSorted = sort?.columnKey === col.key;
+          const content = (
+            <View style={styles.headerCell}>
+              <Text
+                style={[
+                  styles.headerText,
+                  { color: isSorted ? theme.primary : theme.textSecondary },
+                ]}
+              >
+                {col.title}
+              </Text>
+              {isSorted && (
+                <Ionicons
+                  name={sort.direction === 'asc' ? 'chevron-up' : 'chevron-down'}
+                  size={12}
+                  color={theme.primary}
+                  style={{ marginLeft: 2 }}
+                />
+              )}
+            </View>
+          );
+
+          return col.sortable ? (
+            <TouchableOpacity
+              key={col.key}
+              style={[
+                col.flex != null ? { flex: col.flex } : undefined,
+                col.width != null ? { width: col.width } : undefined,
+                col.minWidth != null ? { minWidth: col.minWidth } : undefined,
+              ]}
+              activeOpacity={0.6}
+              onPress={() => handleHeaderPress(col)}
+            >
+              {content}
+            </TouchableOpacity>
+          ) : (
+            <View
+              key={col.key}
+              style={[
+                col.flex != null ? { flex: col.flex } : undefined,
+                col.width != null ? { width: col.width } : undefined,
+                col.minWidth != null ? { minWidth: col.minWidth } : undefined,
+              ]}
+            >
+              {content}
+            </View>
+          );
+        })}
       </View>
 
       {/* Table body */}
@@ -224,7 +296,7 @@ export function DataTable<T>({
           )
         ) : (
           <>
-            {data.map((item, index) => {
+            {sortedData.map((item, index) => {
               const key = keyExtractor(item, index);
               const rowStyle = getRowStyle?.(item);
               return (
@@ -244,6 +316,15 @@ export function DataTable<T>({
           </>
         )}
       </ScrollView>
+
+      {/* Footer with total count */}
+      {data.length > 0 && (
+        <View style={[styles.footerRow, { borderColor: theme.border }]}>
+          <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+            Всего: {data.length}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -283,6 +364,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     lineHeight: 16,
+  },
+  headerCell: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   bodyContainer: {
     flex: 1,
@@ -340,5 +425,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+  },
+  footerText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
 });

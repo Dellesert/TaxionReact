@@ -288,6 +288,8 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       title: 'Название',
       flex: 3,
       minWidth: 250,
+      sortable: true,
+      sortValue: (row) => row.task.title.toLowerCase(),
       render: ({ task, isSubtask }, theme) => {
         const hasSubtasks = (task.subtasks?.length || 0) > 0;
         const isExpanded = expandedTaskIds.has(task.id);
@@ -334,6 +336,11 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       title: 'Приоритет',
       flex: 1,
       minWidth: 100,
+      sortable: true,
+      sortValue: (row) => {
+        const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+        return order[row.task.priority] ?? 4;
+      },
       render: ({ task }, theme) => (
         <View style={localStyles.priorityContainer}>
           <View style={[localStyles.priorityDot, { backgroundColor: getPriorityColor(task.priority) }]} />
@@ -348,6 +355,8 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       title: 'Дедлайн',
       flex: 1,
       minWidth: 100,
+      sortable: true,
+      sortValue: (row) => row.task.due_date || 'zzzz',
       render: ({ task }, theme) => {
         if (task.due_date) {
           return (
@@ -377,6 +386,8 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       title: 'Создано',
       flex: 1,
       minWidth: 100,
+      sortable: true,
+      sortValue: (row) => row.task.created_at || '',
       render: ({ task }, theme) => (
         <Text style={[localStyles.cellText, { color: theme.text }]}>
           {formatDate(task.created_at)}

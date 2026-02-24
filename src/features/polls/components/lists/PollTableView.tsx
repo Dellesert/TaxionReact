@@ -130,6 +130,8 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
       key: 'title',
       title: 'Название',
       flex: 2.5,
+      sortable: true,
+      sortValue: (poll) => poll.title.toLowerCase(),
       render: (poll, theme) => (
         <Text style={[localStyles.cellText, { color: theme.text, fontWeight: '500' }]} numberOfLines={1}>
           {poll.title}
@@ -140,6 +142,8 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
       key: 'status',
       title: 'Статус',
       flex: 1,
+      sortable: true,
+      sortValue: (poll) => poll.status,
       render: (poll) => (
         <View style={[localStyles.statusBadge, { backgroundColor: getStatusColor(poll.status) }]}>
           <Text style={localStyles.statusText}>{getStatusText(poll.status)}</Text>
@@ -176,6 +180,8 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
       key: 'stats',
       title: 'Голоса',
       width: 70,
+      sortable: true,
+      sortValue: (poll) => poll.total_voters || 0,
       render: (poll, theme) => (
         <>
           <Ionicons name="people-outline" size={14} color={theme.textSecondary} />
@@ -189,6 +195,8 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
       key: 'deadline',
       title: 'Дедлайн',
       flex: 1.2,
+      sortable: true,
+      sortValue: (poll) => poll.end_time || 'zzzz',
       render: (poll, theme) => {
         if (poll.end_time && poll.status === 'active') {
           return (

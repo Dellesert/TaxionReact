@@ -216,6 +216,8 @@ export const ScheduleListScreen: React.FC = () => {
       key: 'title',
       title: 'Название',
       flex: 2.5,
+      sortable: true,
+      sortValue: (schedule) => schedule.title.toLowerCase(),
       render: (schedule, theme) => (
         <Text style={[scheduleLocalStyles.cellText, { color: theme.text, fontWeight: '500' }]} numberOfLines={1}>
           {schedule.title}
@@ -226,6 +228,8 @@ export const ScheduleListScreen: React.FC = () => {
       key: 'type',
       title: 'Тип',
       flex: 1.3,
+      sortable: true,
+      sortValue: (schedule) => SCHEDULE_TYPE_LABELS[schedule.type],
       render: (schedule, theme) => {
         const typeColor = schedule.color || getScheduleTypeColor(schedule.type);
         return (
@@ -242,6 +246,8 @@ export const ScheduleListScreen: React.FC = () => {
       key: 'period',
       title: 'Период',
       flex: 1.8,
+      sortable: true,
+      sortValue: (schedule) => schedule.start_date,
       render: (schedule, theme) => (
         <Text style={[scheduleLocalStyles.cellText, { color: theme.text }]}>
           {formatScheduleDate(schedule.start_date, 'dd MMM')} — {formatScheduleDate(schedule.end_date, 'dd MMM yyyy')}
@@ -252,6 +258,8 @@ export const ScheduleListScreen: React.FC = () => {
       key: 'mode',
       title: 'Режим',
       flex: 1,
+      sortable: true,
+      sortValue: (schedule) => SCHEDULE_MODE_LABELS[schedule.mode],
       render: (schedule, theme) => (
         <Text style={[scheduleLocalStyles.cellText, { color: theme.textSecondary }]}>
           {SCHEDULE_MODE_LABELS[schedule.mode]}
@@ -262,7 +270,9 @@ export const ScheduleListScreen: React.FC = () => {
       key: 'status',
       title: 'Статус',
       flex: 1,
-      render: (schedule, theme) => {
+      sortable: true,
+      sortValue: (schedule) => schedule.status,
+      render: (schedule, _theme) => {
         const isDraft = schedule.status === 'draft';
         return (
           <>
