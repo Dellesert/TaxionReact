@@ -139,7 +139,7 @@ const AccountsSettingsContent: React.FC = () => {
               imageUrl={currentUser.avatar}
               thumbnailUrl={currentUser.avatar_thumbnail}
               name={currentUser.name || currentUser.email}
-              size={48}
+              size={32}
               userId={currentUser.id}
             />
             <View style={styles.currentAccountInfo}>
@@ -213,7 +213,7 @@ const AccountsSettingsContent: React.FC = () => {
                   imageUrl={account.avatar}
                   thumbnailUrl={account.avatarThumbnail}
                   name={account.name || account.email}
-                  size={40}
+                  size={28}
                   userId={account.userId}
                 />
                 <View style={styles.accountCardInfo}>
@@ -331,7 +331,7 @@ export default AccountsSettingsContent;
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    padding: 12,
   },
   switchingBanner: {
     flexDirection: 'row',
@@ -350,16 +350,17 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
     letterSpacing: 0.5,
+    lineHeight: 16,
     marginBottom: 10,
   },
   // Current account
   currentAccountCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
   },
@@ -436,15 +437,18 @@ const styles = StyleSheet.create({
   accountCardMain: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    padding: 12,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   accountCardInfo: {
     flex: 1,
     marginLeft: 12,
   },
   accountCardName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
   },
   accountCardEmail: {
     fontSize: 12,
@@ -462,17 +466,19 @@ const styles = StyleSheet.create({
   },
   accountCardActions: {
     flexDirection: 'row',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingBottom: 12,
     gap: 8,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
     gap: 6,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   actionBtnText: {
     fontSize: 13,
@@ -491,15 +497,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 6,
     marginBottom: 20,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   addAccountButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   // Info
   infoSection: {

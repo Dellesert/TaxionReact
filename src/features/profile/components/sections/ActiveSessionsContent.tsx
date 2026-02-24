@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    padding: 12,
     paddingBottom: 100,
   },
   sectionTitle: {
@@ -121,14 +121,18 @@ const styles = StyleSheet.create({
   terminateButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 10,
     borderWidth: 1,
     marginTop: 4,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   terminateButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -137,7 +141,8 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     marginTop: 16,
-    fontSize: 16,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
 

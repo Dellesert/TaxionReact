@@ -109,42 +109,48 @@ const EditProfileContent: React.FC = () => {
 
   const dynamicStyles = StyleSheet.create({
     section: {
-      marginBottom: 32,
+      marginBottom: 24,
     },
     sectionTitle: {
-      fontSize: 18,
+      fontSize: 14,
       fontWeight: '700',
+      lineHeight: 20,
       color: theme.text,
-      marginBottom: 16,
+      marginBottom: 12,
     },
     label: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: '500',
       color: theme.textSecondary,
-      marginBottom: 8,
+      lineHeight: 18,
+      marginBottom: 6,
       marginTop: 12,
     },
     input: {
-      borderRadius: 12,
-      padding: 16,
-      fontSize: 16,
+      borderRadius: 10,
+      padding: 12,
+      fontSize: 14,
+      lineHeight: 20,
       borderWidth: 1,
       backgroundColor: theme.card,
       color: theme.text,
       borderColor: theme.border,
     },
     datePickerButton: {
-      borderRadius: 12,
-      padding: 16,
+      borderRadius: 10,
+      padding: 12,
       borderWidth: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       backgroundColor: theme.card,
       borderColor: theme.border,
+      // @ts-ignore
+      cursor: 'pointer',
     },
     datePickerText: {
-      fontSize: 16,
+      fontSize: 14,
+      lineHeight: 20,
       flex: 1,
     },
     errorContainer: {
@@ -160,25 +166,29 @@ const EditProfileContent: React.FC = () => {
       fontSize: 14,
     },
     button: {
-      borderRadius: 12,
-      padding: 18,
+      borderRadius: 10,
+      minHeight: 40,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
       alignItems: 'center',
       justifyContent: 'center',
       marginTop: 24,
       backgroundColor: theme.primary,
+      // @ts-ignore
+      cursor: 'pointer',
     },
     buttonDisabled: {
       opacity: 0.6,
     },
     buttonText: {
       color: '#FFFFFF',
-      fontSize: 18,
-      fontWeight: '600',
+      fontSize: 13,
+      fontWeight: '700',
     },
     avatarSection: {
       alignItems: 'center',
-      marginBottom: 32,
-      paddingVertical: 24,
+      marginBottom: 24,
+      paddingVertical: 20,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
@@ -188,35 +198,39 @@ const EditProfileContent: React.FC = () => {
     changeAvatarButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 24,
+      minHeight: 40,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
       borderRadius: 10,
       backgroundColor: theme.primary,
+      // @ts-ignore
+      cursor: 'pointer',
     },
     changeAvatarButtonDisabled: {
       opacity: 0.6,
     },
     changeAvatarButtonText: {
-      fontSize: 14,
-      fontWeight: '600',
+      fontSize: 13,
+      fontWeight: '700',
       color: '#FFFFFF',
       marginLeft: 8,
     },
     readOnlySection: {
-      marginBottom: 32,
-      paddingBottom: 24,
+      marginBottom: 24,
+      paddingBottom: 20,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
     readOnlyField: {
-      borderRadius: 12,
-      padding: 16,
+      borderRadius: 10,
+      padding: 12,
       backgroundColor: theme.backgroundSecondary,
       borderWidth: 1,
       borderColor: theme.border,
     },
     readOnlyText: {
-      fontSize: 16,
+      fontSize: 14,
+      lineHeight: 20,
       color: theme.textSecondary,
     },
     readOnlyRow: {
@@ -273,7 +287,7 @@ const EditProfileContent: React.FC = () => {
           <View style={dynamicStyles.readOnlyRow}>
             <Ionicons
               name="shield-checkmark-outline"
-              size={20}
+              size={18}
               color={theme.textSecondary}
               style={dynamicStyles.readOnlyIcon}
             />
@@ -288,7 +302,7 @@ const EditProfileContent: React.FC = () => {
               <View style={dynamicStyles.readOnlyRow}>
                 <Ionicons
                   name="business-outline"
-                  size={20}
+                  size={18}
                   color={theme.textSecondary}
                   style={dynamicStyles.readOnlyIcon}
                 />
@@ -305,7 +319,7 @@ const EditProfileContent: React.FC = () => {
               <View style={dynamicStyles.readOnlyRow}>
                 <Ionicons
                   name="briefcase-outline"
-                  size={20}
+                  size={18}
                   color={theme.textSecondary}
                   style={dynamicStyles.readOnlyIcon}
                 />
@@ -410,7 +424,7 @@ const EditProfileContent: React.FC = () => {
           >
             {birthDate ? format(birthDate, 'dd MMMM yyyy', { locale: ru }) : 'Выберите дату рождения'}
           </Text>
-          <Ionicons name="calendar-outline" size={20} color={theme.textSecondary} />
+          <Ionicons name="calendar-outline" size={18} color={theme.textSecondary} />
         </TouchableOpacity>
       </View>
 

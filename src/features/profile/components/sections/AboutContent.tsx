@@ -102,7 +102,7 @@ const AboutContent: React.FC = () => {
               {isCheckingUpdate ? (
                 <ActivityIndicator size="small" color={theme.primary} />
               ) : (
-                <Ionicons name="refresh-outline" size={20} color={theme.primary} />
+                <Ionicons name="refresh-outline" size={18} color={theme.primary} />
               )}
               <Text style={[styles.updateButtonText, { color: theme.text }]}>
                 {isCheckingUpdate ? 'Проверка...' : 'Проверить обновления'}
@@ -147,8 +147,8 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'web' ? 100 : Platform.OS === 'ios' ? 100 : 32,
   },
   descriptionText: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -156,13 +156,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderTopWidth: 1,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   updateButtonText: {
     flex: 1,
     marginLeft: 12,
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
   },
   updateStatus: {
     fontSize: 13,

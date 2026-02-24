@@ -36,7 +36,7 @@ export const PasskeyCard: React.FC<PasskeyCardProps> = ({
       ]}
     >
       <View style={styles.passkeyHeader}>
-        <Ionicons name="key" size={24} color={theme.primary} style={styles.passkeyIcon} />
+        <Ionicons name="key" size={18} color={theme.primary} style={styles.passkeyIcon} />
         <View style={styles.passkeyInfo}>
           <Text style={[styles.passkeyName, { color: theme.text }]}>
             {passkey.name || 'Устройство'}
@@ -52,7 +52,7 @@ export const PasskeyCard: React.FC<PasskeyCardProps> = ({
         </View>
         <View style={styles.passkeyActions}>
           <TouchableOpacity style={styles.actionButton} onPress={() => onRename(passkey)}>
-            <Ionicons name="create-outline" size={20} color={theme.primary} />
+            <Ionicons name="create-outline" size={18} color={theme.primary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
@@ -62,7 +62,7 @@ export const PasskeyCard: React.FC<PasskeyCardProps> = ({
             {isDeleting ? (
               <ActivityIndicator size="small" color={theme.error} />
             ) : (
-              <Ionicons name="trash-outline" size={20} color={theme.error} />
+              <Ionicons name="trash-outline" size={18} color={theme.error} />
             )}
           </TouchableOpacity>
         </View>
@@ -92,11 +92,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   passkeyName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
   passkeyDate: {
-    fontSize: 13,
+    fontSize: 12,
+    lineHeight: 16,
     marginTop: 2,
   },
   passkeyActions: {
@@ -106,5 +108,7 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: 8,
     marginLeft: 8,
+    // @ts-ignore
+    cursor: 'pointer',
   },
 });

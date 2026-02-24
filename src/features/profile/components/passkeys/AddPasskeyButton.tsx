@@ -35,7 +35,7 @@ export const AddPasskeyButton: React.FC<AddPasskeyButtonProps> = ({
         <ActivityIndicator color="#FFFFFF" size="small" />
       ) : (
         <>
-          <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" />
+          <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
           <Text style={styles.registerButtonText}>Добавить Passkey</Text>
         </>
       )}
@@ -45,20 +45,24 @@ export const AddPasskeyButton: React.FC<AddPasskeyButtonProps> = ({
 
 const styles = StyleSheet.create({
   registerButton: {
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
+    margin: 12,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    // @ts-ignore
+    cursor: 'pointer',
   },
   registerButtonDisabled: {
     opacity: 0.6,
   },
   registerButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     marginLeft: 8,
   },
 });

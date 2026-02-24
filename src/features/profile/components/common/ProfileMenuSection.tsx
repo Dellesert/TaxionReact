@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 
 interface ProfileMenuSectionProps {
@@ -17,16 +17,24 @@ export const ProfileMenuSection: React.FC<ProfileMenuSectionProps> = ({ title, d
   const dynamicStyles = StyleSheet.create({
     section: {
       backgroundColor: theme.backgroundSecondary,
-      marginBottom: 16,
+      marginBottom: 8,
       borderRadius: 12,
       overflow: 'hidden',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0.2 : 0.08,
-      shadowRadius: 4,
-      elevation: 2,
-      borderWidth: isDark ? 0 : 1,
-      borderColor: isDark ? 'transparent' : '#E5E7EB',
+      borderWidth: 1,
+      borderColor: theme.border,
+      ...Platform.select({
+        web: {
+          // @ts-ignore
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        },
+        default: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: isDark ? 0.2 : 0.08,
+          shadowRadius: 8,
+          elevation: 3,
+        },
+      }),
     },
     sectionHeader: {
       paddingHorizontal: 16,
@@ -36,6 +44,7 @@ export const ProfileMenuSection: React.FC<ProfileMenuSectionProps> = ({ title, d
     sectionTitle: {
       fontSize: 12,
       fontWeight: '700',
+      lineHeight: 16,
       color: theme.textSecondary,
       letterSpacing: 0.5,
     },

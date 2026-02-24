@@ -38,7 +38,7 @@ export const AboutContactLink: React.FC<AboutContactLinkProps> = ({
       style={[styles.container, dynamicStyles.container, isLast && styles.containerLast]}
       onPress={onPress}
     >
-      <Ionicons name={icon} size={20} color={theme.primary} />
+      <Ionicons name={icon} size={18} color={theme.primary} />
       <Text style={[styles.text, dynamicStyles.text]}>{text}</Text>
       <Ionicons name="open-outline" size={18} color={theme.textTertiary} />
     </TouchableOpacity>
@@ -50,8 +50,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderBottomWidth: 1,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   containerLast: {
     borderBottomWidth: 0,
@@ -59,6 +61,7 @@ const styles = StyleSheet.create({
   text: {
     flex: 1,
     marginLeft: 12,
-    fontSize: 16,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

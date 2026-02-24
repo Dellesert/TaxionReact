@@ -88,20 +88,22 @@ const ChangePasswordContent: React.FC = () => {
 
   const dynamicStyles = StyleSheet.create({
     label: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: '500',
       color: theme.textSecondary,
-      marginBottom: 8,
-      marginTop: 16,
+      lineHeight: 18,
+      marginBottom: 6,
+      marginTop: 12,
     },
     inputContainer: {
       position: 'relative',
     },
     input: {
-      borderRadius: 12,
-      padding: 16,
+      borderRadius: 10,
+      padding: 12,
       paddingRight: 50,
-      fontSize: 16,
+      fontSize: 14,
+      lineHeight: 20,
       borderWidth: 1,
       backgroundColor: theme.card,
       color: theme.text,
@@ -110,14 +112,17 @@ const ChangePasswordContent: React.FC = () => {
     eyeButton: {
       position: 'absolute',
       right: 12,
-      top: 12,
+      top: 10,
       padding: 8,
+      // @ts-ignore
+      cursor: 'pointer',
     },
     hint: {
-      fontSize: 12,
+      fontSize: 11,
+      fontWeight: '500',
       color: theme.textTertiary,
       marginTop: 6,
-      lineHeight: 18,
+      lineHeight: 14,
     },
     errorContainer: {
       backgroundColor: '#7F1D1D',
@@ -132,20 +137,24 @@ const ChangePasswordContent: React.FC = () => {
       fontSize: 14,
     },
     button: {
-      borderRadius: 12,
-      padding: 18,
+      borderRadius: 10,
+      minHeight: 40,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 32,
+      marginTop: 24,
       backgroundColor: theme.primary,
+      // @ts-ignore
+      cursor: 'pointer',
     },
     buttonDisabled: {
       opacity: 0.6,
     },
     buttonText: {
       color: '#FFFFFF',
-      fontSize: 18,
-      fontWeight: '600',
+      fontSize: 13,
+      fontWeight: '700',
     },
   });
 
@@ -172,7 +181,7 @@ const ChangePasswordContent: React.FC = () => {
         >
           <Ionicons
             name={showCurrentPassword ? 'eye-off' : 'eye'}
-            size={22}
+            size={18}
             color={theme.textSecondary}
           />
         </TouchableOpacity>
@@ -200,7 +209,7 @@ const ChangePasswordContent: React.FC = () => {
         >
           <Ionicons
             name={showNewPassword ? 'eye-off' : 'eye'}
-            size={22}
+            size={18}
             color={theme.textSecondary}
           />
         </TouchableOpacity>
@@ -228,7 +237,7 @@ const ChangePasswordContent: React.FC = () => {
         >
           <Ionicons
             name={showConfirmPassword ? 'eye-off' : 'eye'}
-            size={22}
+            size={18}
             color={theme.textSecondary}
           />
         </TouchableOpacity>

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { getDeviceInfo, getDeviceIcon, isCurrentSession } from '../../utils/activeSessionsHelpers';
@@ -74,7 +74,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
       <View style={styles.sessionHeader}>
         <View style={styles.sessionInfo}>
           <View style={[styles.iconCircle, { backgroundColor: theme.primary + '15' }]}>
-            <Ionicons name={deviceIcon as any} size={24} color={theme.primary} />
+            <Ionicons name={deviceIcon as any} size={18} color={theme.primary} />
           </View>
           <View style={styles.sessionDetails}>
             <View style={styles.sessionTitleRow}>
@@ -158,14 +158,22 @@ export const SessionCard: React.FC<SessionCardProps> = ({
 const styles = StyleSheet.create({
   sessionCard: {
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: 12,
+    marginBottom: 8,
     borderWidth: 1,
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+      },
+    }),
   },
   sessionHeader: {
     flexDirection: 'row',
@@ -179,9 +187,9 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -214,9 +222,10 @@ const styles = StyleSheet.create({
   },
   editInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
@@ -251,5 +260,7 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: 8,
     flexShrink: 0,
+    // @ts-ignore
+    cursor: 'pointer',
   },
 });

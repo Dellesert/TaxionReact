@@ -49,10 +49,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   label: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
   },
   value: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
 });

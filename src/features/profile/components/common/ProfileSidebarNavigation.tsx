@@ -109,15 +109,16 @@ export const ProfileSidebarNavigation: React.FC<ProfileSidebarNavigationProps> =
       paddingBottom: 12,
     },
     groupContainer: {
-      marginBottom: 20,
+      marginBottom: 16,
     },
     groupTitle: {
-      fontSize: 11,
-      fontWeight: '600',
+      fontSize: 12,
+      fontWeight: '700',
       color: theme.textTertiary,
       paddingHorizontal: 16,
       paddingVertical: 8,
       letterSpacing: 0.5,
+      lineHeight: 16,
     },
     itemButton: {
       flexDirection: 'row',
@@ -125,7 +126,9 @@ export const ProfileSidebarNavigation: React.FC<ProfileSidebarNavigationProps> =
       paddingVertical: 10,
       paddingHorizontal: 16,
       marginHorizontal: 8,
-      borderRadius: 8,
+      borderRadius: 10,
+      // @ts-ignore
+      cursor: 'pointer',
     },
     itemButtonActive: {
       backgroundColor: theme.primary,
@@ -162,10 +165,12 @@ export const ProfileSidebarNavigation: React.FC<ProfileSidebarNavigationProps> =
     logoutButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 12,
+      paddingVertical: 10,
       paddingHorizontal: 16,
-      borderRadius: 8,
+      borderRadius: 10,
       backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
+      // @ts-ignore
+      cursor: 'pointer',
     },
     logoutButtonDisabled: {
       opacity: 0.6,
@@ -261,19 +266,24 @@ const styles = StyleSheet.create({
     width: 280,
     minWidth: 240,
     maxWidth: 320,
-    borderRadius: 16,
+    borderRadius: 12,
     margin: 16,
     marginRight: 0,
     overflow: 'hidden',
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore - web only
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        transitionProperty: 'box-shadow',
+        transitionDuration: '0.2s',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+      },
     }),
   },
   scrollView: {

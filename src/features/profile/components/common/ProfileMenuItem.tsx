@@ -36,15 +36,18 @@ export const ProfileMenuItem: React.FC<ProfileMenuItemProps> = ({
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 16,
-      paddingVertical: 14,
+      paddingVertical: 12,
       borderBottomWidth: isLast ? 0 : 1,
       borderBottomColor: theme.borderLight,
       backgroundColor: theme.backgroundSecondary,
+      // @ts-ignore
+      cursor: 'pointer',
     },
     menuItemText: {
       flex: 1,
       marginLeft: 12,
-      fontSize: 16,
+      fontSize: 14,
+      lineHeight: 20,
       color: theme.text,
     },
     menuItemValue: {

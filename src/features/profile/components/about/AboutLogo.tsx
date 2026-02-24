@@ -73,8 +73,9 @@ const styles = StyleSheet.create({
     height: 60,
   },
   appName: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 28,
     marginBottom: 4,
   },
   versionText: {

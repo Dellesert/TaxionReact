@@ -42,10 +42,12 @@ export const NotificationSettingItem: React.FC<NotificationSettingItemProps> = (
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 16,
-      paddingVertical: 14,
+      paddingVertical: 12,
       borderBottomWidth: isLast ? 0 : 1,
       borderBottomColor: theme.borderLight,
       opacity: disabled ? 0.5 : 1,
+      // @ts-ignore
+      cursor: 'pointer',
     },
     settingItemLeft: {
       flexDirection: 'row',
@@ -53,9 +55,9 @@ export const NotificationSettingItem: React.FC<NotificationSettingItemProps> = (
       flex: 1,
     },
     iconContainer: {
-      width: 32,
-      height: 32,
-      borderRadius: 8,
+      width: 36,
+      height: 36,
+      borderRadius: 10,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: iconColor,
@@ -65,12 +67,14 @@ export const NotificationSettingItem: React.FC<NotificationSettingItemProps> = (
       marginLeft: 12,
     },
     settingTitle: {
-      fontSize: 16,
+      fontSize: 14,
+      lineHeight: 20,
       color: theme.text,
       fontWeight: '500',
     },
     settingDescription: {
-      fontSize: 13,
+      fontSize: 12,
+      lineHeight: 16,
       color: theme.textTertiary,
       marginTop: 2,
     },

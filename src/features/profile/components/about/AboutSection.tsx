@@ -4,7 +4,7 @@
  */
 
 import React, { ReactNode } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '@shared/hooks/useTheme';
 
 interface AboutSectionProps {
@@ -37,16 +37,24 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ title, children }) =
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 16,
+    marginTop: 12,
     marginHorizontal: 16,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
     borderWidth: 1,
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+      },
+    }),
   },
   header: {
     paddingHorizontal: 16,

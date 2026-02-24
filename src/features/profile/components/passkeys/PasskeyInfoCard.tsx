@@ -28,14 +28,15 @@ export const PasskeyInfoCard: React.FC = () => {
 
 const styles = StyleSheet.create({
   infoCard: {
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
+    margin: 12,
+    padding: 12,
+    borderRadius: 10,
     borderWidth: 1,
   },
   infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
     marginBottom: 8,
   },
   infoText: {

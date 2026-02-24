@@ -432,10 +432,12 @@ const StorageContent: React.FC = () => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: 14,
+      paddingVertical: 12,
       paddingHorizontal: 16,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
+      // @ts-ignore
+      cursor: 'pointer',
     },
     rowLast: {
       borderBottomWidth: 0,
@@ -448,7 +450,7 @@ const StorageContent: React.FC = () => {
     rowIcon: {
       width: 36,
       height: 36,
-      borderRadius: 8,
+      borderRadius: 10,
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: 12,
@@ -457,8 +459,9 @@ const StorageContent: React.FC = () => {
       flex: 1,
     },
     rowTitle: {
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: '500',
+      lineHeight: 20,
       color: theme.text,
     },
     rowSubtitle: {
@@ -467,8 +470,9 @@ const StorageContent: React.FC = () => {
       marginTop: 2,
     },
     rowValue: {
-      fontSize: 15,
+      fontSize: 14,
       color: theme.textSecondary,
+      lineHeight: 20,
       marginLeft: 8,
     },
     totalContainer: {
@@ -485,8 +489,9 @@ const StorageContent: React.FC = () => {
       marginBottom: 12,
     },
     totalLabel: {
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: '600',
+      lineHeight: 20,
       color: theme.text,
     },
     totalValue: {
@@ -515,16 +520,20 @@ const StorageContent: React.FC = () => {
     },
     clearAllButton: {
       backgroundColor: '#EF4444',
-      borderRadius: 12,
-      paddingVertical: 16,
+      borderRadius: 10,
+      minHeight: 40,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
       marginTop: 24,
       marginHorizontal: 16,
       alignItems: 'center',
       justifyContent: 'center',
+      // @ts-ignore
+      cursor: 'pointer',
     },
     clearAllButtonText: {
-      fontSize: 16,
-      fontWeight: '600',
+      fontSize: 13,
+      fontWeight: '700',
       color: '#FFFFFF',
     },
     loadingContainer: {
@@ -554,7 +563,7 @@ const StorageContent: React.FC = () => {
             <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.rowIcon, { backgroundColor: '#3B82F620' }]}>
-                  <Ionicons name="server-outline" size={20} color="#3B82F6" />
+                  <Ionicons name="server-outline" size={18} color="#3B82F6" />
                 </View>
                 <View style={styles.rowTextContainer}>
                   <Text style={styles.rowTitle}>Данные</Text>
@@ -566,7 +575,7 @@ const StorageContent: React.FC = () => {
             <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.rowIcon, { backgroundColor: '#F59E0B20' }]}>
-                  <Ionicons name="image" size={20} color="#F59E0B" />
+                  <Ionicons name="image" size={18} color="#F59E0B" />
                 </View>
                 <View style={styles.rowTextContainer}>
                   <Text style={styles.rowTitle}>Изображения</Text>
@@ -598,7 +607,7 @@ const StorageContent: React.FC = () => {
             <View style={[styles.row, styles.rowLast]}>
               <View style={styles.rowLeft}>
                 <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
-                  <Ionicons name="videocam" size={20} color="#EF4444" />
+                  <Ionicons name="videocam" size={18} color="#EF4444" />
                 </View>
                 <View style={styles.rowTextContainer}>
                   <Text style={styles.rowTitle}>Видео</Text>
@@ -664,7 +673,7 @@ const StorageContent: React.FC = () => {
               <TouchableOpacity style={[styles.row, styles.rowLast]} onPress={handleChangeCacheLimit}>
                 <View style={styles.rowLeft}>
                   <View style={[styles.rowIcon, { backgroundColor: '#8B5CF620' }]}>
-                    <Ionicons name="server-outline" size={20} color="#8B5CF6" />
+                    <Ionicons name="server-outline" size={18} color="#8B5CF6" />
                   </View>
                   <View style={styles.rowTextContainer}>
                     <Text style={styles.rowTitle}>Лимит кэша</Text>
@@ -693,7 +702,7 @@ const StorageContent: React.FC = () => {
                 >
                   <View style={styles.rowLeft}>
                     <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
-                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                      <Ionicons name="trash-outline" size={18} color="#EF4444" />
                     </View>
                     <View style={styles.rowTextContainer}>
                       <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Очистить кэш данных</Text>
@@ -709,7 +718,7 @@ const StorageContent: React.FC = () => {
                 >
                   <View style={styles.rowLeft}>
                     <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
-                      <Ionicons name="images-outline" size={20} color="#EF4444" />
+                      <Ionicons name="images-outline" size={18} color="#EF4444" />
                     </View>
                     <View style={styles.rowTextContainer}>
                       <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Очистить кэш изображений</Text>
@@ -725,7 +734,7 @@ const StorageContent: React.FC = () => {
                 >
                   <View style={styles.rowLeft}>
                     <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
-                      <Ionicons name="videocam-outline" size={20} color="#EF4444" />
+                      <Ionicons name="videocam-outline" size={18} color="#EF4444" />
                     </View>
                     <View style={styles.rowTextContainer}>
                       <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Очистить кэш видео</Text>

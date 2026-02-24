@@ -42,23 +42,25 @@ const AnimationSettingsContent: React.FC = () => {
     optionCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 20,
-      borderRadius: 16,
-      borderWidth: 2,
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
       backgroundColor: theme.card,
       borderColor: theme.border,
+      // @ts-ignore
+      cursor: 'pointer',
     },
     optionCardActive: {
       borderColor: theme.primary,
       backgroundColor: theme.primary + '10',
     },
     iconContainer: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+      width: 36,
+      height: 36,
+      borderRadius: 10,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: 16,
+      marginRight: 12,
     },
     iconContainerActive: {
       backgroundColor: theme.primary + '20',
@@ -70,8 +72,9 @@ const AnimationSettingsContent: React.FC = () => {
       flex: 1,
     },
     optionLabel: {
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: '600',
+      lineHeight: 22,
       color: theme.text,
       marginBottom: 4,
     },
@@ -108,7 +111,7 @@ const AnimationSettingsContent: React.FC = () => {
             >
               <Ionicons
                 name={option.icon}
-                size={24}
+                size={18}
                 color={isActive ? theme.primary : theme.textSecondary}
               />
             </View>
@@ -121,7 +124,7 @@ const AnimationSettingsContent: React.FC = () => {
             {isActive && (
               <Ionicons
                 name="checkmark-circle"
-                size={28}
+                size={20}
                 color={theme.primary}
                 style={dynamicStyles.checkIcon}
               />

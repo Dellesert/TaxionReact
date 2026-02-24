@@ -213,20 +213,25 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     margin: 16,
     marginLeft: 16,
     overflow: 'hidden',
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore - web only
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        transitionProperty: 'box-shadow',
+        transitionDuration: '0.2s',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+      },
     }),
   },
 });
