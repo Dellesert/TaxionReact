@@ -19,6 +19,7 @@ const STORAGE_IDS = {
   poll: 'taxion-poll-storage',
   user: 'taxion-user-storage',
   settings: 'taxion-settings-storage',
+  schedule: 'taxion-schedule-storage',
 } as const;
 
 // ============= MMKV Implementation (Native) =============
@@ -118,6 +119,7 @@ export const getZustandTaskStorage = (): StateStorage => createStorage(STORAGE_I
 export const getZustandCalendarStorage = (): StateStorage => createStorage(STORAGE_IDS.calendar);
 export const getZustandPollStorage = (): StateStorage => createStorage(STORAGE_IDS.poll);
 export const getZustandUserStorage = (): StateStorage => createStorage(STORAGE_IDS.user);
+export const getZustandScheduleStorage = (): StateStorage => createStorage(STORAGE_IDS.schedule);
 
 /**
  * Clear all storages
@@ -150,6 +152,7 @@ export interface StorageInfo {
   calendarSize: number;
   pollSize: number;
   userSize: number;
+  scheduleSize: number;
   totalSize: number;
 }
 
@@ -180,6 +183,7 @@ export const getStorageSize = async (): Promise<StorageInfo> => {
       const calendarSize = getSize(STORAGE_IDS.calendar);
       const pollSize = getSize(STORAGE_IDS.poll);
       const userSize = getSize(STORAGE_IDS.user);
+      const scheduleSize = getSize(STORAGE_IDS.schedule);
 
       return {
         chatSize,
@@ -187,11 +191,12 @@ export const getStorageSize = async (): Promise<StorageInfo> => {
         calendarSize,
         pollSize,
         userSize,
-        totalSize: chatSize + taskSize + calendarSize + pollSize + userSize,
+        scheduleSize,
+        totalSize: chatSize + taskSize + calendarSize + pollSize + userSize + scheduleSize,
       };
     } catch (e) {
       console.warn('[Storage] Failed to get MMKV storage size:', e);
-      return { chatSize: 0, taskSize: 0, calendarSize: 0, pollSize: 0, userSize: 0, totalSize: 0 };
+      return { chatSize: 0, taskSize: 0, calendarSize: 0, pollSize: 0, userSize: 0, scheduleSize: 0, totalSize: 0 };
     }
   } else {
     // AsyncStorage: asynchronous calculation
@@ -212,12 +217,13 @@ export const getStorageSize = async (): Promise<StorageInfo> => {
         return size;
       };
 
-      const [chatSize, taskSize, calendarSize, pollSize, userSize] = await Promise.all([
+      const [chatSize, taskSize, calendarSize, pollSize, userSize, scheduleSize] = await Promise.all([
         calculateSize(STORAGE_IDS.chat),
         calculateSize(STORAGE_IDS.task),
         calculateSize(STORAGE_IDS.calendar),
         calculateSize(STORAGE_IDS.poll),
         calculateSize(STORAGE_IDS.user),
+        calculateSize(STORAGE_IDS.schedule),
       ]);
 
       return {
@@ -226,11 +232,12 @@ export const getStorageSize = async (): Promise<StorageInfo> => {
         calendarSize,
         pollSize,
         userSize,
-        totalSize: chatSize + taskSize + calendarSize + pollSize + userSize,
+        scheduleSize,
+        totalSize: chatSize + taskSize + calendarSize + pollSize + userSize + scheduleSize,
       };
     } catch (e) {
       console.warn('[Storage] Failed to get AsyncStorage size:', e);
-      return { chatSize: 0, taskSize: 0, calendarSize: 0, pollSize: 0, userSize: 0, totalSize: 0 };
+      return { chatSize: 0, taskSize: 0, calendarSize: 0, pollSize: 0, userSize: 0, scheduleSize: 0, totalSize: 0 };
     }
   }
 };
@@ -338,6 +345,7 @@ export const enforceCacheLimit = async (): Promise<boolean> => {
     const currentStorageInfo = await getStorageSize();
     const cleanupOrder = [
       { id: STORAGE_IDS.calendar, name: 'Calendar', size: currentStorageInfo.calendarSize },
+      { id: STORAGE_IDS.schedule, name: 'Schedules', size: currentStorageInfo.scheduleSize },
       { id: STORAGE_IDS.poll, name: 'Polls', size: currentStorageInfo.pollSize },
       { id: STORAGE_IDS.task, name: 'Tasks', size: currentStorageInfo.taskSize },
       { id: STORAGE_IDS.user, name: 'Users', size: currentStorageInfo.userSize },

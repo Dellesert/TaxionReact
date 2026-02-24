@@ -12,3 +12,4 @@ export { usePollStore } from './pollStore';
 export { useUserStore } from './userStore';
 export { useAccountStore } from './accountStore';
 export { useAnimationStore } from './animationStore';
+export { useScheduleCacheStore } from './scheduleCacheStore';

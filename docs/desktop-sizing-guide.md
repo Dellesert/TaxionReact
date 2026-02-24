@@ -131,11 +131,35 @@
 - [x] `UpcomingEventsCard.tsx` — карточка ближайших событий (левый сайдбар)
 - [x] `CalendarStatsPanel.tsx` — статистика (левый сайдбар)
 - [x] `WeekTimelineView.tsx` — шкала времени недели
-- [ ] `TaskItem` / карточки задач
-- [ ] `PollCard` / карточки опросов
 - [x] `DailySummaryView.tsx` — дневная сводка графиков
 - [x] `ScheduleEntryRow.tsx` — строки записей графика
 - [x] `AbsenceListScreen.tsx` + `AbsenceCard.tsx` — экран нерабочих дней
-- [ ] Admin screens — AnalyticsHub, Metrics, Performance
-- [ ] Chat — список чатов, сообщения
-- [ ] Profile — элементы настроек
+
+### Tasks
+- [ ] `TaskItem.tsx` — карточки задач в списке
+- [ ] `TaskDesktopLayout.tsx` — правая панель деталей задачи
+
+### Polls
+- [ ] `PollCard` — карточки опросов
+- [ ] `PollDesktopLayout.tsx` — панель деталей опроса
+
+### Chat
+- [ ] `ChatItem.tsx` — элементы списка чатов
+- [ ] `MessageBubble.tsx` — пузыри сообщений
+- [ ] `PollMessageCard.tsx` — карточка опроса в чате
+
+### Dashboard
+- [ ] `DashboardCountCard.tsx` — счётчики
+- [ ] `NavigationCard.tsx` — навигационные карточки
+- [ ] `SummaryCard.tsx` — сводка
+
+### Admin
+- [ ] `AnalyticsHub` — аналитика
+- [ ] `Metrics` — метрики
+- [ ] `Performance` — производительность
+
+### Profile / Settings
+- [ ] Profile screen — элементы настроек
+- [ ] Account settings — управление аккаунтом
+
+> **Промт для аудита:** `docs/desktop-design-standards-prompt.md`

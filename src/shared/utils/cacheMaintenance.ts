@@ -9,6 +9,7 @@ import { useCalendarStore } from '@shared/store/calendarStore';
 import { useUserStore } from '@shared/store/userStore';
 import { usePollStore } from '@shared/store/pollStore';
 import { useTaskStore } from '@shared/store/taskStore';
+import { useScheduleCacheStore } from '@shared/store/scheduleCacheStore';
 import { isNative } from '@shared/storage';
 
 // ---- Limits ----
@@ -19,6 +20,8 @@ const CALENDAR_RANGE_MAX_AGE_DAYS = 60;
 const POLL_CACHE_LIMIT = 50;
 const TASK_CACHE_LIMIT_PER_STATUS = 30;
 const SUBTASKS_PARENT_LIMIT = 20;
+const SCHEDULE_RANGE_MAX_AGE_DAYS = 60;
+const SUMMARY_MAX_ENTRIES = 30;
 const MAINTENANCE_THROTTLE_MS = 5 * 60 * 1000; // 5 minutes
 
 // ---- Throttle state ----
@@ -228,6 +231,46 @@ export function pruneSubtasks(): number {
   return removedCount;
 }
 
+export function pruneScheduleRanges(): number {
+  const state = useScheduleCacheStore.getState();
+  const { schedulesByRange, summaryByDate } = state;
+  let removedCount = 0;
+
+  // Prune old schedule ranges
+  if (schedulesByRange && Object.keys(schedulesByRange).length > 0) {
+    const cutoffMs = SCHEDULE_RANGE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const prunedRanges: Record<string, any[]> = {};
+
+    for (const [key, schedules] of Object.entries(schedulesByRange)) {
+      const endDate = parseRangeKeyEndDate(key);
+      if (endDate && now - endDate.getTime() > cutoffMs) {
+        removedCount++;
+        continue;
+      }
+      prunedRanges[key] = schedules;
+    }
+
+    if (removedCount > 0) {
+      useScheduleCacheStore.setState({ schedulesByRange: prunedRanges });
+    }
+  }
+
+  // Prune old daily summaries (keep only last N by date)
+  if (summaryByDate && Object.keys(summaryByDate).length > SUMMARY_MAX_ENTRIES) {
+    const sortedKeys = Object.keys(summaryByDate).sort().reverse();
+    const keysToKeep = new Set(sortedKeys.slice(0, SUMMARY_MAX_ENTRIES));
+    const prunedSummaries: Record<string, any> = {};
+    for (const key of keysToKeep) {
+      prunedSummaries[key] = summaryByDate[key];
+    }
+    removedCount += Object.keys(summaryByDate).length - SUMMARY_MAX_ENTRIES;
+    useScheduleCacheStore.setState({ summaryByDate: prunedSummaries });
+  }
+
+  return removedCount;
+}
+
 // ---- Orchestrator ----
 
 interface MaintenanceOptions {
@@ -250,6 +293,7 @@ export async function runCacheMaintenance(options: MaintenanceOptions = {}): Pro
   const pollsResult = prunePolls();
   const tasksResult = pruneTasks();
   const subtasksResult = pruneSubtasks();
+  const scheduleResult = pruneScheduleRanges();
 
   const totalPruned =
     messagesResult.messagesRemoved +
@@ -258,7 +302,8 @@ export async function runCacheMaintenance(options: MaintenanceOptions = {}): Pro
     usersResult +
     pollsResult +
     tasksResult +
-    subtasksResult;
+    subtasksResult +
+    scheduleResult;
 
   if (totalPruned > 0) {
     console.log('[CacheMaintenance] Pruned:', {
@@ -268,6 +313,7 @@ export async function runCacheMaintenance(options: MaintenanceOptions = {}): Pro
       polls: pollsResult,
       tasks: tasksResult,
       subtasks: subtasksResult,
+      scheduleRanges: scheduleResult,
     });
   }
 

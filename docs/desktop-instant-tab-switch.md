@@ -145,5 +145,6 @@ export const useYourData = (params) => {
 | Calendar | `calendarStore.ts` | `taxion-calendar-storage:calendar-storage` |
 | Task | `taskStore.ts` | `taxion-task-storage:task-storage` |
 | Poll | `pollStore.ts` | `taxion-poll-storage:poll-storage` |
+| Schedule | `scheduleCacheStore.ts` | `taxion-schedule-storage:schedule-storage` |
 | Chat | `chatStore.ts` | `taxion-chat-storage:chat-storage` |
 | User | `userStore.ts` | `taxion-user-storage:user-storage` |

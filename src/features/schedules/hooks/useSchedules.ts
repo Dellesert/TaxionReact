@@ -1,11 +1,19 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useScheduleStore } from '../store/scheduleStore';
+import { useScheduleCacheStore } from '@shared/store/scheduleCacheStore';
 import type { ScheduleFilters } from '../types/schedule.types';
+
+const createRangeKey = (filters?: ScheduleFilters): string | null => {
+  if (filters?.start_date && filters?.end_date) {
+    return `${filters.start_date}_${filters.end_date}`;
+  }
+  return null;
+};
 
 export const useSchedules = (initialFilters?: ScheduleFilters) => {
   const {
     schedules,
-    isLoading,
+    isLoading: storeIsLoading,
     error,
     hasMore,
     total,
@@ -15,13 +23,37 @@ export const useSchedules = (initialFilters?: ScheduleFilters) => {
     clearError,
   } = useScheduleStore();
 
-  const hasLoadedRef = useRef(false);
+  const getSchedulesForRange = useScheduleCacheStore((s) => s.getSchedulesForRange);
+  const setSchedulesForRange = useScheduleCacheStore((s) => s.setSchedulesForRange);
 
-  // Initial load - only once
+  const hasLoadedRef = useRef(false);
+  const rangeKey = createRangeKey(initialFilters);
+  const cachedSchedules = rangeKey ? getSchedulesForRange(rangeKey) : null;
+
+  // If cache exists, don't show loading on mount
+  const [isLoading, setIsLoading] = useState(!cachedSchedules);
+
+  // Seed store with cached data immediately on mount
+  useEffect(() => {
+    if (cachedSchedules && !hasLoadedRef.current) {
+      useScheduleStore.setState({ schedules: cachedSchedules, isLoading: false });
+    }
+  }, []);
+
+  // Initial load - stale-while-revalidate
   useEffect(() => {
     if (!hasLoadedRef.current) {
       hasLoadedRef.current = true;
-      loadSchedules(initialFilters, true);
+      if (!cachedSchedules) {
+        setIsLoading(true);
+      }
+      loadSchedules(initialFilters, true).then(() => {
+        const freshSchedules = useScheduleStore.getState().schedules;
+        if (rangeKey) {
+          setSchedulesForRange(rangeKey, freshSchedules);
+        }
+        setIsLoading(false);
+      });
     }
   }, []);
 
@@ -29,22 +61,43 @@ export const useSchedules = (initialFilters?: ScheduleFilters) => {
   const refresh = useCallback(async () => {
     useScheduleStore.setState({ hasMore: true });
     await loadSchedules(filters, true);
-  }, [filters, loadSchedules]);
+    const freshSchedules = useScheduleStore.getState().schedules;
+    const key = createRangeKey(filters);
+    if (key) {
+      setSchedulesForRange(key, freshSchedules);
+    }
+  }, [filters, loadSchedules, setSchedulesForRange]);
 
   // Load more (pagination) - don't load if there's an error
   const loadMore = useCallback(() => {
-    if (!isLoading && hasMore && !error) {
+    if (!storeIsLoading && hasMore && !error) {
       loadSchedules(filters, false);
     }
-  }, [isLoading, hasMore, error, filters, loadSchedules]);
+  }, [storeIsLoading, hasMore, error, filters, loadSchedules]);
 
   // Update filters and reload
   const updateFilters = useCallback(
     (newFilters: ScheduleFilters) => {
+      const key = createRangeKey(newFilters);
+      const cached = key ? getSchedulesForRange(key) : null;
+
+      if (cached) {
+        useScheduleStore.setState({ schedules: cached });
+        setIsLoading(false);
+      } else {
+        setIsLoading(true);
+      }
+
       setFilters(newFilters);
-      loadSchedules(newFilters, true);
+      loadSchedules(newFilters, true).then(() => {
+        const freshSchedules = useScheduleStore.getState().schedules;
+        if (key) {
+          setSchedulesForRange(key, freshSchedules);
+        }
+        setIsLoading(false);
+      });
     },
-    [setFilters, loadSchedules]
+    [setFilters, loadSchedules, getSchedulesForRange, setSchedulesForRange]
   );
 
   return {
