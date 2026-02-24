@@ -481,7 +481,7 @@ export const AbsenceListScreen: React.FC = () => {
                   onPress={handleFilterToggle}
                   style={[styles.desktopIconButton, { backgroundColor: theme.backgroundSecondary }]}
                 >
-                  <Ionicons name="filter" size={20} color={selectedTypeFilter ? theme.primary : theme.textSecondary} />
+                  <Ionicons name="filter" size={18} color={selectedTypeFilter ? theme.primary : theme.textSecondary} />
                 </TouchableOpacity>
               </View>
               {/* Add Button */}
@@ -489,7 +489,7 @@ export const AbsenceListScreen: React.FC = () => {
                 onPress={handleCreateAbsence}
                 style={[styles.desktopAddButton, { backgroundColor: theme.primary }]}
               >
-                <Ionicons name="add" size={20} color="#FFFFFF" />
+                <Ionicons name="add" size={18} color="#FFFFFF" />
                 <Text style={styles.desktopAddButtonText}>Добавить</Text>
               </TouchableOpacity>
             </View>
@@ -1257,13 +1257,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderRadius: 8,
   },
   filterMenuItemActive: {},
   filterMenuItemText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '500',
   },
   // Mobile combined header bar
@@ -1316,7 +1316,7 @@ const styles = StyleSheet.create({
     position: 'fixed' as any,
     width: 280,
     maxHeight: 360,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     overflow: 'hidden',
     ...Platform.select({
@@ -1328,13 +1328,13 @@ const styles = StyleSheet.create({
   userFilterDropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   userFilterDropdownItemText: {
-    fontSize: 15,
+    fontSize: 13,
     flex: 1,
   },
   userFilterDropdownList: {
@@ -1351,23 +1351,25 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     maxHeight: '70%',
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   userFilterModalTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
-    padding: 16,
-    paddingBottom: 12,
+    padding: 14,
+    paddingBottom: 10,
   },
   // Desktop styles
   desktopHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingLeft: 20,
+    paddingRight: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
+    minHeight: 56,
   },
   desktopHeaderLeft: {
     flexDirection: 'row',
@@ -1375,7 +1377,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   desktopTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
   },
   desktopHeaderRight: {
@@ -1386,40 +1388,45 @@ const styles = StyleSheet.create({
   desktopSearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     minWidth: 200,
-    gap: 8,
+    minHeight: 40,
+    gap: 6,
   },
   desktopSearchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     padding: 0,
     height: 20,
   },
   desktopIconButton: {
     padding: 8,
-    borderRadius: 8,
+    borderRadius: 10,
+    minHeight: 40,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   desktopAddButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 4,
+    minHeight: 40,
   },
   desktopAddButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '700',
   },
   // Desktop list card layout
   listCard: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     margin: 16,
     overflow: 'hidden',
@@ -1439,7 +1446,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     minHeight: 56,
   },
@@ -1481,8 +1488,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   rowsContainer: {
-    padding: 16,
-    gap: 20,
+    padding: 12,
+    gap: 12,
   },
   emptyContainerDesktop: {
     flex: 1,
@@ -1493,13 +1500,14 @@ const styles = StyleSheet.create({
     minWidth: '100%',
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
     textAlign: 'center',
     maxWidth: 300,
+    lineHeight: 20,
   },
   typeRow: {
-    gap: 10,
+    gap: 8,
   },
   rowHeader: {
     flexDirection: 'row',

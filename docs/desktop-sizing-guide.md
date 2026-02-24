@@ -135,6 +135,7 @@
 - [ ] `PollCard` / карточки опросов
 - [x] `DailySummaryView.tsx` — дневная сводка графиков
 - [x] `ScheduleEntryRow.tsx` — строки записей графика
+- [x] `AbsenceListScreen.tsx` + `AbsenceCard.tsx` — экран нерабочих дней
 - [ ] Admin screens — AnalyticsHub, Metrics, Performance
 - [ ] Chat — список чатов, сообщения
 - [ ] Profile — элементы настроек

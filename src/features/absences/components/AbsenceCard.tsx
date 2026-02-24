@@ -159,8 +159,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    borderRadius: 14,
-    marginBottom: 10,
+    borderRadius: 12,
+    marginBottom: 8,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 14,
+    padding: 12,
     gap: 6,
   },
   bottomRow: {
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   userName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
     marginTop: 2,
   },
