@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,8 @@ import { User } from '@/types/user.types';
 import { Avatar } from '@shared/components/common/Avatar';
 import UserSelectorModal from '@shared/components/common/UserSelectorModal';
 import { AdminStackParamList } from '@navigation/types';
+import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
+import { TitleBarBackButton } from '@features/tasks/components/common/TitleBarBackButton';
 
 type EditUserGroupRouteProp = RouteProp<AdminStackParamList, 'EditUserGroup'>;
 
@@ -53,12 +55,136 @@ const EditUserGroupScreen: React.FC = () => {
 
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
+  const isDesktop = useIsWideScreen();
 
-  // Clear TitleBar controls when editing user group
+  const menuButtonRef = useRef<View>(null);
+
+  const handleSave = useCallback(async () => {
+    if (!name.trim()) {
+      showError('Введите название группы');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      await updateUserGroup(groupId, {
+        name: name.trim(),
+        description: description.trim() || undefined,
+      });
+
+      showSuccess('Группа обновлена');
+      navigation.goBack();
+    } catch (error: any) {
+      console.error('Failed to update group:', error);
+      showError('Не удалось обновить группу');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [name, description, groupId, navigation, showError, showSuccess]);
+
+  const titleBarLeftControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return <TitleBarBackButton onGoBack={() => navigation.goBack()} />;
+  }, [isElectron, isDesktop, navigation]);
+
+  const titleBarRightControls = useMemo(() => {
+    if (!isElectron || !isDesktop) return null;
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        {/* Add members button */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            height: 28,
+            paddingHorizontal: 10,
+            borderRadius: 6,
+            borderWidth: 1,
+            borderColor: theme.border,
+            cursor: 'pointer',
+            // @ts-ignore
+            transition: 'background-color 0.15s ease',
+          }}
+          // @ts-ignore - Web-only event handlers
+          onClick={() => setShowUserSelector(true)}
+          onMouseEnter={(e: any) => {
+            if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
+          }}
+          onMouseLeave={(e: any) => {
+            if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          <Ionicons name="add" size={14} color={theme.primary} />
+          <Text style={{ fontSize: 12, fontWeight: '600', color: theme.primary }}>Добавить</Text>
+        </View>
+        {/* Save button */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            height: 28,
+            paddingHorizontal: 10,
+            borderRadius: 6,
+            backgroundColor: isSaving ? theme.primary + '80' : theme.primary,
+            cursor: 'pointer',
+            // @ts-ignore
+            transition: 'opacity 0.15s ease',
+          }}
+          // @ts-ignore - Web-only event handlers
+          onClick={isSaving ? undefined : handleSave}
+          onMouseEnter={(e: any) => {
+            if (!isSaving && e.currentTarget?.style) e.currentTarget.style.opacity = '0.85';
+          }}
+          onMouseLeave={(e: any) => {
+            if (e.currentTarget?.style) e.currentTarget.style.opacity = '1';
+          }}
+        >
+          {isSaving ? (
+            <ActivityIndicator size={12} color="#FFFFFF" />
+          ) : (
+            <>
+              <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>Сохранить</Text>
+            </>
+          )}
+        </View>
+        {/* Menu button */}
+        <View
+          // @ts-ignore - ref type
+          ref={menuButtonRef}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: theme.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            // @ts-ignore
+            transition: 'background-color 0.15s ease',
+          }}
+          // @ts-ignore - Web-only event handlers
+          onClick={() => setShowActionMenu(true)}
+          onMouseEnter={(e: any) => {
+            if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
+          }}
+          onMouseLeave={(e: any) => {
+            if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          <Ionicons name="ellipsis-horizontal" size={14} color={theme.text} />
+        </View>
+      </View>
+    );
+  }, [isElectron, isDesktop, theme, isSaving, handleSave]);
+
   useTitleBarControlsIntegration({
     pageTitle: 'Редактирование группы',
-    leftControls: null,
-    rightControls: null,
+    leftControls: titleBarLeftControls,
+    rightControls: titleBarRightControls,
     enabled: isElectron,
   });
 
@@ -83,29 +209,6 @@ const EditUserGroupScreen: React.FC = () => {
       showError('Не удалось загрузить данные группы');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!name.trim()) {
-      showError('Введите название группы');
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      await updateUserGroup(groupId, {
-        name: name.trim(),
-        description: description.trim() || undefined,
-      });
-
-      showSuccess('Группа обновлена');
-      navigation.goBack();
-    } catch (error: any) {
-      console.error('Failed to update group:', error);
-      showError('Не удалось обновить группу');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -193,127 +296,137 @@ const EditUserGroupScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.card }]} edges={['top']}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={theme.primary} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Редактирование группы</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity
-              onPress={handleSave}
-              disabled={isSaving}
-              style={{ opacity: isSaving ? 0.5 : 1 }}
-            >
-              {isSaving ? (
-                <ActivityIndicator size="small" color={theme.primary} />
-              ) : (
-                <Ionicons name="checkmark" size={24} color={theme.primary} />
-              )}
+        {/* Header - hide on Electron desktop since controls are in TitleBar */}
+        {!(isElectron && isDesktop) && (
+          <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color={theme.primary} />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setShowActionMenu(true)}
-              style={{ padding: 4 }}
-            >
-              <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
-            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Редактирование группы</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity
+                onPress={handleSave}
+                disabled={isSaving}
+                style={{ opacity: isSaving ? 0.5 : 1 }}
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color={theme.primary} />
+                ) : (
+                  <Ionicons name="checkmark" size={24} color={theme.primary} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowActionMenu(true)}
+                style={{ padding: 4 }}
+              >
+                <Ionicons name="ellipsis-horizontal" size={24} color={theme.primary} />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
 
         <ScrollView
           style={styles.content}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={[
+            { paddingBottom: 120 },
+            isElectron && isDesktop && styles.desktopScrollContent,
+          ]}
           showsVerticalScrollIndicator={false}
         >
-          {/* Group Info */}
-          <View style={[styles.section, { backgroundColor: theme.card }]}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Информация о группе</Text>
+          <View style={isElectron && isDesktop ? [styles.desktopCard, { backgroundColor: theme.card, borderColor: theme.border }] : undefined}>
+            {/* Group Info */}
+            <View style={[styles.section, !isDesktop && { backgroundColor: theme.card }]}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Информация о группе</Text>
 
-            <View style={styles.field}>
-              <Text style={[styles.label, { color: theme.textSecondary }]}>Название *</Text>
-              <TextInput
-                style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
-                value={name}
-                onChangeText={setName}
-                placeholder="Название группы"
-                placeholderTextColor={theme.textTertiary}
-              />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={[styles.label, { color: theme.textSecondary }]}>Описание</Text>
-              <TextInput
-                style={[styles.textArea, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Описание группы (необязательно)"
-                placeholderTextColor={theme.textTertiary}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-          </View>
-
-          {/* Group Members */}
-          <View style={[styles.section, { backgroundColor: theme.card }]}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Участники ({members?.length || 0})
-              </Text>
-              <TouchableOpacity
-                style={[styles.addButton, { backgroundColor: theme.primary }]}
-                onPress={() => setShowUserSelector(true)}
-              >
-                <Ionicons name="add" size={20} color="#FFF" />
-                <Text style={styles.addButtonText}>Добавить</Text>
-              </TouchableOpacity>
-            </View>
-
-            {!members || members.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="people-outline" size={48} color={theme.textTertiary} />
-                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                  Нет участников в группе
-                </Text>
+              <View style={styles.field}>
+                <Text style={[styles.label, { color: theme.textSecondary }]}>Название *</Text>
+                <TextInput
+                  style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Название группы"
+                  placeholderTextColor={theme.textTertiary}
+                />
               </View>
-            ) : (
-              members.map((member) => (
-                <View
-                  key={member.id}
-                  style={[styles.userCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
-                >
-                  <Avatar imageUrl={member.avatar} name={member.name} size={40} />
-                  <View style={styles.userInfo}>
-                    <View style={styles.userNameRow}>
-                      <Text style={[styles.userName, { color: theme.text }]}>{member.name}</Text>
-                      {member.role === 'department_head' && (
-                        <Ionicons name="shield-checkmark" size={16} color="#F59E0B" style={{ marginLeft: 6 }} />
+
+              <View style={styles.field}>
+                <Text style={[styles.label, { color: theme.textSecondary }]}>Описание</Text>
+                <TextInput
+                  style={[styles.textArea, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Описание группы (необязательно)"
+                  placeholderTextColor={theme.textTertiary}
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+
+            </View>
+
+            {/* Group Members */}
+            <View style={[styles.section, !isDesktop && { backgroundColor: theme.card }]}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  Участники ({members?.length || 0})
+                </Text>
+                {!(isElectron && isDesktop) && (
+                  <TouchableOpacity
+                    style={[styles.addButton, { backgroundColor: theme.primary }]}
+                    onPress={() => setShowUserSelector(true)}
+                  >
+                    <Ionicons name="add" size={20} color="#FFF" />
+                    <Text style={styles.addButtonText}>Добавить</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {!members || members.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="people-outline" size={48} color={theme.textTertiary} />
+                  <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                    Нет участников в группе
+                  </Text>
+                </View>
+              ) : (
+                members.map((member) => (
+                  <View
+                    key={member.id}
+                    style={[styles.userCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                  >
+                    <Avatar imageUrl={member.avatar} name={member.name} size={40} />
+                    <View style={styles.userInfo}>
+                      <View style={styles.userNameRow}>
+                        <Text style={[styles.userName, { color: theme.text }]}>{member.name}</Text>
+                        {member.role === 'department_head' && (
+                          <Ionicons name="shield-checkmark" size={16} color="#F59E0B" style={{ marginLeft: 6 }} />
+                        )}
+                        {member.role === 'admin' && (
+                          <Ionicons name="shield" size={16} color="#3B82F6" style={{ marginLeft: 6 }} />
+                        )}
+                      </View>
+                      <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{member.email}</Text>
+                      {member.position && (
+                        <Text style={[styles.userPosition, { color: theme.textTertiary }]}>{member.position}</Text>
                       )}
-                      {member.role === 'admin' && (
-                        <Ionicons name="shield" size={16} color="#3B82F6" style={{ marginLeft: 6 }} />
+                      {member.department?.name && (
+                        <Text style={[styles.userDepartment, { color: theme.textTertiary }]}>
+                          {member.department.name}
+                        </Text>
                       )}
                     </View>
-                    <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{member.email}</Text>
-                    {member.position && (
-                      <Text style={[styles.userPosition, { color: theme.textTertiary }]}>{member.position}</Text>
-                    )}
-                    {member.department?.name && (
-                      <Text style={[styles.userDepartment, { color: theme.textTertiary }]}>
-                        {member.department.name}
-                      </Text>
-                    )}
+                    <View style={styles.userActions}>
+                      <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
+                        onPress={() => handleRemoveUser(member)}
+                      >
+                        <Ionicons name="close" size={18} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  <View style={styles.userActions}>
-                    <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: theme.backgroundTertiary }]}
-                      onPress={() => handleRemoveUser(member)}
-                    >
-                      <Ionicons name="close" size={18} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))
-            )}
+                ))
+              )}
+            </View>
           </View>
         </ScrollView>
 
@@ -321,6 +434,13 @@ const EditUserGroupScreen: React.FC = () => {
         <ActionMenu
           visible={showActionMenu}
           onClose={() => setShowActionMenu(false)}
+          isDesktop={isElectron && isDesktop}
+          buttonPosition={
+            menuButtonRef.current
+              // @ts-ignore - Web-only method
+              ? menuButtonRef.current.getBoundingClientRect?.() ?? undefined
+              : undefined
+          }
           items={[
             {
               key: 'delete',
@@ -382,6 +502,15 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  desktopScrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  desktopCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden' as const,
   },
   centerContainer: {
     flex: 1,
