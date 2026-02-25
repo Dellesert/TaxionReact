@@ -543,8 +543,8 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   style={styles.menuItem}
                   onPress={handleClearSaved}
                 >
-                  <Ionicons name="trash-outline" size={22} color={theme.error || '#FF3B30'} />
-                  <Text style={[styles.menuText, { color: theme.error || '#FF3B30' }]}>
+                  <Ionicons name="trash-outline" size={18} color={theme.error} />
+                  <Text style={[styles.menuText, { color: theme.error }]}>
                     Очистить избранное
                   </Text>
                 </TouchableOpacity>
@@ -557,7 +557,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   >
                     <Ionicons
                       name={chat.is_favorite ? "star" : "star-outline"}
-                      size={22}
+                      size={18}
                       color={chat.is_favorite ? theme.warning : theme.text}
                     />
                     <Text style={[styles.menuText, { color: theme.text }]}>
@@ -572,7 +572,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   >
                     <Ionicons
                       name={chat.is_pinned ? "pin" : "pin-outline"}
-                      size={22}
+                      size={18}
                       color={chat.is_pinned ? theme.primary : theme.text}
                     />
                     <Text style={[styles.menuText, { color: theme.text }]}>
@@ -585,7 +585,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                     style={styles.menuItem}
                     onPress={handleMarkAsRead}
                   >
-                    <Ionicons name="checkmark-done-outline" size={22} color={theme.text} />
+                    <Ionicons name="checkmark-done-outline" size={18} color={theme.text} />
                     <Text style={[styles.menuText, { color: theme.text }]}>
                       Пометить как прочитанное
                     </Text>
@@ -598,7 +598,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   >
                     <Ionicons
                       name={chat.is_muted ? "notifications-outline" : "notifications-off-outline"}
-                      size={22}
+                      size={18}
                       color={theme.text}
                     />
                     <Text style={[styles.menuText, { color: theme.text }]}>
@@ -612,8 +612,8 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                       style={styles.menuItem}
                       onPress={handleDelete}
                     >
-                      <Ionicons name="trash-outline" size={22} color={theme.error || '#FF3B30'} />
-                      <Text style={[styles.menuText, { color: theme.error || '#FF3B30' }]}>
+                      <Ionicons name="trash-outline" size={18} color={theme.error} />
+                      <Text style={[styles.menuText, { color: theme.error }]}>
                         Удалить
                       </Text>
                     </TouchableOpacity>
@@ -650,8 +650,8 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   style={styles.menuItem}
                   onPress={handleClearSaved}
                 >
-                  <Ionicons name="trash-outline" size={22} color={theme.error || '#FF3B30'} />
-                  <Text style={[styles.menuText, { color: theme.error || '#FF3B30' }]}>
+                  <Ionicons name="trash-outline" size={18} color={theme.error} />
+                  <Text style={[styles.menuText, { color: theme.error }]}>
                     Очистить избранное
                   </Text>
                 </TouchableOpacity>
@@ -664,7 +664,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   >
                     <Ionicons
                       name={chat.is_favorite ? "star" : "star-outline"}
-                      size={22}
+                      size={18}
                       color={chat.is_favorite ? theme.warning : theme.text}
                     />
                     <Text style={[styles.menuText, { color: theme.text }]}>
@@ -679,7 +679,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   >
                     <Ionicons
                       name={chat.is_pinned ? "pin" : "pin-outline"}
-                      size={22}
+                      size={18}
                       color={chat.is_pinned ? theme.primary : theme.text}
                     />
                     <Text style={[styles.menuText, { color: theme.text }]}>
@@ -692,7 +692,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                     style={styles.menuItem}
                     onPress={handleMarkAsRead}
                   >
-                    <Ionicons name="checkmark-done-outline" size={22} color={theme.text} />
+                    <Ionicons name="checkmark-done-outline" size={18} color={theme.text} />
                     <Text style={[styles.menuText, { color: theme.text }]}>
                       Пометить как прочитанное
                     </Text>
@@ -705,7 +705,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   >
                     <Ionicons
                       name={chat.is_muted ? "notifications-outline" : "notifications-off-outline"}
-                      size={22}
+                      size={18}
                       color={theme.text}
                     />
                     <Text style={[styles.menuText, { color: theme.text }]}>
@@ -719,8 +719,8 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                       style={styles.menuItem}
                       onPress={handleDelete}
                     >
-                      <Ionicons name="trash-outline" size={22} color={theme.error || '#FF3B30'} />
-                      <Text style={[styles.menuText, { color: theme.error || '#FF3B30' }]}>
+                      <Ionicons name="trash-outline" size={18} color={theme.error} />
+                      <Text style={[styles.menuText, { color: theme.error }]}>
                         Удалить
                       </Text>
                     </TouchableOpacity>
@@ -950,21 +950,28 @@ const styles = StyleSheet.create({
   contextMenu: {
     minWidth: 280,
     maxWidth: 320,
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+      },
+    }),
   },
   chatHeader: {
-    padding: 16,
-    paddingBottom: 12,
+    padding: 12,
   },
   chatName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     textAlign: 'center',
   },
   separator: {
@@ -974,13 +981,16 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    gap: 12,
+    gap: 10,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   menuText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
   },
 });
 

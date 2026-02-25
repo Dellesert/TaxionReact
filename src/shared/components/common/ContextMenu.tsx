@@ -32,7 +32,7 @@ interface ContextMenuProps {
 }
 
 const MENU_WIDTH = 200;
-const ITEM_HEIGHT = 48;
+const ITEM_HEIGHT = 40;
 const MENU_PADDING = 4;
 const MENU_GAP = 6;
 
@@ -199,7 +199,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               disabled={item.disabled}
             >
               {item.icon && (
-                <Ionicons name={item.icon} size={20} color={item.color || theme.primary} />
+                <Ionicons name={item.icon} size={18} color={item.color || theme.primary} />
               )}
               <Text style={[styles.menuItemText, { color: item.color || theme.text }]}>
                 {item.label}
@@ -248,17 +248,20 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 16,
     gap: 10,
     height: ITEM_HEIGHT,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   menuItemDisabled: {
     opacity: 0.5,
   },
   menuItemText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
   },
   divider: {
     height: 1,

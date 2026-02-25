@@ -24,9 +24,7 @@ import { getChatDisplayName, getChatDisplayAvatar } from '../utils/chatUtils';
 type ChatNavigationProp = NativeStackNavigationProp<ChatStackParamList, 'Chat'>;
 
 export const ChatSplitView: React.FC = () => {
-  const { theme, isDark } = useTheme();
-  // Card background - white for light mode to stand out from gray background
-  const cardBgColor = isDark ? theme.card : '#FFFFFF';
+  const { theme } = useTheme();
   const navigation = useNavigation<ChatNavigationProp>();
   const desktopNav = useDesktopNavigation();
   const currentUser = useAuthStore((state) => state.user);
@@ -123,12 +121,12 @@ export const ChatSplitView: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Список чатов слева */}
-      <View style={[styles.chatList, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
+      <View style={[styles.chatList, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <ChatListScreen onChatSelect={handleChatSelect} isDesktopMode={true} />
       </View>
 
       {/* Чат или заглушка справа */}
-      <View style={[styles.chatDetail, { backgroundColor: cardBgColor, borderColor: theme.border }]}>
+      <View style={[styles.chatDetail, { backgroundColor: theme.card, borderColor: theme.border }]}>
         {selectedChatId ? (
           <>
             {/* Header for desktop mode */}
@@ -197,39 +195,43 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 10,
     overflow: 'hidden',
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     margin: 16,
     marginRight: 0,
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore - web only
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+      },
     }),
   },
   chatDetail: {
     flex: 1,
     position: 'relative',
     zIndex: 1,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     margin: 16,
     marginLeft: 16,
     overflow: 'hidden',
-    ...(Platform.OS === 'web' ? {
-      // @ts-ignore - web only
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+      },
     }),
   },
   chatContent: {

@@ -250,7 +250,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                       onRestore(message.id);
                     }}
                   >
-                    <Ionicons name="reload-outline" size={20} color={theme.primary} />
+                    <Ionicons name="reload-outline" size={18} color={theme.primary} />
                     <Text style={[styles.menuText, { color: theme.primary }]}>Восстановить</Text>
                   </TouchableOpacity>
                 )}
@@ -263,8 +263,8 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                       onDeletePermanent(message.id);
                     }}
                   >
-                    <Ionicons name="trash-outline" size={20} color="#E94444" />
-                    <Text style={[styles.menuText, { color: '#E94444' }]}>Удалить безвозвратно</Text>
+                    <Ionicons name="trash-outline" size={18} color={theme.error} />
+                    <Text style={[styles.menuText, { color: theme.error }]}>Удалить безвозвратно</Text>
                   </TouchableOpacity>
                 )}
               </>
@@ -279,7 +279,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                       onReply(message);
                     }}
                   >
-                    <Ionicons name="arrow-undo-outline" size={20} color={theme.text} />
+                    <Ionicons name="arrow-undo-outline" size={18} color={theme.text} />
                     <Text style={[styles.menuText, { color: theme.text }]}>Ответить</Text>
                   </TouchableOpacity>
                 )}
@@ -293,7 +293,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                       onEnterSelectionMode(message.id);
                     }}
                   >
-                    <Ionicons name="checkmark-circle-outline" size={20} color={theme.text} />
+                    <Ionicons name="checkmark-circle-outline" size={18} color={theme.text} />
                     <Text style={[styles.menuText, { color: theme.text }]}>Выбрать</Text>
                   </TouchableOpacity>
                 )}
@@ -303,7 +303,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                   style={styles.menuItem}
                   onPress={handleCopyMessage}
                 >
-                  <Ionicons name="copy-outline" size={20} color={theme.text} />
+                  <Ionicons name="copy-outline" size={18} color={theme.text} />
                   <Text style={[styles.menuText, { color: theme.text }]}>Скопировать</Text>
                 </TouchableOpacity>
 
@@ -316,7 +316,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                       onEdit(message);
                     }}
                   >
-                    <Ionicons name="create-outline" size={20} color={theme.text} />
+                    <Ionicons name="create-outline" size={18} color={theme.text} />
                     <Text style={[styles.menuText, { color: theme.text }]}>Изменить</Text>
                   </TouchableOpacity>
                 )}
@@ -332,7 +332,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                           onUnpin(message.id);
                         }}
                       >
-                        <Ionicons name="pin" size={20} color={theme.text} />
+                        <Ionicons name="pin" size={18} color={theme.text} />
                         <Text style={[styles.menuText, { color: theme.text }]}>Открепить</Text>
                       </TouchableOpacity>
                     )
@@ -345,7 +345,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                           onPin(message.id);
                         }}
                       >
-                        <Ionicons name="pin-outline" size={20} color={theme.text} />
+                        <Ionicons name="pin-outline" size={18} color={theme.text} />
                         <Text style={[styles.menuText, { color: theme.text }]}>Закрепить</Text>
                       </TouchableOpacity>
                     )
@@ -361,7 +361,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                       onForward(message);
                     }}
                   >
-                    <Ionicons name="arrow-redo-outline" size={20} color={theme.text} />
+                    <Ionicons name="arrow-redo-outline" size={18} color={theme.text} />
                     <Text style={[styles.menuText, { color: theme.text }]}>Переслать</Text>
                   </TouchableOpacity>
                 )}
@@ -375,8 +375,8 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                       onDelete();
                     }}
                   >
-                    <Ionicons name="trash-outline" size={20} color="#E94444" />
-                    <Text style={[styles.menuText, { color: '#E94444' }]}>Удалить</Text>
+                    <Ionicons name="trash-outline" size={18} color={theme.error} />
+                    <Text style={[styles.menuText, { color: theme.error }]}>Удалить</Text>
                   </TouchableOpacity>
                 )}
               </>
@@ -478,7 +478,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                         onRestore(message.id);
                       }}
                     >
-                      <Ionicons name="reload-outline" size={20} color={theme.primary} />
+                      <Ionicons name="reload-outline" size={18} color={theme.primary} />
                       <Text style={[styles.menuText, { color: theme.primary }]}>Восстановить</Text>
                     </TouchableOpacity>
                   )}
@@ -490,8 +490,8 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                         onDeletePermanent(message.id);
                       }}
                     >
-                      <Ionicons name="trash-outline" size={20} color="#E94444" />
-                      <Text style={[styles.menuText, { color: '#E94444' }]}>Удалить безвозвратно</Text>
+                      <Ionicons name="trash-outline" size={18} color={theme.error} />
+                      <Text style={[styles.menuText, { color: theme.error }]}>Удалить безвозвратно</Text>
                     </TouchableOpacity>
                   )}
                 </>
@@ -505,7 +505,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                         onReply(message);
                       }}
                     >
-                      <Ionicons name="arrow-undo-outline" size={20} color={theme.text} />
+                      <Ionicons name="arrow-undo-outline" size={18} color={theme.text} />
                       <Text style={[styles.menuText, { color: theme.text }]}>Ответить</Text>
                     </TouchableOpacity>
                   )}
@@ -518,7 +518,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                         onEnterSelectionMode(message.id);
                       }}
                     >
-                      <Ionicons name="checkmark-circle-outline" size={20} color={theme.text} />
+                      <Ionicons name="checkmark-circle-outline" size={18} color={theme.text} />
                       <Text style={[styles.menuText, { color: theme.text }]}>Выбрать</Text>
                     </TouchableOpacity>
                   )}
@@ -527,7 +527,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                     style={styles.menuItem}
                     onPress={handleCopyMessage}
                   >
-                    <Ionicons name="copy-outline" size={20} color={theme.text} />
+                    <Ionicons name="copy-outline" size={18} color={theme.text} />
                     <Text style={[styles.menuText, { color: theme.text }]}>Скопировать</Text>
                   </TouchableOpacity>
 
@@ -539,7 +539,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                         onEdit(message);
                       }}
                     >
-                      <Ionicons name="create-outline" size={20} color={theme.text} />
+                      <Ionicons name="create-outline" size={18} color={theme.text} />
                       <Text style={[styles.menuText, { color: theme.text }]}>Изменить</Text>
                     </TouchableOpacity>
                   )}
@@ -554,7 +554,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                             onUnpin(message.id);
                           }}
                         >
-                          <Ionicons name="pin" size={20} color={theme.text} />
+                          <Ionicons name="pin" size={18} color={theme.text} />
                           <Text style={[styles.menuText, { color: theme.text }]}>Открепить</Text>
                         </TouchableOpacity>
                       )
@@ -567,7 +567,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                             onPin(message.id);
                           }}
                         >
-                          <Ionicons name="pin-outline" size={20} color={theme.text} />
+                          <Ionicons name="pin-outline" size={18} color={theme.text} />
                           <Text style={[styles.menuText, { color: theme.text }]}>Закрепить</Text>
                         </TouchableOpacity>
                       )
@@ -582,7 +582,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                         onForward(message);
                       }}
                     >
-                      <Ionicons name="arrow-redo-outline" size={20} color={theme.text} />
+                      <Ionicons name="arrow-redo-outline" size={18} color={theme.text} />
                       <Text style={[styles.menuText, { color: theme.text }]}>Переслать</Text>
                     </TouchableOpacity>
                   )}
@@ -596,8 +596,8 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                         onDelete();
                       }}
                     >
-                      <Ionicons name="trash-outline" size={20} color="#E94444" />
-                      <Text style={[styles.menuText, { color: '#E94444' }]}>Удалить</Text>
+                      <Ionicons name="trash-outline" size={18} color={theme.error} />
+                      <Text style={[styles.menuText, { color: theme.error }]}>Удалить</Text>
                     </TouchableOpacity>
                   )}
                 </>
@@ -624,11 +624,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 0,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 5,
+      },
+    }),
   },
   messagePreview: {
     padding: 12,
@@ -644,7 +651,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   previewText: {
-    fontSize: 15,
+    fontSize: 14,
     lineHeight: 20,
     flex: 1,
   },
@@ -655,6 +662,7 @@ const styles = StyleSheet.create({
   },
   previewTime: {
     fontSize: 11,
+    lineHeight: 14,
     marginTop: 4,
   },
   separator: {
@@ -665,11 +673,14 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 16,
+    // @ts-ignore
+    cursor: 'pointer',
   },
   menuText: {
-    fontSize: 16,
+    fontSize: 14,
+    lineHeight: 20,
     marginLeft: 12,
     fontWeight: '500',
   },
