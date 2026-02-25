@@ -51,7 +51,7 @@ const TaskListScreen: React.FC = () => {
   const [expandAllSubtasks, setExpandAllSubtasks] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterButtonPosition, setFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
-  const [viewMode, setViewMode] = useState<ViewMode>('board');
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
   const viewModeInitialized = useRef(false);
 
   // Advanced filters state
@@ -292,8 +292,8 @@ const TaskListScreen: React.FC = () => {
 
   // View options for TitleBar switcher
   const taskViewOptions: ViewOption<ViewMode>[] = useMemo(() => [
-    { value: 'board', icon: 'grid-outline', label: 'Доска' },
     { value: 'table', icon: 'list-outline', label: 'Таблица' },
+    { value: 'board', icon: 'grid-outline', label: 'Доска' },
   ], []);
 
   // TitleBar left controls - view switcher

@@ -47,7 +47,7 @@ interface TaskViewSwitcherProps {
 
 export const TaskViewSwitcher: React.FC<TaskViewSwitcherProps> = (props) => {
   const mountTime = useRef(Date.now());
-  const [internalViewMode, setInternalViewMode] = useState<ViewMode>('board');
+  const [internalViewMode, setInternalViewMode] = useState<ViewMode>('table');
 
   // Use viewMode from props if provided, otherwise use internal state
   const viewMode = props.viewMode ?? internalViewMode;

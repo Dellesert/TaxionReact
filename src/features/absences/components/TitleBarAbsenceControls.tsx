@@ -113,7 +113,7 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
               ]}
               // @ts-ignore - Web-only
               onClick={() => onViewModeChange('list')}
-              title="Список"
+              title="Таблица"
               onMouseEnter={(e: any) => {
                 if (viewMode !== 'list' && e.currentTarget?.style) {
                   e.currentTarget.style.backgroundColor = theme.border;
@@ -182,7 +182,7 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
               />
             </View>
             <Text style={[styles.viewLabel, { color: theme.text }]}>
-              {viewMode === 'list' ? 'Список' : viewMode === 'calendar' ? 'Календарь' : 'График'}
+              {viewMode === 'list' ? 'Таблица' : viewMode === 'calendar' ? 'Календарь' : 'График'}
             </Text>
           </View>
         )}
