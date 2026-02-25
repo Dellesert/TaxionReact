@@ -16,11 +16,10 @@ import CreatePollModal from '../components/modals/CreatePollModal';
 import EditPollModal from '../components/modals/EditPollModal';
 import { PollListHeader } from '../components/headers/PollListHeader';
 import { PollListContent } from '../components/lists/PollListContent';
-import { PollViewSwitcher } from '../components/common/PollViewSwitcher';
+import { PollTableView } from '../components/lists/PollTableView';
 import { PollFilterMenu } from '../components/common/PollFilterMenu';
-import { TitleBarPollControls, PollViewMode } from '../components/common/TitleBarPollControls';
-import { TitleBarViewSwitcher, ViewOption } from '@shared/components/common/TitleBarViewSwitcher';
-import { canUserCreatePoll, filterPollsByStatus } from '../utils/pollListHelpers';
+import { TitleBarPollControls } from '../components/common/TitleBarPollControls';
+import { canUserCreatePoll } from '../utils/pollListHelpers';
 
 type PollListScreenNavigationProp = NativeStackNavigationProp<
   PollStackParamList,
@@ -47,8 +46,6 @@ const PollListScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterButtonPosition, setFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
   const [refreshing, setRefreshing] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const viewModeInitialized = useRef(false);
   const isFirstRender = useRef(true);
 
   // Custom hooks
@@ -79,24 +76,6 @@ const PollListScreen: React.FC = () => {
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electron;
 
-  // Load saved view mode from localStorage (Electron only)
-  useEffect(() => {
-    if (isElectron && typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem('poll_view_mode');
-      if (saved === 'grid' || saved === 'table') {
-        setViewMode(saved);
-      }
-      viewModeInitialized.current = true;
-    }
-  }, [isElectron]);
-
-  // Save view mode to localStorage when it changes (Electron only)
-  useEffect(() => {
-    if (isElectron && viewModeInitialized.current && typeof localStorage !== 'undefined') {
-      localStorage.setItem('poll_view_mode', viewMode);
-    }
-  }, [isElectron, viewMode]);
-
   // Check if filter is active (not default 'all')
   const hasActiveFilters = filter !== 'all';
 
@@ -105,24 +84,6 @@ const PollListScreen: React.FC = () => {
     setShowCreateModal(true);
   }, []);
 
-
-  // View options for TitleBar switcher
-  const pollViewOptions: ViewOption<PollViewMode>[] = useMemo(() => [
-    { value: 'grid', icon: 'grid-outline', label: 'Сетка' },
-    { value: 'table', icon: 'list-outline', label: 'Таблица' },
-  ], []);
-
-  // TitleBar left controls - view switcher
-  const titleBarLeftControls = useMemo(() => {
-    if (!isElectron || !isDesktop) return null;
-    return (
-      <TitleBarViewSwitcher
-        options={pollViewOptions}
-        value={viewMode}
-        onChange={setViewMode}
-      />
-    );
-  }, [isElectron, isDesktop, pollViewOptions, viewMode]);
 
   // TitleBar right controls - filters, create
   const titleBarRightControls = useMemo(() => {
@@ -141,7 +102,6 @@ const PollListScreen: React.FC = () => {
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
     pageTitle: 'Опросы',
-    leftControls: titleBarLeftControls,
     rightControls: titleBarRightControls,
     enabled: isElectron && isDesktop,
   });
@@ -247,8 +207,6 @@ const PollListScreen: React.FC = () => {
           onCreatePress={handleCreatePoll}
           onFilterButtonLayout={setFilterButtonPosition}
           isDesktop={isDesktop}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
           onGoBack={navigation.canGoBack() ? handleGoBack : undefined}
         />
       )}
@@ -256,7 +214,7 @@ const PollListScreen: React.FC = () => {
       {/* Content */}
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {isDesktop ? (
-          <PollViewSwitcher
+          <PollTableView
             polls={displayedPolls}
             isLoading={isLoading}
             isLoadingMore={isLoadingMore}
@@ -267,8 +225,6 @@ const PollListScreen: React.FC = () => {
             onRefresh={handleRefreshWrapper}
             onLoadMore={handleLoadMoreWrapper}
             onRetry={() => loadPolls(getFilters(), searchQuery)}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
           />
         ) : (
           <PollListContent

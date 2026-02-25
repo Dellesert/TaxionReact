@@ -32,7 +32,6 @@ import { DayStrip } from '../components/DayStrip';
 import { DailySummaryView } from '../components/DailySummaryView';
 import { TitleBarScheduleControls } from '../components/TitleBarScheduleControls';
 import { ScheduleSidebarSkeleton } from '../components/states/ScheduleSidebarSkeleton';
-import { ScheduleListContentSkeleton } from '../components/states/ScheduleListContentSkeleton';
 import { SCHEDULE_TYPE_LABELS, SCHEDULE_MODE_LABELS, type Schedule, type ScheduleType, type ScheduleListTab } from '../types/schedule.types';
 import { getScheduleTypeColor } from '../utils/shiftColors';
 import { formatScheduleDate } from '../utils/scheduleHelpers';
@@ -462,7 +461,6 @@ export const ScheduleListScreen: React.FC = () => {
               keyExtractor={(s) => String(s.id)}
               onRowPress={handleSchedulePress}
               isLoading={isLoading}
-              loadingComponent={<ScheduleListContentSkeleton />}
               emptyIcon="calendar-outline"
               emptyTitle="Нет графиков за этот месяц"
               emptySubtitle={canCreate ? 'Выберите другой месяц или создайте новый график' : 'Выберите другой месяц'}

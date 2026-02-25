@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
 import { PollFilter } from '../../utils/pollListHelpers';
-import { PollViewControlGroup, ViewMode } from '../common/PollViewControlGroup';
 
 interface PollListHeaderProps {
   filter: PollFilter;
@@ -19,8 +18,6 @@ interface PollListHeaderProps {
   onCreatePress: () => void;
   onFilterButtonLayout?: (layout: { x: number; y: number; width: number; height: number }) => void;
   isDesktop?: boolean;
-  viewMode?: ViewMode;
-  onViewModeChange?: (mode: ViewMode) => void;
   onGoBack?: () => void;
 }
 
@@ -37,8 +34,6 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
   onCreatePress,
   onFilterButtonLayout,
   isDesktop = false,
-  viewMode = 'grid',
-  onViewModeChange,
   onGoBack,
 }) => {
   const { theme } = useTheme();
@@ -61,14 +56,6 @@ export const PollListHeader: React.FC<PollListHeaderProps> = ({
     return (
       <View style={[styles.desktopHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <View style={styles.desktopHeaderContent}>
-          {/* Left side - View Control Group */}
-          <View style={styles.desktopLeft}>
-            <PollViewControlGroup
-              viewMode={viewMode}
-              onViewModeChange={(mode) => onViewModeChange?.(mode)}
-            />
-          </View>
-
           {/* Center - Search (только для браузера, не Electron) */}
           {!isElectron && (
             <View style={styles.desktopCenter}>
