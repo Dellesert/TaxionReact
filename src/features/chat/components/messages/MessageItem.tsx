@@ -408,6 +408,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         onForward={onForward}
         onDelete={() => setShowDeleteModal(true)}
         onRestore={onRestore}
+        onDeletePermanent={onDeletePermanent}
         onEnterSelectionMode={onEnterSelectionMode}
         onReaction={handleToggleReaction}
         currentUserId={currentUser?.id}
@@ -430,6 +431,15 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               onDelete?.(message.id, 'everyone');
             },
           },
+          ...(isAdmin && onDeletePermanent ? [{
+            text: 'Удалить безвозвратно',
+            icon: 'close-circle-outline' as const,
+            style: 'destructive' as const,
+            onPress: async () => {
+              setShowDeleteModal(false);
+              onDeletePermanent(message.id);
+            },
+          }] : []),
           {
             text: 'Отмена',
             style: 'cancel' as const,
@@ -446,6 +456,15 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             onPress: async () => {
               setShowDeleteModal(false);
               onDelete?.(message.id, 'everyone');
+            },
+          }] : []),
+          ...(isAdmin && onDeletePermanent ? [{
+            text: 'Удалить безвозвратно',
+            icon: 'close-circle-outline' as const,
+            style: 'destructive' as const,
+            onPress: async () => {
+              setShowDeleteModal(false);
+              onDeletePermanent(message.id);
             },
           }] : []),
           {

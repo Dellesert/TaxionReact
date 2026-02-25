@@ -17,7 +17,7 @@ import { WS_URL } from '@shared/constants/api.constants';
 
 type WSMessageType =
   // Messages
-  | 'new_message' | 'message_edit' | 'message_delete'
+  | 'new_message' | 'message_edit' | 'message_delete' | 'message_delete_permanent'
   | 'message_read' | 'typing' | 'reaction'
   | 'new_thread_message' | 'thread_update'
   // Chats
@@ -536,6 +536,13 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
           } else if (message.data.message_id !== undefined) {
             // Old format - fallback for backward compatibility
             chatStore.handleMessageDelete(message.data.message_id, message.chat_id);
+          }
+          break;
+
+        case 'message_delete_permanent':
+          if (message.data.message_id !== undefined) {
+            const chatId = message.data.chat_id || message.chat_id;
+            chatStore.handleMessageDeletePermanent(message.data.message_id, chatId);
           }
           break;
 

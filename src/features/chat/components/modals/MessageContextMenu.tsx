@@ -30,6 +30,7 @@ interface MessageContextMenuProps {
   onForward?: (message: Message) => void;
   onDelete?: () => void;
   onRestore?: (messageId: number) => void;
+  onDeletePermanent?: (messageId: number) => void;
   onEnterSelectionMode?: (messageId: number) => void;
   onReaction?: (emoji: string) => void;
   currentUserId?: number;
@@ -55,6 +56,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   onForward,
   onDelete,
   onRestore,
+  onDeletePermanent,
   onEnterSelectionMode,
   onReaction,
   currentUserId,
@@ -236,7 +238,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
             {/* Разделитель */}
             <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
-            {/* Для удаленных сообщений показываем только восстановить */}
+            {/* Для удаленных сообщений показываем восстановить и удалить безвозвратно */}
             {message.is_deleted ? (
               <>
                 {/* Восстановить (только админы) */}
@@ -250,6 +252,19 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                   >
                     <Ionicons name="reload-outline" size={20} color={theme.primary} />
                     <Text style={[styles.menuText, { color: theme.primary }]}>Восстановить</Text>
+                  </TouchableOpacity>
+                )}
+                {/* Удалить безвозвратно (только админы) */}
+                {isAdmin && onDeletePermanent && (
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      onClose();
+                      onDeletePermanent(message.id);
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#E94444" />
+                    <Text style={[styles.menuText, { color: '#E94444' }]}>Удалить безвозвратно</Text>
                   </TouchableOpacity>
                 )}
               </>
@@ -465,6 +480,18 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                     >
                       <Ionicons name="reload-outline" size={20} color={theme.primary} />
                       <Text style={[styles.menuText, { color: theme.primary }]}>Восстановить</Text>
+                    </TouchableOpacity>
+                  )}
+                  {isAdmin && onDeletePermanent && (
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={() => {
+                        onClose();
+                        onDeletePermanent(message.id);
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#E94444" />
+                      <Text style={[styles.menuText, { color: '#E94444' }]}>Удалить безвозвратно</Text>
                     </TouchableOpacity>
                   )}
                 </>

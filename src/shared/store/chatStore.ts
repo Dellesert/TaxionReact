@@ -154,6 +154,7 @@ interface ChatState {
   handleNewMessage: (message: Message, isLatest?: boolean) => Promise<void>;
   handleMessageUpdate: (message: Message) => void;
   handleMessageDelete: (messageId: number, chatId: number) => void;
+  handleMessageDeletePermanent: (messageId: number, chatId: number) => void;
   handleChatDelete: (chatId: number) => void;
   handleTypingStart: (chatId: number, typing: TypingIndicator) => void;
   handleTypingStop: (chatId: number, userId: number) => void;
@@ -2082,6 +2083,48 @@ export const useChatStore = create<ChatState>()(
         ),
       },
     }));
+  },
+
+  handleMessageDeletePermanent: (messageId: number, chatId: number) => {
+    set((state) => {
+      const updatedChatMessages = (state.messages[chatId] || []).filter(
+        msg => msg.id !== messageId
+      );
+
+      const chat = state.chats.find(c => c.id === chatId);
+      const needsLastMessageUpdate = chat?.last_message?.id === messageId;
+      const newLastMessage = needsLastMessageUpdate
+        ? updatedChatMessages[updatedChatMessages.length - 1] || undefined
+        : undefined;
+
+      const updateChat = (c: Chat): Chat => {
+        if (c.id === chatId && needsLastMessageUpdate) {
+          return { ...c, last_message: newLastMessage };
+        }
+        return c;
+      };
+
+      const updatedTabs = { ...state.tabs };
+      Object.keys(updatedTabs).forEach(tabKey => {
+        const tab = updatedTabs[tabKey as TabName];
+        if (tab.loaded) {
+          updatedTabs[tabKey as TabName] = {
+            ...tab,
+            pinnedChats: tab.pinnedChats.map(updateChat),
+            regularChats: tab.regularChats.map(updateChat),
+          };
+        }
+      });
+
+      const currentTabData = updatedTabs[state.currentTab];
+      const updatedChats = [...currentTabData.pinnedChats, ...currentTabData.regularChats];
+
+      return {
+        messages: { ...state.messages, [chatId]: updatedChatMessages },
+        tabs: updatedTabs,
+        chats: updatedChats,
+      };
+    });
   },
 
   handleChatDelete: (chatId: number) => {
