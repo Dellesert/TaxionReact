@@ -30,6 +30,7 @@ interface TaskListContentProps {
   onLoadMore: (status: StatusTab) => void;
   onRefresh: () => void;
   onExpandAllToggle: () => void;
+  canCreateTask?: boolean;
 }
 
 export const TaskListContent: React.FC<TaskListContentProps> = ({
@@ -48,6 +49,7 @@ export const TaskListContent: React.FC<TaskListContentProps> = ({
   onLoadMore,
   onRefresh,
   onExpandAllToggle,
+  canCreateTask,
 }) => {
   const { theme } = useTheme();
 
@@ -84,14 +86,14 @@ export const TaskListContent: React.FC<TaskListContentProps> = ({
                 contentContainerStyle={styles.emptyStateContainer}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
               >
-                <TaskListEmptyState searchQuery={searchQuery} isAllEmpty={true} />
+                <TaskListEmptyState searchQuery={searchQuery} isAllEmpty={true} canCreateTask={canCreateTask} />
               </ScrollView>
             ) : tabTotal === 0 ? (
               <ScrollView
                 contentContainerStyle={styles.emptyStateContainer}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
               >
-                <TaskListEmptyState searchQuery={searchQuery} isAllEmpty={false} />
+                <TaskListEmptyState searchQuery={searchQuery} isAllEmpty={false} canCreateTask={canCreateTask} />
               </ScrollView>
             ) : (
           <FlashList

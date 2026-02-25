@@ -463,7 +463,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
         isLoading={isLoading && tasksWithSubtasks.length === 0}
         emptyIcon={searchQuery ? 'search-outline' : 'document-text-outline'}
         emptyTitle={searchQuery ? 'Задачи не найдены' : 'Нет задач'}
-        emptySubtitle={searchQuery ? 'Попробуйте изменить параметры поиска' : 'Создайте новую задачу для начала работы'}
+        emptySubtitle={searchQuery ? 'Попробуйте изменить параметры поиска' : user?.role !== 'employee' ? 'Создайте новую задачу для начала работы' : 'Задачи пока не назначены'}
         getRowStyle={(row) => row.isSubtask ? { paddingLeft: 32 } : undefined}
         pagination={{
           currentPage,

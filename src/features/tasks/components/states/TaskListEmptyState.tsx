@@ -6,11 +6,13 @@ import { useTheme } from '@shared/hooks/useTheme';
 interface TaskListEmptyStateProps {
   searchQuery: string;
   isAllEmpty: boolean;
+  canCreateTask?: boolean;
 }
 
 export const TaskListEmptyState: React.FC<TaskListEmptyStateProps> = ({
   searchQuery,
   isAllEmpty,
+  canCreateTask = true,
 }) => {
   const { theme } = useTheme();
 
@@ -26,7 +28,9 @@ export const TaskListEmptyState: React.FC<TaskListEmptyStateProps> = ({
         {searchQuery
           ? 'Попробуйте изменить фильтры или поисковый запрос'
           : isAllEmpty
-          ? 'Нажмите + чтобы создать первую задачу'
+          ? canCreateTask
+            ? 'Нажмите + чтобы создать первую задачу'
+            : 'Задачи пока не назначены'
           : 'В этом статусе пока нет задач'}
       </Text>
     </View>

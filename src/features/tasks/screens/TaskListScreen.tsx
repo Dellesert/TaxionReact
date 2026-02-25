@@ -402,6 +402,7 @@ const TaskListScreen: React.FC = () => {
             onLoadMore={handleLoadMore}
             onRefresh={handleRefresh}
             onExpandAllToggle={handleExpandAllToggle}
+            canCreateTask={canCreateTask}
           />
         )}
       </View>
