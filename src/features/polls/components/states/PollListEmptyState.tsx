@@ -2,12 +2,18 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export const PollListEmptyState: React.FC = () => {
+interface PollListEmptyStateProps {
+  canCreate?: boolean;
+}
+
+export const PollListEmptyState: React.FC<PollListEmptyStateProps> = ({ canCreate = false }) => {
   return (
     <View style={styles.emptyContainer}>
       <Ionicons name="bar-chart-outline" size={64} color="#D1D5DB" />
       <Text style={styles.emptyTitle}>Нет опросов</Text>
-      <Text style={styles.emptySubtitle}>Создайте первый опрос для вашей команды</Text>
+      {canCreate && (
+        <Text style={styles.emptySubtitle}>Создайте первый опрос для вашей команды</Text>
+      )}
     </View>
   );
 };

@@ -23,6 +23,7 @@ interface PollTableViewProps {
   onRefresh: () => void;
   onLoadMore: () => void;
   onRetry: () => void;
+  canCreate?: boolean;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -109,6 +110,7 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
   onPollPress,
   onRefresh,
   onRetry,
+  canCreate = false,
 }) => {
   const { user } = useAuthStore();
 
@@ -246,7 +248,7 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
 
   // Empty state
   if (polls.length === 0 && !isLoading) {
-    return <PollListEmptyState />;
+    return <PollListEmptyState canCreate={canCreate} />;
   }
 
   return (

@@ -20,6 +20,7 @@ interface PollListContentProps {
   onLoadMore: () => void;
   onRetry: () => void;
   isDesktop?: boolean;
+  canCreate?: boolean;
 }
 
 export const PollListContent: React.FC<PollListContentProps> = ({
@@ -34,6 +35,7 @@ export const PollListContent: React.FC<PollListContentProps> = ({
   onLoadMore,
   onRetry,
   isDesktop = false,
+  canCreate = false,
 }) => {
   const { theme } = useTheme();
   const [canLoadMore, setCanLoadMore] = React.useState(false);
@@ -77,7 +79,7 @@ export const PollListContent: React.FC<PollListContentProps> = ({
         contentContainerStyle={styles.emptyStateContainer}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <PollListEmptyState />
+        <PollListEmptyState canCreate={canCreate} />
       </ScrollView>
     );
   }

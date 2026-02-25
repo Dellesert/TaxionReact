@@ -244,6 +244,7 @@ const PollListScreen: React.FC = () => {
             onRefresh={handleRefreshWrapper}
             onLoadMore={handleLoadMoreWrapper}
             onRetry={() => loadPolls(getFilters(), searchQuery)}
+            canCreate={canCreatePoll}
           />
         ) : (
           <PollListContent
@@ -258,6 +259,7 @@ const PollListScreen: React.FC = () => {
             onLoadMore={handleLoadMoreWrapper}
             onRetry={() => loadPolls(getFilters(), searchQuery)}
             isDesktop={false}
+            canCreate={canCreatePoll}
           />
         )}
       </View>
