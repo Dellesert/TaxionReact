@@ -1,6 +1,6 @@
 /**
  * Users Desktop Content
- * Desktop версия управления пользователями
+ * Desktop версия управления пользователями с поиском в header
  */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -8,12 +8,10 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   Modal,
   Platform,
-  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -23,24 +21,13 @@ import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useDebounce } from '@shared/hooks/useDebounce';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { ExpandableFilterButton } from '@shared/components/common/ExpandableFilterButton';
+import { DataTable, DataTableColumn } from '@shared/components/common/DataTable';
 import * as userApi from '@api/user.api';
 import { User, UserRole } from '@/types/user.types';
 import { Avatar } from '@shared/components/common/Avatar';
-import { AdminListSkeleton } from '../states/AdminListSkeleton';
-
-const FadeIn: React.FC<{ children: React.ReactNode; style?: any; enabled?: boolean }> = ({ children, style, enabled = true }) => {
-  const opacity = useRef(new Animated.Value(enabled ? 0 : 1)).current;
-  useEffect(() => {
-    if (enabled) {
-      Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
-    }
-  }, [opacity, enabled]);
-  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
-};
 
 const UsersDesktopContent: React.FC = () => {
-  const { theme, isDark } = useTheme();
-  const mountTime = useRef(Date.now());
+  const { theme } = useTheme();
   const { user: currentUser } = useAuthStore();
   const { showError, showSuccess } = useNotification();
   const { showOptions, showConfirm } = useActionModal();
@@ -62,13 +49,9 @@ const UsersDesktopContent: React.FC = () => {
     try {
       setIsLoading(true);
 
-      // Backend filters with search and sorting
       const filters: any = {
-        // Text search (backend now supports it)
         search: debouncedSearch || undefined,
-        // Role filter (from UI dropdown)
         role: selectedRole !== 'all' ? selectedRole : undefined,
-        // Sorting by name
         sort_by: 'name',
         sort_order: 'asc',
       };
@@ -164,7 +147,7 @@ const UsersDesktopContent: React.FC = () => {
   // Check admin access
   if (currentUser?.role !== 'admin' && currentUser?.role !== 'super_admin') {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
         <View style={styles.noAccessContainer}>
           <Ionicons name="lock-closed" size={64} color="#EF4444" />
           <Text style={styles.noAccessTitle}>Нет доступа</Text>
@@ -210,26 +193,24 @@ const UsersDesktopContent: React.FC = () => {
     }
   };
 
-  const handleChangeRole = (user: User) => {
-    // Only allow changing between employee and department_head
+  const handleChangeRole = (targetUser: User) => {
     const roles: UserRole[] = ['employee', 'department_head'];
 
-    // Use showOptions for all platforms (web and mobile)
     showOptions(
       'Изменить роль',
       roles.map(role => ({
         text: getRoleLabel(role),
-        onPress: () => updateUserRole(user, role),
-        icon: role === user.role ? 'checkmark-circle' : undefined,
-        style: role === user.role ? 'primary' : 'default',
+        onPress: () => updateUserRole(targetUser, role),
+        icon: role === targetUser.role ? 'checkmark-circle' : undefined,
+        style: role === targetUser.role ? 'primary' : 'default',
       })),
-      `Текущая роль: ${getRoleLabel(user.role)}`
+      `Текущая роль: ${getRoleLabel(targetUser.role)}`
     );
   };
 
-  const updateUserRole = async (user: User, newRole: UserRole) => {
+  const updateUserRole = async (targetUser: User, newRole: UserRole) => {
     try {
-      await userApi.updateUserRole(user.id, newRole);
+      await userApi.updateUserRole(targetUser.id, newRole);
       showSuccess(`Роль пользователя изменена на "${getRoleLabel(newRole)}"`);
       loadUsers();
     } catch (error: any) {
@@ -238,29 +219,29 @@ const UsersDesktopContent: React.FC = () => {
     }
   };
 
-  const handleToggleUserStatus = async (user: User) => {
+  const handleToggleUserStatus = async (targetUser: User) => {
     const confirmed = await new Promise<boolean>((resolve) => {
       showConfirm(
-        user.is_active ? 'Деактивировать пользователя' : 'Активировать пользователя',
-        `Вы уверены, что хотите ${user.is_active ? 'деактивировать' : 'активировать'} пользователя "${user.name}"?`,
+        targetUser.is_active ? 'Деактивировать пользователя' : 'Активировать пользователя',
+        `Вы уверены, что хотите ${targetUser.is_active ? 'деактивировать' : 'активировать'} пользователя "${targetUser.name}"?`,
         () => resolve(true),
         () => resolve(false),
         {
-          confirmText: user.is_active ? 'Деактивировать' : 'Активировать',
+          confirmText: targetUser.is_active ? 'Деактивировать' : 'Активировать',
           cancelText: 'Отмена',
-          destructive: user.is_active,
+          destructive: targetUser.is_active,
         }
       );
     });
     if (!confirmed) return;
 
     try {
-      if (user.is_active) {
-        await userApi.deactivateUser(user.id);
+      if (targetUser.is_active) {
+        await userApi.deactivateUser(targetUser.id);
       } else {
-        await userApi.activateUser(user.id);
+        await userApi.activateUser(targetUser.id);
       }
-      showSuccess(`Пользователь ${user.is_active ? 'деактивирован' : 'активирован'}`);
+      showSuccess(`Пользователь ${targetUser.is_active ? 'деактивирован' : 'активирован'}`);
       loadUsers();
     } catch (error: any) {
       const errorMessage = error?.response?.data?.error || error?.message || 'Не удалось изменить статус пользователя';
@@ -268,7 +249,7 @@ const UsersDesktopContent: React.FC = () => {
     }
   };
 
-  // Client-side filtering as fallback (in case backend ignores search/role params)
+  // Client-side filtering as fallback
   const filteredUsers = useMemo(() => {
     let result = users;
 
@@ -289,108 +270,148 @@ const UsersDesktopContent: React.FC = () => {
     return result;
   }, [users, debouncedSearch, selectedRole]);
 
-  const dynamicStyles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-  });
+  // Client-side pagination
+  const PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
 
-  return (
-    <View style={dynamicStyles.container}>
-      {/* Content */}
-      {isLoading ? (
-        <AdminListSkeleton variant="user" count={6} />
-      ) : filteredUsers.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Ionicons name="people-outline" size={64} color={theme.textTertiary} />
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-            {searchQuery ? 'Пользователи не найдены' : 'Нет пользователей'}
-          </Text>
-        </View>
-      ) : (
-        <FadeIn enabled={Date.now() - mountTime.current > 150}>
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.contentInner}>
-            <View style={[styles.tableCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              {/* Table header */}
-              <View style={[styles.tableRow, styles.tableHeader, { borderBottomColor: theme.border }]}>
-                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, width: 40 }]}>№</Text>
-                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 2 }]}>Сотрудник</Text>
-                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 2 }]}>Email</Text>
-                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 1.5 }]}>Должность</Text>
-                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 1.5 }]}>Отдел</Text>
-                <Text style={[styles.tableHeaderText, { color: theme.textSecondary, flex: 1 }]}>Роль</Text>
-                <View style={{ width: 80 }} />
-              </View>
-              {/* Table rows */}
-              {filteredUsers.map((user, index) => (
-                <View
-                  key={user.id}
-                  style={[
-                    styles.tableRow,
-                    index < filteredUsers.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
-                    !user.is_active && { opacity: 0.6 },
-                  ]}
-                  // @ts-ignore - Web-only event handlers
-                  onMouseEnter={(e: any) => {
-                    if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = theme.backgroundSecondary;
-                  }}
-                  onMouseLeave={(e: any) => {
-                    if (e.currentTarget?.style) e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
-                >
-                  <Text style={[styles.tableCellText, { color: theme.textSecondary, width: 40 }]}>{index + 1}</Text>
-                  <View style={[styles.tableCellUser, { flex: 2 }]}>
-                    <Avatar imageUrl={user.avatar} name={user.name} size={32} />
-                    <View style={styles.userNameRow}>
-                      <Text style={[styles.tableCellText, { color: theme.text, fontWeight: '500' }]}>{user.name}</Text>
-                      {!user.is_active && (
-                        <View style={styles.inactiveBadge}>
-                          <Text style={styles.inactiveBadgeText}>Неактивен</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                  <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 2 }]}>{user.email}</Text>
-                  <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 1.5 }]}>{user.position || '—'}</Text>
-                  <Text style={[styles.tableCellText, { color: theme.textSecondary, flex: 1.5 }]}>{user.department?.name || '—'}</Text>
-                  <View style={{ flex: 1 }}>
-                    <View style={[styles.roleBadge, { backgroundColor: getRoleColor(user.role) + '20' }]}>
-                      <Text style={[styles.roleBadgeText, { color: getRoleColor(user.role) }]}>
-                        {getRoleLabel(user.role)}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={{ width: 80, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                    {(user.role === 'employee' || user.role === 'department_head') && (
-                      <TouchableOpacity
-                        style={[styles.tableActionButton, { backgroundColor: theme.backgroundTertiary }]}
-                        onPress={() => handleChangeRole(user)}
-                      >
-                        <Ionicons name="shield-outline" size={14} color={theme.primary} />
-                      </TouchableOpacity>
-                    )}
-                    {(user.role === 'employee' || user.role === 'department_head') && (
-                      <TouchableOpacity
-                        style={[styles.tableActionButton, { backgroundColor: theme.backgroundTertiary }]}
-                        onPress={() => handleToggleUserStatus(user)}
-                      >
-                        <Ionicons
-                          name={user.is_active ? 'close-circle-outline' : 'checkmark-circle-outline'}
-                          size={14}
-                          color={user.is_active ? '#EF4444' : '#10B981'}
-                        />
-                      </TouchableOpacity>
-                    )}
-                  </View>
+  // Reset page when search/filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, selectedRole]);
+
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredUsers.slice(start, start + PAGE_SIZE);
+  }, [filteredUsers, currentPage]);
+
+  const columns = useMemo<DataTableColumn<User>[]>(() => [
+    {
+      key: 'name',
+      title: 'Сотрудник',
+      flex: 2,
+      minWidth: 180,
+      sortable: true,
+      sortValue: (u) => u.name?.toLowerCase() || '',
+      render: (u, t) => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+          <Avatar imageUrl={u.avatar} name={u.name} size={32} />
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ fontSize: 13, color: t.text, fontWeight: '500' }}>{u.name}</Text>
+              {!u.is_active && (
+                <View style={styles.inactiveBadge}>
+                  <Text style={styles.inactiveBadgeText}>Неактивен</Text>
                 </View>
-              ))}
+              )}
             </View>
           </View>
-        </ScrollView>
-        </FadeIn>
-      )}
+        </View>
+      ),
+    },
+    {
+      key: 'email',
+      title: 'Email',
+      flex: 2,
+      minWidth: 160,
+      sortable: true,
+      sortValue: (u) => u.email?.toLowerCase() || '',
+      render: (u, t) => (
+        <Text style={{ fontSize: 13, color: t.textSecondary }}>{u.email}</Text>
+      ),
+    },
+    {
+      key: 'position',
+      title: 'Должность',
+      flex: 1.5,
+      minWidth: 120,
+      sortable: true,
+      sortValue: (u) => u.position?.toLowerCase() || '',
+      render: (u, t) => (
+        <Text style={{ fontSize: 13, color: t.textSecondary }}>{u.position || '—'}</Text>
+      ),
+    },
+    {
+      key: 'department',
+      title: 'Отдел',
+      flex: 1.5,
+      minWidth: 120,
+      sortable: true,
+      sortValue: (u) => u.department?.name?.toLowerCase() || '',
+      render: (u, t) => (
+        <Text style={{ fontSize: 13, color: t.textSecondary }}>{u.department?.name || '—'}</Text>
+      ),
+    },
+    {
+      key: 'role',
+      title: 'Роль',
+      flex: 1,
+      minWidth: 100,
+      sortable: true,
+      sortValue: (u) => u.role || '',
+      render: (u) => (
+        <View style={[styles.roleBadge, { backgroundColor: getRoleColor(u.role) + '20' }]}>
+          <Text style={[styles.roleBadgeText, { color: getRoleColor(u.role) }]}>
+            {getRoleLabel(u.role)}
+          </Text>
+        </View>
+      ),
+    },
+    {
+      key: 'actions',
+      title: 'Действия',
+      width: 80,
+      render: (u, t) => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+          {(u.role === 'employee' || u.role === 'department_head') && (
+            <TouchableOpacity
+              style={[styles.tableActionButton, { backgroundColor: t.backgroundTertiary }]}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleChangeRole(u);
+              }}
+            >
+              <Ionicons name="shield-outline" size={14} color={t.primary} />
+            </TouchableOpacity>
+          )}
+          {(u.role === 'employee' || u.role === 'department_head') && (
+            <TouchableOpacity
+              style={[styles.tableActionButton, { backgroundColor: t.backgroundTertiary }]}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleToggleUserStatus(u);
+              }}
+            >
+              <Ionicons
+                name={u.is_active ? 'close-circle-outline' : 'checkmark-circle-outline'}
+                size={14}
+                color={u.is_active ? '#EF4444' : '#10B981'}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+      ),
+    },
+  ], []);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      <DataTable<User>
+        columns={columns}
+        data={paginatedUsers}
+        keyExtractor={(u) => String(u.id)}
+        isLoading={isLoading}
+        emptyIcon="people-outline"
+        emptyTitle={searchQuery ? 'Пользователи не найдены' : 'Нет пользователей'}
+        emptySubtitle={searchQuery ? 'Попробуйте изменить запрос' : undefined}
+        containerStyle={{ margin: 0, borderWidth: 0, borderRadius: 0 }}
+        getRowStyle={(u) => !u.is_active ? { opacity: 0.6 } : undefined}
+        pagination={{
+          currentPage,
+          totalItems: filteredUsers.length,
+          pageSize: PAGE_SIZE,
+          onPageChange: setCurrentPage,
+        }}
+      />
 
       {/* Role Filter Dropdown */}
       <Modal
@@ -452,63 +473,6 @@ const UsersDesktopContent: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-  },
-  contentInner: {
-    maxWidth: 1400,
-    width: '100%',
-    alignSelf: 'center',
-    padding: 16,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 16,
-  },
-  tableCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden' as const,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  tableHeader: {
-    borderBottomWidth: 1,
-    paddingBottom: 8,
-    marginBottom: 2,
-  },
-  tableHeaderText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  tableCellUser: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  tableCellText: {
-    fontSize: 13,
-  },
-  userNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
   inactiveBadge: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
     paddingHorizontal: 6,
