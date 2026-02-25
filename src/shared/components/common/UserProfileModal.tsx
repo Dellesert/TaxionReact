@@ -199,7 +199,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 ]}
               />
               <Text style={[styles.statusText, { color: user.status === 'online' ? '#4CAF50' : theme.textSecondary }]}>
-                {getLastSeenText(user.status, user.last_seen_at)}
+                {getLastSeenText(user.status, user.last_active_at)}
               </Text>
             </View>
           </View>

@@ -2295,9 +2295,7 @@ export const useChatStore = create<ChatState>()(
           const updatedUser = {
             ...m.user,
             status,
-            last_seen_at: lastActiveTime || m.user.last_seen_at,
-            // Also update last_active_at if it exists in the user object
-            ...(last_active_at ? { last_active_at } : {}),
+            last_active_at: lastActiveTime || m.user.last_active_at,
           };
           return {
             ...m,

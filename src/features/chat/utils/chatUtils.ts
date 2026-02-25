@@ -62,8 +62,7 @@ export const getUserStatusText = (user: User | null | undefined): string => {
     return 'в сети';
   }
 
-  // Проверяем оба поля: last_active_at (из API) и last_seen_at (из типов)
-  const lastActiveTime = (user as any).last_active_at || user.last_seen_at;
+  const lastActiveTime = user.last_active_at;
 
   if (lastActiveTime) {
     const lastSeen = new Date(lastActiveTime);

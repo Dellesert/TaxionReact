@@ -45,7 +45,7 @@ export interface User {
   color?: string; // HEX color for calendar display
   is_active: boolean;
   two_factor_enabled: boolean;
-  last_seen_at?: ISODateString;
+  last_active_at?: ISODateString;
   created_at: ISODateString;
   updated_at: ISODateString;
 }
