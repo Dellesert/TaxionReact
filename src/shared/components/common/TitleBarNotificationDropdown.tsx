@@ -425,7 +425,7 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
                   style={styles.headerActionButton}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Ionicons name="checkmark-done" size={20} color={theme.primary} />
+                  <Ionicons name="checkmark-done" size={18} color={theme.primary} />
                 </TouchableOpacity>
               )}
               <TouchableOpacity
@@ -433,7 +433,7 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
                 style={styles.headerActionButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                <Ionicons name="trash-outline" size={18} color={theme.error} />
               </TouchableOpacity>
             </View>
           )}
@@ -483,7 +483,7 @@ export const TitleBarNotificationDropdown: React.FC<TitleBarNotificationDropdown
           <Text style={[styles.viewAllText, { color: theme.primary }]}>
             Все уведомления
           </Text>
-          <Ionicons name="arrow-forward" size={16} color={theme.primary} />
+          <Ionicons name="arrow-forward" size={18} color={theme.primary} />
         </View>
       </Animated.View>
     </>
@@ -541,14 +541,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingLeft: 20,
+    paddingRight: 12,
+    paddingVertical: 8,
+    minHeight: 56,
     borderBottomWidth: 1,
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    letterSpacing: -0.3,
+    lineHeight: 22,
   },
   headerActions: {
     flexDirection: 'row',
@@ -557,7 +559,17 @@ const styles = StyleSheet.create({
   },
   headerActionButton: {
     padding: 6,
-    borderRadius: 6,
+    borderRadius: 10,
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        cursor: 'pointer',
+        transitionProperty: 'background-color, opacity',
+        transitionDuration: '0.2s',
+        transitionTimingFunction: 'ease',
+      },
+      default: {},
+    }),
   },
   list: {
     maxHeight: 540,
@@ -579,6 +591,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
+    lineHeight: 22,
     marginTop: 12,
     marginBottom: 6,
   },
@@ -588,20 +601,21 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   footer: {
-    paddingVertical: 16,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   sectionHeader: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    paddingTop: 12,
+    paddingTop: 16,
+    paddingBottom: 6,
     backgroundColor: 'transparent',
   },
   sectionHeaderText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
+    lineHeight: 16,
   },
   viewAllButton: {
     flexDirection: 'row',
@@ -620,6 +634,6 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

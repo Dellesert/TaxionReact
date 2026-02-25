@@ -295,7 +295,7 @@ const NotificationListScreen: React.FC = () => {
               >
                 <Ionicons
                   name={filter.icon}
-                  size={16}
+                  size={14}
                   color={isActive ? theme.primary : theme.textSecondary}
                 />
                 <Text
@@ -360,8 +360,8 @@ const NotificationListScreen: React.FC = () => {
                 <RefreshControl
                   refreshing={isLoading && isNotificationListEmpty(notifications)}
                   onRefresh={handleRefresh}
-                  colors={['#3B82F6']}
-                  tintColor="#3B82F6"
+                  colors={[theme.primary]}
+                  tintColor={theme.primary}
                 />
               }
               onEndReached={handleLoadMore}
@@ -411,30 +411,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   desktopTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
-    letterSpacing: -0.5,
+    lineHeight: 28,
   },
   desktopActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   desktopButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 40,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    gap: 8,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 6,
     ...Platform.select({
       web: {
         cursor: 'pointer',
-        transitionProperty: 'transform, box-shadow',
-        transitionDuration: '0.15s',
+        transitionProperty: 'transform, box-shadow, opacity',
+        transitionDuration: '0.2s',
+        transitionTimingFunction: 'ease',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
       },
       default: {
@@ -447,32 +449,32 @@ const styles = StyleSheet.create({
     }),
   },
   desktopButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: -0.2,
   },
   desktopButtonOutline: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 40,
-    paddingHorizontal: 18,
-    borderRadius: 12,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     borderWidth: 2,
-    gap: 8,
+    gap: 6,
     backgroundColor: 'transparent',
     ...Platform.select({
       web: {
         cursor: 'pointer',
-        transitionProperty: 'transform, background-color',
-        transitionDuration: '0.15s',
+        transitionProperty: 'transform, background-color, opacity',
+        transitionDuration: '0.2s',
+        transitionTimingFunction: 'ease',
       },
     }),
   },
   desktopButtonOutlineText: {
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: -0.2,
+    fontSize: 13,
+    fontWeight: '700',
   },
 
   // Filters Styles
@@ -485,9 +487,9 @@ const styles = StyleSheet.create({
   filterTab: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
     gap: 6,
     borderWidth: 1,
     ...Platform.select({
@@ -500,8 +502,7 @@ const styles = StyleSheet.create({
   },
   filterTabText: {
     fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: -0.1,
+    fontWeight: '700',
   },
   filterBadge: {
     minWidth: 20,
@@ -520,8 +521,8 @@ const styles = StyleSheet.create({
   // Section Header Styles
   sectionHeader: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
     paddingTop: 16,
+    paddingBottom: 6,
     backgroundColor: 'transparent',
   },
   sectionHeaderDesktop: {
@@ -531,10 +532,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   sectionHeaderText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
+    lineHeight: 16,
   },
 
   // Desktop List Container (Centered with max-width)
