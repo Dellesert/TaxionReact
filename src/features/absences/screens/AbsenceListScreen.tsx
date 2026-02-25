@@ -43,7 +43,6 @@ import { DataTable, DataTableColumn } from '@shared/components/common/DataTable'
 import { getUserColorById } from '../constants/userColors.constants';
 import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { AbsenceListSkeleton } from '../components/states/AbsenceListSkeleton';
 import { AbsenceCalendarSkeleton } from '../components/states/AbsenceCalendarSkeleton';
 import { AbsenceTimelineSkeleton } from '../components/states/AbsenceTimelineSkeleton';
 
@@ -885,7 +884,6 @@ export const AbsenceListScreen: React.FC = () => {
               keyExtractor={(a) => String(a.id)}
               onRowPress={handleAbsencePress}
               isLoading={isLoading}
-              loadingComponent={<AbsenceListSkeleton />}
               emptyIcon="calendar-outline"
               emptyTitle={
                 searchQuery
