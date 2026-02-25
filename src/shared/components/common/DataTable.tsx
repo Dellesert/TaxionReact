@@ -34,6 +34,17 @@ export interface DataTableColumn<T> {
   sortValue?: (item: T) => string | number;
 }
 
+export interface DataTablePaginationProps {
+  /** Current page number (1-based) */
+  currentPage: number;
+  /** Total number of items on the server */
+  totalItems: number;
+  /** Items per page */
+  pageSize: number;
+  /** Called when user navigates to a different page */
+  onPageChange: (page: number) => void;
+}
+
 export interface DataTableProps<T> {
   /** Column definitions */
   columns: DataTableColumn<T>[];
@@ -65,6 +76,9 @@ export interface DataTableProps<T> {
   renderAfterRows?: React.ReactNode;
   /** Override the outer card container style */
   containerStyle?: ViewStyle;
+  /** Server-side pagination configuration. When provided, pagination controls
+   *  are rendered in the footer and row numbering accounts for page offset. */
+  pagination?: DataTablePaginationProps;
 }
 
 type SortDirection = 'asc' | 'desc';
@@ -136,6 +150,151 @@ function DataTableRowInner<T>({
 
 const DataTableRow = React.memo(DataTableRowInner) as typeof DataTableRowInner;
 
+// ─── Pagination Helpers ──────────────────────────────────────────
+
+function getVisiblePages(
+  currentPage: number,
+  totalPages: number,
+): (number | 'ellipsis')[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  const pages: (number | 'ellipsis')[] = [1];
+
+  if (currentPage > 3) {
+    pages.push('ellipsis');
+  }
+
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+
+  if (currentPage < totalPages - 2) {
+    pages.push('ellipsis');
+  }
+
+  if (totalPages > 1) {
+    pages.push(totalPages);
+  }
+
+  return pages;
+}
+
+// ─── Pagination Footer Sub-Component ─────────────────────────────
+
+interface PaginationFooterProps {
+  pagination: DataTablePaginationProps;
+  theme: Theme;
+  isDark: boolean;
+}
+
+function PaginationFooterInner({
+  pagination,
+  theme,
+  isDark,
+}: PaginationFooterProps) {
+  const { currentPage, totalItems, pageSize, onPageChange } = pagination;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const visiblePages = getVisiblePages(currentPage, totalPages);
+
+  const isFirstPage = currentPage <= 1;
+  const isLastPage = currentPage >= totalPages;
+
+  return (
+    <View style={[styles.paginationFooter, { borderColor: theme.border }]}>
+      <Text style={[styles.paginationInfo, { color: theme.textSecondary }]}>
+        Всего: {totalItems}
+      </Text>
+
+      {totalPages > 1 && (
+        <View style={styles.paginationControls}>
+          {/* Previous page */}
+          <TouchableOpacity
+            style={[styles.navButton, isFirstPage && { opacity: 0.3 }]}
+            onPress={() => !isFirstPage && onPageChange(currentPage - 1)}
+            activeOpacity={isFirstPage ? 1 : 0.6}
+            disabled={isFirstPage}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={16}
+              color={theme.textSecondary}
+            />
+          </TouchableOpacity>
+
+          {/* Page numbers */}
+          {visiblePages.map((page, idx) =>
+            page === 'ellipsis' ? (
+              <View key={`ellipsis-${idx}`} style={styles.pageEllipsis}>
+                <Text
+                  style={[
+                    styles.pageButtonText,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  ...
+                </Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                key={page}
+                style={[
+                  styles.pageButton,
+                  page === currentPage && {
+                    backgroundColor: theme.primary,
+                  },
+                  page !== currentPage &&
+                    (isDark
+                      ? { backgroundColor: 'rgba(255,255,255,0.06)' }
+                      : { backgroundColor: 'rgba(0,0,0,0.04)' }),
+                ]}
+                onPress={() => page !== currentPage && onPageChange(page)}
+                activeOpacity={page === currentPage ? 1 : 0.6}
+              >
+                <Text
+                  style={[
+                    styles.pageButtonText,
+                    {
+                      color:
+                        page === currentPage ? '#FFFFFF' : theme.text,
+                    },
+                  ]}
+                >
+                  {page}
+                </Text>
+              </TouchableOpacity>
+            ),
+          )}
+
+          {/* Next page */}
+          <TouchableOpacity
+            style={[styles.navButton, isLastPage && { opacity: 0.3 }]}
+            onPress={() => !isLastPage && onPageChange(currentPage + 1)}
+            activeOpacity={isLastPage ? 1 : 0.6}
+            disabled={isLastPage}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={theme.textSecondary}
+            />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <Text style={[styles.paginationInfo, { color: theme.textSecondary }]}>
+        Страница {currentPage} из {totalPages}
+      </Text>
+    </View>
+  );
+}
+
+const PaginationFooter = React.memo(PaginationFooterInner);
+
 // ─── Main DataTable Component ────────────────────────────────────
 
 export function DataTable<T>({
@@ -154,6 +313,7 @@ export function DataTable<T>({
   refreshControl,
   renderAfterRows,
   containerStyle,
+  pagination,
 }: DataTableProps<T>) {
   const { theme, isDark } = useTheme();
   const [sort, setSort] = useState<SortState | null>(null);
@@ -301,7 +461,7 @@ export function DataTable<T>({
                 <DataTableRow<T>
                   key={key}
                   item={item}
-                  rowNumber={index + 1}
+                  rowNumber={pagination ? (pagination.currentPage - 1) * pagination.pageSize + index + 1 : index + 1}
                   columns={columns}
                   onPress={onRowPress}
                   rowStyle={rowStyle}
@@ -315,13 +475,17 @@ export function DataTable<T>({
         )}
       </ScrollView>
 
-      {/* Footer with total count */}
+      {/* Footer with total count or pagination */}
       {data.length > 0 && (
-        <View style={[styles.footerRow, { borderColor: theme.border }]}>
-          <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-            Всего: {data.length}
-          </Text>
-        </View>
+        pagination ? (
+          <PaginationFooter pagination={pagination} theme={theme} isDark={isDark} />
+        ) : (
+          <View style={[styles.footerRow, { borderColor: theme.border }]}>
+            <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+              Всего: {data.length}
+            </Text>
+          </View>
+        )
       )}
     </View>
   );
@@ -429,5 +593,63 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 13,
     fontWeight: '500',
+  },
+  paginationFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  paginationInfo: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  paginationControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  pageButton: {
+    minWidth: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    ...(Platform.OS === 'web'
+      ? {
+          // @ts-ignore - web only
+          cursor: 'pointer',
+          transitionProperty: 'background-color',
+          transitionDuration: '0.15s',
+        }
+      : {}),
+  },
+  pageButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  pageEllipsis: {
+    minWidth: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...(Platform.OS === 'web'
+      ? {
+          // @ts-ignore - web only
+          cursor: 'pointer',
+        }
+      : {}),
   },
 });

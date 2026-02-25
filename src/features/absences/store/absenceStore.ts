@@ -39,7 +39,7 @@ interface AbsenceState {
   error: string | null;
 
   // Actions - Absences
-  loadAbsences: (filters?: AbsenceFilters, reset?: boolean) => Promise<void>;
+  loadAbsences: (filters?: AbsenceFilters, reset?: boolean, explicitOffset?: number) => Promise<void>;
   loadAbsenceById: (id: number) => Promise<Absence>;
   createAbsence: (data: CreateAbsenceRequest) => Promise<Absence>;
   updateAbsence: (id: number, data: UpdateAbsenceRequest) => Promise<void>;
@@ -120,14 +120,14 @@ export const useAbsenceStore = create<AbsenceState>()(
   // ABSENCES
   // ============================================
 
-  loadAbsences: async (filters, reset = false) => {
+  loadAbsences: async (filters, reset = false, explicitOffset) => {
     const state = get();
 
     if (state.isLoading) {
       return;
     }
 
-    const offset = reset ? 0 : state.absences.length;
+    const offset = explicitOffset !== undefined ? explicitOffset : (reset ? 0 : state.absences.length);
 
     // Stale-while-revalidate: only show skeleton when no cached data
     const hasCachedData = state.absences.length > 0;

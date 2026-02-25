@@ -165,6 +165,20 @@ const DepartmentsDesktopContent: React.FC = () => {
     dept.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Client-side pagination
+  const DEPT_PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const paginatedDepartments = useMemo(() => {
+    const start = (currentPage - 1) * DEPT_PAGE_SIZE;
+    return filteredDepartments.slice(start, start + DEPT_PAGE_SIZE);
+  }, [filteredDepartments, currentPage]);
+
   const columns = useMemo<DataTableColumn<Department>[]>(() => [
     {
       key: 'name',
@@ -286,7 +300,7 @@ const DepartmentsDesktopContent: React.FC = () => {
 
       <DataTable<Department>
         columns={columns}
-        data={filteredDepartments}
+        data={paginatedDepartments}
         keyExtractor={(dept) => String(dept.id)}
         onRowPress={handleRowPress}
         isLoading={isLoading}
@@ -294,6 +308,12 @@ const DepartmentsDesktopContent: React.FC = () => {
         emptyTitle={searchQuery ? 'Отделы не найдены' : 'Нет отделов'}
         emptySubtitle={searchQuery ? 'Попробуйте изменить запрос' : 'Создайте первый отдел'}
         containerStyle={{ margin: 0, borderWidth: 0, borderRadius: 0 }}
+        pagination={{
+          currentPage,
+          totalItems: filteredDepartments.length,
+          pageSize: DEPT_PAGE_SIZE,
+          onPageChange: setCurrentPage,
+        }}
       />
     </View>
   );

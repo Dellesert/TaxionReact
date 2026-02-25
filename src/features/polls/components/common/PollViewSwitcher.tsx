@@ -16,6 +16,10 @@ interface PollViewSwitcherProps {
   refreshing: boolean;
   error: string | null;
   hasMore: boolean;
+  total: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
   onPollPress: (poll: Poll) => void;
   onRefresh: () => void;
   onLoadMore: () => void;
@@ -123,6 +127,10 @@ export const PollViewSwitcher: React.FC<PollViewSwitcherProps> = (props) => {
             refreshing={props.refreshing}
             error={props.error}
             hasMore={props.hasMore}
+            total={props.total}
+            currentPage={props.currentPage}
+            pageSize={props.pageSize}
+            onPageChange={props.onPageChange}
             onPollPress={props.onPollPress}
             onRefresh={props.onRefresh}
             onLoadMore={props.onLoadMore}

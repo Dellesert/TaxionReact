@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Task } from '../../types/task.types';
@@ -281,6 +281,21 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
 
   const isLoading = loading.new || loading.in_progress || loading.review || loading.done;
 
+  // Client-side pagination
+  const TASK_PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset page when filters/search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, advancedFilters]);
+
+  const totalTaskItems = tasksWithSubtasks.length;
+  const paginatedTasks = useMemo(() => {
+    const start = (currentPage - 1) * TASK_PAGE_SIZE;
+    return tasksWithSubtasks.slice(start, start + TASK_PAGE_SIZE);
+  }, [tasksWithSubtasks, currentPage]);
+
   // Column definitions
   const columns: DataTableColumn<TaskRow>[] = useMemo(() => [
     {
@@ -442,7 +457,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
     <View style={localStyles.container}>
       <DataTable<TaskRow>
         columns={columns}
-        data={tasksWithSubtasks}
+        data={paginatedTasks}
         keyExtractor={(row, index) => `${row.task.id}-${row.level}-${row.task.parent_task_id || 'root'}-${index}`}
         onRowPress={(row) => onTaskPress(row.task)}
         isLoading={isLoading && tasksWithSubtasks.length === 0}
@@ -450,6 +465,12 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
         emptyTitle={searchQuery ? 'Задачи не найдены' : 'Нет задач'}
         emptySubtitle={searchQuery ? 'Попробуйте изменить параметры поиска' : 'Создайте новую задачу для начала работы'}
         getRowStyle={(row) => row.isSubtask ? { paddingLeft: 32 } : undefined}
+        pagination={{
+          currentPage,
+          totalItems: totalTaskItems,
+          pageSize: TASK_PAGE_SIZE,
+          onPageChange: setCurrentPage,
+        }}
       />
 
       {/* Action Menu */}

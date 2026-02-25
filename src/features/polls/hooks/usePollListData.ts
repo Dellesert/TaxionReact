@@ -15,6 +15,7 @@ interface UsePollListDataReturn {
   loadPolls: (filters?: PollListFilters, searchQuery?: string) => Promise<void>;
   handleRefresh: (filters?: PollListFilters, searchQuery?: string) => Promise<void>;
   handleLoadMore: (filters?: PollListFilters, searchQuery?: string) => Promise<void>;
+  loadPage: (offset: number, filters?: PollListFilters, searchQuery?: string) => Promise<void>;
 }
 
 /**
@@ -127,6 +128,32 @@ export const usePollListData = (): UsePollListDataReturn => {
     [hasMore, isLoadingMore, isLoading, polls, appendCachedPolls]
   );
 
+  const loadPage = useCallback(
+    async (offset: number, filters?: PollListFilters, searchQuery?: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        let response;
+        if (searchQuery && searchQuery.trim()) {
+          response = await pollApi.searchPolls(searchQuery.trim(), POLLS_PER_PAGE, offset);
+        } else {
+          response = await pollApi.getPolls(filters, POLLS_PER_PAGE, offset);
+        }
+
+        setPolls(response.polls);
+        setTotal(response.total);
+        setHasMore(response.hasMore);
+      } catch (error: any) {
+        console.error('Failed to load polls page:', error);
+        setError(error.message || 'Failed to load polls');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
   return {
     polls,
     total,
@@ -137,5 +164,6 @@ export const usePollListData = (): UsePollListDataReturn => {
     loadPolls,
     handleRefresh,
     handleLoadMore,
+    loadPage,
   };
 };

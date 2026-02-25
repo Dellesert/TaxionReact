@@ -61,6 +61,7 @@ const PollListScreen: React.FC = () => {
 
   const {
     polls,
+    total,
     hasMore,
     isLoading,
     isLoadingMore,
@@ -68,7 +69,12 @@ const PollListScreen: React.FC = () => {
     loadPolls,
     handleRefresh,
     handleLoadMore,
+    loadPage,
   } = usePollListData();
+
+  // Pagination for desktop DataTable
+  const [currentPage, setCurrentPage] = useState(1);
+  const POLL_PAGE_SIZE = 50;
 
   // Permissions
   const canCreatePoll = canUserCreatePoll(currentUser?.role);
@@ -140,6 +146,7 @@ const PollListScreen: React.FC = () => {
       return;
     }
 
+    setCurrentPage(1);
     const timer = setTimeout(() => {
       loadPolls(getFilters(), searchQuery);
     }, searchQuery ? 500 : 0); // Debounce only for search
@@ -163,6 +170,7 @@ const PollListScreen: React.FC = () => {
 
   const handleRefreshWrapper = async () => {
     setRefreshing(true);
+    setCurrentPage(1);
     await handleRefresh(getFilters(), searchQuery);
     setRefreshing(false);
   };
@@ -170,6 +178,13 @@ const PollListScreen: React.FC = () => {
   const handleLoadMoreWrapper = () => {
     handleLoadMore(getFilters(), searchQuery);
   };
+
+  // Handle page change for desktop DataTable
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    const offset = (page - 1) * POLL_PAGE_SIZE;
+    loadPage(offset, getFilters(), searchQuery);
+  }, [loadPage, getFilters, searchQuery]);
 
   const handleSearchChange = (text: string) => {
     setSearchQuery(text);
@@ -221,6 +236,10 @@ const PollListScreen: React.FC = () => {
             refreshing={refreshing}
             error={error}
             hasMore={hasMore}
+            total={total}
+            currentPage={currentPage}
+            pageSize={POLL_PAGE_SIZE}
+            onPageChange={handlePageChange}
             onPollPress={handlePollPress}
             onRefresh={handleRefreshWrapper}
             onLoadMore={handleLoadMoreWrapper}

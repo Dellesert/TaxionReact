@@ -110,10 +110,14 @@ export const AbsenceListScreen: React.FC = () => {
     absences,
     isLoading,
     hasMore,
+    total,
     filters,
     loadAbsences,
     setFilters,
   } = useAbsenceStore();
+
+  // Pagination for desktop DataTable
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Search state for desktop
   const [searchQuery, setSearchQuery] = useState('');
@@ -222,6 +226,7 @@ export const AbsenceListScreen: React.FC = () => {
   // Handle year change
   const handleYearChange = useCallback((year: number) => {
     setSelectedYear(year);
+    setCurrentPage(1);
     const yearRange = getYearRange(year);
     const newFilters = { ...filters, ...yearRange };
     setFilters(newFilters);
@@ -229,6 +234,7 @@ export const AbsenceListScreen: React.FC = () => {
   }, [filters, setFilters, loadAbsences]);
 
   const handleRefresh = useCallback(() => {
+    setCurrentPage(1);
     loadAbsences(filters, true);
   }, [loadAbsences, filters]);
 
@@ -238,6 +244,14 @@ export const AbsenceListScreen: React.FC = () => {
     }
   }, [loadAbsences, filters, isLoading, hasMore]);
 
+  // Handle page change for desktop DataTable
+  const PAGE_SIZE = 20;
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    const offset = (page - 1) * PAGE_SIZE;
+    loadAbsences(filters, true, offset);
+  }, [loadAbsences, filters]);
+
   const handleAbsencePress = useCallback((absence: Absence) => {
     setSelectedAbsence(absence);
     setShowEditModal(true);
@@ -246,6 +260,7 @@ export const AbsenceListScreen: React.FC = () => {
 
   const handleApplyFilter = useCallback((type: AbsenceType | null) => {
     setSelectedTypeFilter(type);
+    setCurrentPage(1);
     const yearRange = getYearRange(selectedYear);
     const newFilters = {
       ...filters,
@@ -261,6 +276,7 @@ export const AbsenceListScreen: React.FC = () => {
   const handleUserFilterChange = useCallback((userId: number | null, userName: string | null) => {
     setSelectedUserId(userId);
     setSelectedUserName(userName);
+    setCurrentPage(1);
     const yearRange = getYearRange(selectedYear);
     const newFilters = {
       ...filters,
@@ -884,6 +900,12 @@ export const AbsenceListScreen: React.FC = () => {
               keyExtractor={(a) => String(a.id)}
               onRowPress={handleAbsencePress}
               isLoading={isLoading}
+              pagination={{
+                currentPage,
+                totalItems: total,
+                pageSize: PAGE_SIZE,
+                onPageChange: handlePageChange,
+              }}
               emptyIcon="calendar-outline"
               emptyTitle={
                 searchQuery

@@ -87,8 +87,12 @@ export const ScheduleListScreen: React.FC = () => {
   // Get initial month range for filters
   const initialMonthRange = getMonthRange(new Date());
 
-  const { schedules, isLoading, error, hasMore, refresh, loadMore, updateFilters } =
+  const { schedules, isLoading, error, hasMore, total, refresh, loadMore, loadPage, updateFilters } =
     useSchedules({ start_date: initialMonthRange.start, end_date: initialMonthRange.end });
+
+  // Pagination for desktop DataTable
+  const [currentPage, setCurrentPage] = useState(1);
+  const SCHEDULE_PAGE_SIZE = 20;
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
@@ -130,9 +134,17 @@ export const ScheduleListScreen: React.FC = () => {
   // Handle month change - update filters and reload (defined early for TitleBar integration)
   const handleMonthChange = useCallback((date: Date) => {
     setSelectedMonth(date);
+    setCurrentPage(1);
     const { start, end } = getMonthRange(date);
     updateFilters({ start_date: start, end_date: end });
   }, [updateFilters]);
+
+  // Handle page change for desktop DataTable
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    const offset = (page - 1) * SCHEDULE_PAGE_SIZE;
+    loadPage(offset);
+  }, [loadPage]);
 
 
   // TitleBar left controls - no longer used (month picker moved to content area)
@@ -461,6 +473,12 @@ export const ScheduleListScreen: React.FC = () => {
               keyExtractor={(s) => String(s.id)}
               onRowPress={handleSchedulePress}
               isLoading={isLoading}
+              pagination={{
+                currentPage,
+                totalItems: total,
+                pageSize: SCHEDULE_PAGE_SIZE,
+                onPageChange: handlePageChange,
+              }}
               emptyIcon="calendar-outline"
               emptyTitle="Нет графиков за этот месяц"
               emptySubtitle={canCreate ? 'Выберите другой месяц или создайте новый график' : 'Выберите другой месяц'}

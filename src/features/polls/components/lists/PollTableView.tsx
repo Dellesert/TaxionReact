@@ -1,8 +1,7 @@
 import React, { useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Poll } from '../../types/poll.types';
-import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '@shared/store/authStore';
 import { Avatar } from '@shared/components/common/Avatar';
 import { DataTable, DataTableColumn } from '@shared/components/common/DataTable';
@@ -16,6 +15,10 @@ interface PollTableViewProps {
   refreshing: boolean;
   error: string | null;
   hasMore: boolean;
+  total: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
   onPollPress: (poll: Poll) => void;
   onRefresh: () => void;
   onLoadMore: () => void;
@@ -97,16 +100,16 @@ const formatDate = (dateString?: string) => {
 export const PollTableView: React.FC<PollTableViewProps> = ({
   polls,
   isLoading,
-  isLoadingMore,
   refreshing,
   error,
-  hasMore,
+  total,
+  currentPage,
+  pageSize,
+  onPageChange,
   onPollPress,
   onRefresh,
-  onLoadMore,
   onRetry,
 }) => {
-  const { theme } = useTheme();
   const { user } = useAuthStore();
 
   const getVisibilityText = useCallback((poll: Poll) => {
@@ -254,13 +257,12 @@ export const PollTableView: React.FC<PollTableViewProps> = ({
       onRowPress={onPollPress}
       isLoading={isLoading && !refreshing}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      renderAfterRows={
-        isLoadingMore && hasMore ? (
-          <View style={localStyles.loadMoreContainer}>
-            <ActivityIndicator size="small" color={theme.primary} />
-          </View>
-        ) : undefined
-      }
+      pagination={{
+        currentPage,
+        totalItems: total,
+        pageSize,
+        onPageChange,
+      }}
     />
   );
 };

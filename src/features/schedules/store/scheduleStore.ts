@@ -78,7 +78,7 @@ interface ScheduleState {
   error: string | null;
 
   // Actions - Schedules
-  loadSchedules: (filters?: ScheduleFilters, reset?: boolean) => Promise<void>;
+  loadSchedules: (filters?: ScheduleFilters, reset?: boolean, explicitOffset?: number) => Promise<void>;
   loadScheduleById: (id: number) => Promise<Schedule>;
   createSchedule: (data: CreateScheduleRequest) => Promise<Schedule>;
   updateSchedule: (
@@ -146,7 +146,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   // SCHEDULES
   // ============================================
 
-  loadSchedules: async (filters, reset = false) => {
+  loadSchedules: async (filters, reset = false, explicitOffset) => {
     const state = get();
 
     // Prevent multiple simultaneous loads
@@ -154,7 +154,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       return;
     }
 
-    const offset = reset ? 0 : state.schedules.length;
+    const offset = explicitOffset !== undefined ? explicitOffset : (reset ? 0 : state.schedules.length);
 
     set({ isLoading: true, error: null });
 

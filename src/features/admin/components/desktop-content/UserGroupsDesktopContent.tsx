@@ -324,6 +324,20 @@ const UserGroupsDesktopContent: React.FC = () => {
     (group.description && group.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  // Client-side pagination
+  const GROUP_PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const paginatedGroups = useMemo(() => {
+    const start = (currentPage - 1) * GROUP_PAGE_SIZE;
+    return filteredGroups.slice(start, start + GROUP_PAGE_SIZE);
+  }, [filteredGroups, currentPage]);
+
   const columns = useMemo<DataTableColumn<UserGroup>[]>(() => [
     {
       key: 'name',
@@ -599,7 +613,7 @@ const UserGroupsDesktopContent: React.FC = () => {
       ) : (
         <DataTable<UserGroup>
           columns={columns}
-          data={filteredGroups}
+          data={paginatedGroups}
           keyExtractor={(group) => String(group.id)}
           onRowPress={handleRowPress}
           isLoading={isLoading}
@@ -607,6 +621,12 @@ const UserGroupsDesktopContent: React.FC = () => {
           emptyTitle={searchQuery ? 'Группы не найдены' : 'Нет групп'}
           emptySubtitle={searchQuery ? 'Попробуйте изменить запрос' : 'Создайте первую группу'}
           containerStyle={{ margin: 0, borderWidth: 0, borderRadius: 0 }}
+          pagination={{
+            currentPage,
+            totalItems: filteredGroups.length,
+            pageSize: GROUP_PAGE_SIZE,
+            onPageChange: setCurrentPage,
+          }}
         />
       )}
 

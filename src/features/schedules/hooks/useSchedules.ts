@@ -75,6 +75,14 @@ export const useSchedules = (initialFilters?: ScheduleFilters) => {
     }
   }, [storeIsLoading, hasMore, error, filters, loadSchedules]);
 
+  // Load a specific page by offset
+  const loadPage = useCallback(
+    (offset: number) => {
+      loadSchedules(filters, true, offset);
+    },
+    [filters, loadSchedules]
+  );
+
   // Update filters and reload
   const updateFilters = useCallback(
     (newFilters: ScheduleFilters) => {
@@ -109,6 +117,7 @@ export const useSchedules = (initialFilters?: ScheduleFilters) => {
     filters,
     refresh,
     loadMore,
+    loadPage,
     updateFilters,
     clearError,
   };
