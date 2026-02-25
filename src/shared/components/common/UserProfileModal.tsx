@@ -13,6 +13,7 @@ import { Avatar } from '@shared/components/common/Avatar';
 import { User } from '@/types/user.types';
 import { getUserById } from '@api/user.api';
 import { useAuthStore } from '@shared/store';
+import { getLastSeenText } from '@features/chat/utils/chatSettingsFormatters';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -69,36 +70,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   };
 
   if (!visible) return null;
-
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case 'online':
-        return '#4CAF50';
-      case 'offline':
-        return '#9E9E9E';
-      case 'busy':
-        return '#FF9800';
-      case 'away':
-        return '#FFC107';
-      default:
-        return theme.textTertiary;
-    }
-  };
-
-  const getStatusText = (status?: string) => {
-    switch (status) {
-      case 'online':
-        return 'В сети';
-      case 'offline':
-        return 'Не в сети';
-      case 'busy':
-        return 'Занят';
-      case 'away':
-        return 'Отошёл';
-      default:
-        return 'Неизвестно';
-    }
-  };
 
   const getRoleText = (role?: string) => {
     switch (role) {
@@ -224,11 +195,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <View
                 style={[
                   styles.statusDot,
-                  { backgroundColor: getStatusColor(user.status) },
+                  { backgroundColor: user.status === 'online' ? '#4CAF50' : '#9E9E9E' },
                 ]}
               />
-              <Text style={[styles.statusText, { color: theme.textSecondary }]}>
-                {getStatusText(user.status)}
+              <Text style={[styles.statusText, { color: user.status === 'online' ? '#4CAF50' : theme.textSecondary }]}>
+                {getLastSeenText(user.status, user.last_seen_at)}
               </Text>
             </View>
           </View>
