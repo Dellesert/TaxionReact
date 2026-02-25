@@ -27,11 +27,31 @@ interface PollCacheStore {
   clearCache: () => void;
 }
 
+// Pre-load from localStorage on web (skipHydration prevents auto-rehydration)
+let preloadedPolls: Poll[] | null = null;
+let preloadedTotal: number | null = null;
+if (!isNative) {
+  try {
+    const stored = localStorage.getItem('taxion-poll-storage:poll-storage');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed?.state?.polls)) {
+        preloadedPolls = parsed.state.polls;
+      }
+      if (typeof parsed?.state?.total === 'number') {
+        preloadedTotal = parsed.state.total;
+      }
+    }
+  } catch {
+    // Ignore — will use initial state
+  }
+}
+
 export const usePollStore = create<PollCacheStore>()(
   persist(
     (set, get) => ({
-      polls: [],
-      total: 0,
+      polls: preloadedPolls || [],
+      total: preloadedTotal ?? 0,
       lastUpdated: null,
 
       setPolls: (polls: Poll[], total: number) => {

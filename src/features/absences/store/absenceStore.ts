@@ -1,5 +1,7 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { absenceApi } from '../api/absence.api';
+import { getZustandAbsenceStorage, isNative } from '@shared/storage';
 import type {
   Absence,
   AbsenceFilters,
@@ -82,8 +84,37 @@ const initialState = {
   error: null as string | null,
 };
 
-export const useAbsenceStore = create<AbsenceState>((set, get) => ({
+// Pre-load from localStorage on web (skipHydration prevents auto-rehydration)
+let preloadedAbsences: Absence[] | null = null;
+let preloadedTotal: number | null = null;
+let preloadedFilters: AbsenceFilters | null = null;
+if (!isNative) {
+  try {
+    const stored = localStorage.getItem('taxion-absence-storage:absence-storage');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed?.state?.absences)) {
+        preloadedAbsences = parsed.state.absences;
+      }
+      if (typeof parsed?.state?.total === 'number') {
+        preloadedTotal = parsed.state.total;
+      }
+      if (parsed?.state?.filters && typeof parsed.state.filters === 'object') {
+        preloadedFilters = parsed.state.filters;
+      }
+    }
+  } catch {
+    // Ignore — will use initial state
+  }
+}
+
+export const useAbsenceStore = create<AbsenceState>()(
+  persist(
+    (set, get) => ({
   ...initialState,
+  absences: preloadedAbsences || [],
+  total: preloadedTotal ?? 0,
+  filters: preloadedFilters || { sort_order: 'asc' } as AbsenceFilters,
 
   // ============================================
   // ABSENCES
@@ -319,4 +350,17 @@ export const useAbsenceStore = create<AbsenceState>((set, get) => ({
   setFilters: (filters) => set({ filters }),
   clearError: () => set({ error: null }),
   reset: () => set(initialState),
-}));
+    }),
+    {
+      name: 'absence-storage',
+      storage: createJSONStorage(() => getZustandAbsenceStorage()),
+      partialize: (state) => ({
+        absences: state.absences,
+        total: state.total,
+        filters: state.filters,
+      }),
+      skipHydration: !isNative,
+      version: 1,
+    }
+  )
+);

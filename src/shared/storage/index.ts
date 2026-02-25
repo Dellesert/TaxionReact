@@ -20,6 +20,7 @@ const STORAGE_IDS = {
   user: 'taxion-user-storage',
   settings: 'taxion-settings-storage',
   schedule: 'taxion-schedule-storage',
+  absence: 'taxion-absence-storage',
 } as const;
 
 // ============= MMKV Implementation (Native) =============
@@ -120,6 +121,7 @@ export const getZustandCalendarStorage = (): StateStorage => createStorage(STORA
 export const getZustandPollStorage = (): StateStorage => createStorage(STORAGE_IDS.poll);
 export const getZustandUserStorage = (): StateStorage => createStorage(STORAGE_IDS.user);
 export const getZustandScheduleStorage = (): StateStorage => createStorage(STORAGE_IDS.schedule);
+export const getZustandAbsenceStorage = (): StateStorage => createStorage(STORAGE_IDS.absence);
 
 /**
  * Clear all storages

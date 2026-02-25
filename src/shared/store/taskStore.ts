@@ -63,16 +63,23 @@ const initialTotals: TotalsByStatus = {
   done: 0,
 };
 
-// Pre-load totals from storage on web for instant display
+// Pre-load from localStorage on web (skipHydration prevents auto-rehydration)
 let preloadedTotals: TotalsByStatus | null = null;
+let preloadedTasksByStatus: TasksByStatus | null = null;
+let preloadedSubtasksByParentId: Record<number, Task[]> | null = null;
 if (!isNative) {
-  // On web, try to load totals synchronously from localStorage
   try {
-    const stored = localStorage.getItem('task-storage');
+    const stored = localStorage.getItem('taxion-task-storage:task-storage');
     if (stored) {
       const parsed = JSON.parse(stored);
       if (parsed?.state?.totals) {
         preloadedTotals = parsed.state.totals;
+      }
+      if (parsed?.state?.tasksByStatus && typeof parsed.state.tasksByStatus === 'object') {
+        preloadedTasksByStatus = parsed.state.tasksByStatus;
+      }
+      if (parsed?.state?.subtasksByParentId && typeof parsed.state.subtasksByParentId === 'object') {
+        preloadedSubtasksByParentId = parsed.state.subtasksByParentId;
       }
     }
   } catch (error) {
@@ -83,9 +90,9 @@ if (!isNative) {
 export const useTaskStore = create<TaskCacheStore>()(
   persist(
     (set, get) => ({
-      tasksByStatus: initialTasksByStatus,
+      tasksByStatus: preloadedTasksByStatus || initialTasksByStatus,
       totals: preloadedTotals || initialTotals,
-      subtasksByParentId: {},
+      subtasksByParentId: preloadedSubtasksByParentId || {},
       lastUpdated: null,
 
       setTasksForStatus: (status: StatusTab, tasks: Task[], total: number) => {

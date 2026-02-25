@@ -211,16 +211,35 @@ const initialTabsState: Record<TabName, TabData> = {
   channel: { pinnedChats: [], regularChats: [], offset: 0, hasMore: true, loaded: false },
 };
 
-// Pre-load unread count from storage on web for instant display
+// Pre-load from localStorage on web (skipHydration prevents auto-rehydration)
 let preloadedUnreadCount = 0;
+let preloadedChats: Chat[] | null = null;
+let preloadedTabs: Record<TabName, TabData> | null = null;
+let preloadedCurrentTab: TabName | null = null;
+let preloadedMessages: Record<number, Message[]> | null = null;
+let preloadedSelectedChatId: number | null = null;
 if (!isNative) {
-  // On web, try to load unread count synchronously from localStorage
   try {
-    const stored = localStorage.getItem('chat-storage');
+    const stored = localStorage.getItem('taxion-chat-storage:chat-storage');
     if (stored) {
       const parsed = JSON.parse(stored);
       if (parsed?.state?.totalUnreadCount !== undefined) {
         preloadedUnreadCount = parsed.state.totalUnreadCount;
+      }
+      if (Array.isArray(parsed?.state?.chats)) {
+        preloadedChats = parsed.state.chats;
+      }
+      if (parsed?.state?.tabs && typeof parsed.state.tabs === 'object') {
+        preloadedTabs = { ...initialTabsState, ...parsed.state.tabs };
+      }
+      if (parsed?.state?.currentTab) {
+        preloadedCurrentTab = parsed.state.currentTab;
+      }
+      if (parsed?.state?.messages && typeof parsed.state.messages === 'object') {
+        preloadedMessages = parsed.state.messages;
+      }
+      if (parsed?.state?.selectedChatId !== undefined) {
+        preloadedSelectedChatId = parsed.state.selectedChatId;
       }
     }
   } catch (error) {
@@ -231,13 +250,13 @@ if (!isNative) {
 export const useChatStore = create<ChatState>()(
   persist(
     (set, get) => ({
-      chats: [],
-      tabs: { ...initialTabsState },
-      currentTab: 'all',
+      chats: preloadedChats || [],
+      tabs: preloadedTabs || { ...initialTabsState },
+      currentTab: preloadedCurrentTab || 'all',
       totalChats: 0,
       hasMoreChats: true,
       activeChat: null,
-      messages: {},
+      messages: preloadedMessages || {},
       pinnedMessages: {},
       threadMessages: {},
       isLoading: false,
@@ -247,7 +266,7 @@ export const useChatStore = create<ChatState>()(
       typingUsers: {},
       totalUnreadCount: preloadedUnreadCount,
       // Desktop mode: selected chat
-      selectedChatId: null,
+      selectedChatId: preloadedSelectedChatId,
       setSelectedChatId: (chatId) => set({ selectedChatId: chatId }),
 
       // Load data for a specific tab
