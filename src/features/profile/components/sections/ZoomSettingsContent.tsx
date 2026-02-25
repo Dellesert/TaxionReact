@@ -4,19 +4,27 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, PanResponder, LayoutChangeEvent } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, LayoutChangeEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { getElectronAPI } from '@shared/utils/platform';
 
-const ZOOM_STEPS = [0.9, 0.95, 1.0, 1.05, 1.1];
+const ZOOM_STEPS = [0.8, 0.9, 0.95, 1.0, 1.05, 1.1, 1.15];
 const DEFAULT_ZOOM = 1.0;
 
 const ZoomSettingsContent: React.FC = () => {
   const { theme } = useTheme();
   const [currentZoom, setCurrentZoom] = useState<number>(DEFAULT_ZOOM);
   const [trackWidth, setTrackWidth] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const thumbAnim = useRef(new Animated.Value(0)).current;
+  const trackRef = useRef<View>(null);
+  const trackLeftRef = useRef(0);
+  const trackWidthRef = useRef(0);
+  const currentZoomRef = useRef(currentZoom);
+
+  currentZoomRef.current = currentZoom;
+  trackWidthRef.current = trackWidth;
 
   const stepToPosition = (step: number) => {
     const index = ZOOM_STEPS.indexOf(step);
@@ -24,9 +32,9 @@ const ZoomSettingsContent: React.FC = () => {
     return (index / (ZOOM_STEPS.length - 1)) * trackWidth;
   };
 
-  const positionToStep = (x: number): number => {
-    if (trackWidth === 0) return DEFAULT_ZOOM;
-    const ratio = Math.max(0, Math.min(1, x / trackWidth));
+  const positionToStep = (x: number, width: number): number => {
+    if (width === 0) return DEFAULT_ZOOM;
+    const ratio = Math.max(0, Math.min(1, x / width));
     const index = Math.round(ratio * (ZOOM_STEPS.length - 1));
     return ZOOM_STEPS[index];
   };
@@ -70,27 +78,69 @@ const ZoomSettingsContent: React.FC = () => {
     }
   };
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => {
-        const x = evt.nativeEvent.locationX;
-        const step = positionToStep(x);
-        handleZoomChange(step);
-      },
-      onPanResponderMove: (evt) => {
-        const x = evt.nativeEvent.locationX;
-        const step = positionToStep(x);
-        if (step !== currentZoom) {
-          handleZoomChange(step);
-        }
-      },
-    })
-  ).current;
+  const handleZoomChangeRef = useRef(handleZoomChange);
+  handleZoomChangeRef.current = handleZoomChange;
+
+  const measureTrack = () => {
+    // @ts-ignore - web-only: get DOM node bounding rect
+    const node = trackRef.current;
+    if (node) {
+      node.measure?.((x: number, y: number, width: number, height: number, pageX: number) => {
+        trackLeftRef.current = pageX;
+      });
+      // Fallback for web: use getBoundingClientRect
+      // @ts-ignore
+      const domNode = node._nativeTag || node;
+      if (typeof domNode?.getBoundingClientRect === 'function') {
+        const rect = domNode.getBoundingClientRect();
+        trackLeftRef.current = rect.left;
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const localX = e.pageX - trackLeftRef.current;
+      const step = positionToStep(localX, trackWidthRef.current);
+      if (step !== currentZoomRef.current) {
+        handleZoomChangeRef.current(step);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'grabbing';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  const handleTrackMouseDown = (e: any) => {
+    measureTrack();
+    const nativeEvent = e.nativeEvent || e;
+    const pageX = nativeEvent.pageX;
+    const localX = pageX - trackLeftRef.current;
+    const step = positionToStep(localX, trackWidthRef.current);
+    handleZoomChangeRef.current(step);
+    setIsDragging(true);
+  };
 
   const onTrackLayout = (e: LayoutChangeEvent) => {
     setTrackWidth(e.nativeEvent.layout.width);
+    setTimeout(measureTrack, 50);
   };
 
   const isDefault = currentZoom === DEFAULT_ZOOM;
@@ -117,6 +167,11 @@ const ZoomSettingsContent: React.FC = () => {
     sliderContainer: {
       paddingHorizontal: 8,
     },
+    trackHitArea: {
+      paddingVertical: 12,
+      // @ts-ignore
+      cursor: isDragging ? 'grabbing' : 'pointer',
+    },
     track: {
       height: 6,
       borderRadius: 3,
@@ -137,11 +192,14 @@ const ZoomSettingsContent: React.FC = () => {
       borderRadius: 12,
       backgroundColor: theme.primary,
       marginLeft: -12,
+      top: -9,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.15,
       shadowRadius: 4,
       elevation: 4,
+      // @ts-ignore
+      cursor: isDragging ? 'grabbing' : 'grab',
     },
     dotsContainer: {
       flexDirection: 'row',
@@ -209,35 +267,43 @@ const ZoomSettingsContent: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.sliderCard}>
         <Text style={styles.sliderLabel}>
+          {currentZoom === 0.8 && 'Самый мелкий'}
           {currentZoom === 0.9 && 'Мелкий'}
           {currentZoom === 0.95 && 'Уменьшенный'}
           {currentZoom === 1.0 && 'Стандартный'}
           {currentZoom === 1.05 && 'Увеличенный'}
           {currentZoom === 1.1 && 'Крупный'}
+          {currentZoom === 1.15 && 'Самый крупный'}
         </Text>
 
         <View style={styles.sliderContainer}>
+          {/* @ts-ignore - web onMouseDown */}
           <View
-            style={styles.track}
-            onLayout={onTrackLayout}
-            {...panResponder.panHandlers}
+            style={styles.trackHitArea}
+            onMouseDown={handleTrackMouseDown}
           >
-            {trackWidth > 0 && (
-              <>
-                <View
-                  style={[
-                    styles.activeTrack,
-                    { left: activeTrackLeft, width: activeTrackWidth },
-                  ]}
-                />
-                <Animated.View
-                  style={[
-                    styles.thumb,
-                    { left: thumbAnim },
-                  ]}
-                />
-              </>
-            )}
+            <View
+              ref={trackRef}
+              style={styles.track}
+              onLayout={onTrackLayout}
+            >
+              {trackWidth > 0 && (
+                <>
+                  <View
+                    style={[
+                      styles.activeTrack,
+                      { left: activeTrackLeft, width: activeTrackWidth },
+                    ]}
+                  />
+                  <Animated.View
+                    style={[
+                      styles.thumb,
+                      { left: thumbAnim },
+                    ]}
+                  />
+                </>
+              )}
+            </View>
           </View>
 
           <View style={styles.dotsContainer}>

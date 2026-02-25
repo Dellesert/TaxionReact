@@ -54,8 +54,8 @@ function setCloseBehavior(behavior) {
   appSettingsStore.set('closeBehavior', behavior);
 }
 
-// Zoom factor: numeric value (0.9 | 0.95 | 1.0 | 1.05 | 1.1)
-const VALID_ZOOM_FACTORS = [0.9, 0.95, 1.0, 1.05, 1.1];
+// Zoom factor: numeric value (0.8 | 0.9 | 0.95 | 1.0 | 1.05 | 1.1 | 1.15)
+const VALID_ZOOM_FACTORS = [0.8, 0.9, 0.95, 1.0, 1.05, 1.1, 1.15];
 
 function getZoomLevel() {
   const stored = appSettingsStore.get('zoomLevel', 1.0);
