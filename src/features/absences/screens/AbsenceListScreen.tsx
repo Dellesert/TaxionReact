@@ -456,10 +456,10 @@ export const AbsenceListScreen: React.FC = () => {
         const hasSubs = absence.substitutions && absence.substitutions.length > 0;
         const subCount = absence.substitution_count ?? absence.substitutions?.length ?? 0;
         if (hasSubs) {
+          const names = absence.substitutions!.map(s => s.substitute?.name || `#${s.substitute_id}`).join(', ');
           return (
-            <Text style={[absenceLocalStyles.cellText, { color: theme.textSecondary }]} numberOfLines={1}>
-              {absence.substitutions![0].substitute?.name || `#${absence.substitutions![0].substitute_id}`}
-              {absence.substitutions!.length > 1 && ` +${absence.substitutions!.length - 1}`}
+            <Text style={[absenceLocalStyles.cellText, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
+              {names}
             </Text>
           );
         }
