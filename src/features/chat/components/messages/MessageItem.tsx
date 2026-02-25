@@ -505,14 +505,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             showError(error.message || 'Не удалось открыть чат');
           }
         }}
-        onAddToFavorites={(userId) => {
-          // TODO: Add to favorites
-          showError('Функция добавления в избранное будет реализована позже');
-        }}
-        onBlock={(userId) => {
-          // TODO: Block user
-          showError('Функция блокировки будет реализована позже');
-        }}
       />
 
       {/* Полноэкранный просмотр медиа (фото + видео) — только если нет глобального просмотра */}
