@@ -39,6 +39,7 @@ interface EditAbsenceModalProps {
   absence: Absence | null;
   onAbsenceUpdated?: () => void;
   onAbsenceDeleted?: () => void;
+  readOnly?: boolean;
 }
 
 export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
@@ -47,6 +48,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
   absence,
   onAbsenceUpdated,
   onAbsenceDeleted,
+  readOnly = false,
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
@@ -210,7 +212,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
 
             <View style={styles.headerCenter}>
               <Text style={[styles.headerTitle, { color: theme.text }, isDesktop && styles.headerTitleDesktop]}>
-                Редактирование
+                {readOnly ? 'Просмотр' : 'Редактирование'}
               </Text>
             </View>
 
@@ -259,7 +261,8 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                         borderWidth: 2,
                       },
                     ]}
-                    onPress={() => setSelectedType(type)}
+                    onPress={() => !readOnly && setSelectedType(type)}
+                    disabled={readOnly}
                   >
                     <AbsenceTypeIcon type={type} size="medium" />
                     <Text
@@ -295,7 +298,8 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                     styles.dateButton,
                     { backgroundColor: theme.card, borderColor: theme.border, flex: 1 },
                   ]}
-                  onPress={() => setShowStartDatePicker(true)}
+                  onPress={() => !readOnly && setShowStartDatePicker(true)}
+                  disabled={readOnly}
                 >
                   <Ionicons name="calendar-outline" size={18} color={theme.primary} />
                   <Text style={[styles.dateButtonText, { color: theme.text }]}>
@@ -310,7 +314,8 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                     styles.dateButton,
                     { backgroundColor: theme.card, borderColor: theme.border, flex: 1 },
                   ]}
-                  onPress={() => setShowEndDatePicker(true)}
+                  onPress={() => !readOnly && setShowEndDatePicker(true)}
+                  disabled={readOnly}
                 >
                   <Ionicons name="calendar-outline" size={18} color={theme.primary} />
                   <Text style={[styles.dateButtonText, { color: theme.text }]}>
@@ -342,6 +347,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
+                editable={!readOnly}
               />
               <Text style={[styles.charCount, { color: theme.textTertiary }]}>
                 {reason.length}/500
@@ -355,19 +361,22 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                 absenceUserId={absence.user_id}
                 absenceStartDate={absence.start_date}
                 absenceEndDate={absence.end_date}
+                readOnly={readOnly}
               />
             )}
 
             {/* Delete Button */}
-            <TouchableOpacity
-              style={[styles.deleteButton, { borderColor: theme.error }]}
-              onPress={handleDelete}
-            >
-              <Ionicons name="trash-outline" size={18} color={theme.error} />
-              <Text style={[styles.deleteButtonText, { color: theme.error }]}>
-                Удалить
-              </Text>
-            </TouchableOpacity>
+            {!readOnly && (
+              <TouchableOpacity
+                style={[styles.deleteButton, { borderColor: theme.error }]}
+                onPress={handleDelete}
+              >
+                <Ionicons name="trash-outline" size={18} color={theme.error} />
+                <Text style={[styles.deleteButtonText, { color: theme.error }]}>
+                  Удалить
+                </Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
 
           {/* Bottom Actions */}
@@ -386,28 +395,30 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
               onPress={onClose}
             >
               <Text style={[styles.cancelButtonText, { color: theme.text }]}>
-                Отмена
+                {readOnly ? 'Закрыть' : 'Отмена'}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                { backgroundColor: theme.primary },
-                !isValid && { opacity: 0.5 },
-              ]}
-              onPress={handleSubmit}
-              disabled={!isValid || isSubmitting}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-                  <Text style={styles.submitButtonText}>Сохранить</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {!readOnly && (
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  { backgroundColor: theme.primary },
+                  !isValid && { opacity: 0.5 },
+                ]}
+                onPress={handleSubmit}
+                disabled={!isValid || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                    <Text style={styles.submitButtonText}>Сохранить</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Date Pickers */}

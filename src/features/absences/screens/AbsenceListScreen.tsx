@@ -45,6 +45,7 @@ import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { AbsenceCalendarSkeleton } from '../components/states/AbsenceCalendarSkeleton';
 import { AbsenceTimelineSkeleton } from '../components/states/AbsenceTimelineSkeleton';
+import { useAbsencePermissions } from '../hooks/useAbsencePermissions';
 
 // Helper to get year date range
 const getYearRange = (year: number): { start_date: string; end_date: string } => ({
@@ -95,6 +96,7 @@ export const AbsenceListScreen: React.FC = () => {
   const filterButtonRef = useRef<View>(null);
   const isDesktop = useIsWideScreen();
   const animationType = useAnimationType('fade');
+  const { canCreate, canEdit } = useAbsencePermissions();
 
   // Reset status bar style when screen gains focus (fixes white status bar after visiting Profile)
   useFocusEffect(
@@ -253,9 +255,10 @@ export const AbsenceListScreen: React.FC = () => {
   }, [loadAbsences, filters]);
 
   const handleAbsencePress = useCallback((absence: Absence) => {
+    if (!canEdit) return;
     setSelectedAbsence(absence);
     setShowEditModal(true);
-  }, []);
+  }, [canEdit]);
 
 
   const handleApplyFilter = useCallback((type: AbsenceType | null) => {
@@ -341,7 +344,7 @@ export const AbsenceListScreen: React.FC = () => {
         onYearChange={handleYearChange}
         onFilterPress={handleFilterToggle}
         selectedTypeFilter={selectedTypeFilter}
-        onCreatePress={handleCreateAbsence}
+        onCreatePress={canCreate ? handleCreateAbsence : undefined}
         showActionsOnly
         filterButtonRef={filterButtonRef}
       />
@@ -532,13 +535,15 @@ export const AbsenceListScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
               {/* Add Button */}
-              <TouchableOpacity
-                onPress={handleCreateAbsence}
-                style={[styles.desktopAddButton, { backgroundColor: theme.primary }]}
-              >
-                <Ionicons name="add" size={18} color="#FFFFFF" />
-                <Text style={styles.desktopAddButtonText}>Добавить</Text>
-              </TouchableOpacity>
+              {canCreate && (
+                <TouchableOpacity
+                  onPress={handleCreateAbsence}
+                  style={[styles.desktopAddButton, { backgroundColor: theme.primary }]}
+                >
+                  <Ionicons name="add" size={18} color="#FFFFFF" />
+                  <Text style={styles.desktopAddButtonText}>Добавить</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         ) : (
@@ -575,12 +580,14 @@ export const AbsenceListScreen: React.FC = () => {
                     </View>
 
                     {/* Add Button */}
-                    <TouchableOpacity
-                      onPress={handleCreateAbsence}
-                      style={styles.iconButton}
-                    >
-                      <Ionicons name="add" size={30} color={theme.primary} />
-                    </TouchableOpacity>
+                    {canCreate && (
+                      <TouchableOpacity
+                        onPress={handleCreateAbsence}
+                        style={styles.iconButton}
+                      >
+                        <Ionicons name="add" size={30} color={theme.primary} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               </>
@@ -1066,6 +1073,7 @@ export const AbsenceListScreen: React.FC = () => {
         absence={selectedAbsence}
         onAbsenceUpdated={handleAbsenceUpdated}
         onAbsenceDeleted={handleAbsenceDeleted}
+        readOnly={!canEdit}
       />
 
       {/* User Filter Picker - desktop: dropdown under button, mobile: centered modal */}

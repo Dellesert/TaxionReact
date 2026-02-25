@@ -14,6 +14,7 @@ interface SubstitutionsSectionProps {
   absenceUserId: number;
   absenceStartDate: string;
   absenceEndDate: string;
+  readOnly?: boolean;
 }
 
 export const SubstitutionsSection: React.FC<SubstitutionsSectionProps> = ({
@@ -21,6 +22,7 @@ export const SubstitutionsSection: React.FC<SubstitutionsSectionProps> = ({
   absenceUserId,
   absenceStartDate,
   absenceEndDate,
+  readOnly = false,
 }) => {
   const { theme } = useTheme();
   const { showSuccess, showError } = useNotification();
@@ -105,16 +107,18 @@ export const SubstitutionsSection: React.FC<SubstitutionsSectionProps> = ({
         </View>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={[styles.addButton, { backgroundColor: theme.primary }]}
-            onPress={(e) => {
-              e.stopPropagation();
-              setShowAddModal(true);
-            }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="add" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
+          {!readOnly && (
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: theme.primary }]}
+              onPress={(e) => {
+                e.stopPropagation();
+                setShowAddModal(true);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="add" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          )}
           <Ionicons
             name={isExpanded ? 'chevron-up' : 'chevron-down'}
             size={20}
@@ -129,8 +133,8 @@ export const SubstitutionsSection: React.FC<SubstitutionsSectionProps> = ({
           <SubstitutionsList
             substitutions={substitutions}
             isLoading={isLoadingSubstitutions}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
+            onEdit={readOnly ? undefined : handleEdit}
+            onDelete={readOnly ? undefined : handleDelete}
           />
         </View>
       )}
