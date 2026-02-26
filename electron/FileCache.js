@@ -11,6 +11,16 @@ class FileCache {
     this.metadataFile = path.join(this.cacheDir, 'cache-metadata.json');
     this.metadata = new Map();
     this.initialized = false;
+
+    // Concurrency limit for downloads
+    this.maxConcurrentDownloads = options.maxConcurrentDownloads || 3;
+    this.activeDownloads = 0;
+    this.downloadQueue = [];
+
+    // Debounced metadata persistence
+    this._metadataDirty = false;
+    this._saveMetadataTimer = null;
+    this._SAVE_DEBOUNCE_MS = 1000;
   }
 
   async init() {
@@ -103,7 +113,7 @@ class FileCache {
       };
 
       this.metadata.set(key, metadata);
-      await this.saveMetadata();
+      this._scheduleSaveMetadata();
 
       return filepath;
     } catch (error) {
@@ -115,6 +125,7 @@ class FileCache {
   /**
    * Download a file from a remote URL and cache it directly to disk.
    * Streams to a temp file first, then renames for atomicity.
+   * Respects concurrent download limit (default 3).
    * @param {string} url - Remote URL to download
    * @param {Object} headers - HTTP headers (e.g. { 'X-Session-ID': '...' })
    * @param {string} [mimeTypeHint] - Optional MIME type hint; if omitted, derived from Content-Type header
@@ -131,6 +142,27 @@ class FileCache {
       return existingPath;
     }
 
+    // Concurrency gate: wait if too many active downloads
+    if (this.activeDownloads >= this.maxConcurrentDownloads) {
+      await new Promise((resolve) => this.downloadQueue.push(resolve));
+    }
+    this.activeDownloads++;
+
+    try {
+      return await this._doDownload(url, headers, mimeTypeHint);
+    } finally {
+      this.activeDownloads--;
+      if (this.downloadQueue.length > 0) {
+        const next = this.downloadQueue.shift();
+        next();
+      }
+    }
+  }
+
+  /**
+   * Internal download implementation with proper stream cleanup.
+   */
+  _doDownload(url, headers, mimeTypeHint) {
     const key = this.generateCacheKey(url);
     const tempFilename = `${key}.downloading`;
     const tempFilepath = path.join(this.cacheDir, tempFilename);
@@ -139,18 +171,22 @@ class FileCache {
       const parsedUrl = new URL(url);
       const httpModule = parsedUrl.protocol === 'https:' ? require('https') : require('http');
 
+      let currentResponse = null;
+
       const request = httpModule.get(url, { headers: { ...headers } }, (response) => {
-        // Follow redirects
+        currentResponse = response;
+
+        // Follow redirects — destroy response before recursing
         if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-          response.resume();
-          this.downloadAndCache(response.headers.location, headers, mimeTypeHint)
+          response.destroy();
+          this._doDownload(response.headers.location, headers, mimeTypeHint)
             .then(resolve)
             .catch(reject);
           return;
         }
 
         if (response.statusCode !== 200) {
-          response.resume();
+          response.destroy();
           reject(new Error(`HTTP ${response.statusCode} downloading ${url}`));
           return;
         }
@@ -167,6 +203,13 @@ class FileCache {
 
         response.on('data', (chunk) => {
           downloadedSize += chunk.length;
+        });
+
+        // Handle response stream errors
+        response.on('error', async (err) => {
+          writeStream.destroy();
+          try { await fs.unlink(tempFilepath); } catch {}
+          reject(err);
         });
 
         response.pipe(writeStream);
@@ -187,7 +230,7 @@ class FileCache {
             };
 
             this.metadata.set(key, metadata);
-            await this.saveMetadata();
+            this._scheduleSaveMetadata();
 
             resolve(finalFilepath);
           } catch (err) {
@@ -198,6 +241,7 @@ class FileCache {
         });
 
         writeStream.on('error', async (err) => {
+          response.destroy();
           try { await fs.unlink(tempFilepath); } catch {}
           reject(err);
         });
@@ -208,8 +252,11 @@ class FileCache {
         reject(err);
       });
 
-      // 5-minute timeout for large videos
+      // 5-minute timeout for large videos — destroy both request and response
       request.setTimeout(300000, () => {
+        if (currentResponse) {
+          currentResponse.destroy();
+        }
         request.destroy();
         reject(new Error('Download timeout'));
       });
@@ -234,16 +281,16 @@ class FileCache {
       // Check if file exists
       await fs.access(filepath);
 
-      // Update access time for LRU
+      // Update access time for LRU (in-memory only, debounced save)
       meta.accessedAt = Date.now();
       this.metadata.set(key, meta);
-      await this.saveMetadata();
+      this._scheduleSaveMetadata();
 
       return filepath;
     } catch {
       // File doesn't exist - remove from metadata
       this.metadata.delete(key);
-      await this.saveMetadata();
+      this._scheduleSaveMetadata();
       return null;
     }
   }
@@ -255,7 +302,6 @@ class FileCache {
     if (currentSize + newFileSize <= this.maxSize) {
       return; // Space available
     }
-
 
     // Sort by access time (oldest first)
     const entries = Array.from(this.metadata.entries())
@@ -278,7 +324,7 @@ class FileCache {
       }
     }
 
-    await this.saveMetadata();
+    this._scheduleSaveMetadata();
   }
 
   async getTotalSize() {
@@ -300,7 +346,36 @@ class FileCache {
     }
   }
 
+  /**
+   * Schedule a debounced metadata save.
+   * Avoids writing to disk on every single operation.
+   */
+  _scheduleSaveMetadata() {
+    this._metadataDirty = true;
+    if (this._saveMetadataTimer) return;
+    this._saveMetadataTimer = setTimeout(async () => {
+      this._saveMetadataTimer = null;
+      if (this._metadataDirty) {
+        this._metadataDirty = false;
+        await this._doSaveMetadata();
+      }
+    }, this._SAVE_DEBOUNCE_MS);
+  }
+
+  /**
+   * Force an immediate metadata save (used by clearCache, clearByMimePrefix).
+   */
   async saveMetadata() {
+    // Cancel pending debounced save
+    if (this._saveMetadataTimer) {
+      clearTimeout(this._saveMetadataTimer);
+      this._saveMetadataTimer = null;
+    }
+    this._metadataDirty = false;
+    await this._doSaveMetadata();
+  }
+
+  async _doSaveMetadata() {
     try {
       const obj = Object.fromEntries(this.metadata);
       await fs.writeFile(this.metadataFile, JSON.stringify(obj, null, 2));

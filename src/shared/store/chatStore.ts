@@ -29,6 +29,15 @@ const inFlightUserRequests = new Map<number, Promise<any>>();
 const typingTimeouts = new Map<string, NodeJS.Timeout>();
 const TYPING_TIMEOUT_MS = 5000;
 
+// Memory management: max messages kept in memory per chat
+const MAX_MESSAGES_PER_CHAT = 200;
+// Persist limits (aligned with cacheMaintenance)
+const PERSIST_MESSAGES_PER_CHAT = 50;
+const PERSIST_CHATS_WITH_MESSAGES = 30;
+// Proactive pruning: run cache maintenance every N new messages
+const PRUNE_EVERY_N_MESSAGES = 100;
+let newMessageCounter = 0;
+
 /**
  * Merges updated message with existing message, preserving forward-related fields.
  * This is needed because some API endpoints (pin, unpin, reaction) may not return
@@ -826,10 +835,13 @@ export const useChatStore = create<ChatState>()(
 
           addedCount = newMessages.length;
 
+          const combined = [...newMessages, ...existingMessages];
           return {
             messages: {
               ...state.messages,
-              [chatId]: [...newMessages, ...existingMessages], // Add old messages at the BEGINNING
+              [chatId]: combined.length > MAX_MESSAGES_PER_CHAT
+                ? combined.slice(0, MAX_MESSAGES_PER_CHAT) // trim newest when loading older
+                : combined,
             },
           };
         });
@@ -862,10 +874,13 @@ export const useChatStore = create<ChatState>()(
           // Messages are in chronological order (oldest → newest)
           const newMessages = responseMessages.filter(msg => !existingIds.has(msg.id));
 
+          const combined = [...existingMessages, ...newMessages];
           return {
             messages: {
               ...state.messages,
-              [chatId]: [...existingMessages, ...newMessages], // Add new messages at the END
+              [chatId]: combined.length > MAX_MESSAGES_PER_CHAT
+                ? combined.slice(-MAX_MESSAGES_PER_CHAT) // trim oldest when loading newer
+                : combined,
             },
           };
         });
@@ -1752,7 +1767,10 @@ export const useChatStore = create<ChatState>()(
             const messageWithDelivery = !isOwnMessage && currentUser
               ? { ...message, delivered_to: [currentUser.id] }
               : { ...message, delivered_to: [] };
-            updatedMessagesForChat = [...existingMessages, messageWithDelivery];
+            const appended = [...existingMessages, messageWithDelivery];
+            updatedMessagesForChat = appended.length > MAX_MESSAGES_PER_CHAT
+              ? appended.slice(-MAX_MESSAGES_PER_CHAT)
+              : appended;
           } else {
           }
 
@@ -1824,10 +1842,13 @@ export const useChatStore = create<ChatState>()(
         ? { ...message, delivered_to: [currentUser.id] }
         : { ...message, delivered_to: [] };
 
-      // Add message to messages list
+      // Add message to messages list (trim oldest if over limit)
+      const appended = [...existingMessages, messageWithDelivery];
       const updatedMessages = {
         ...state.messages,
-        [message.chat_id]: [...existingMessages, messageWithDelivery],
+        [message.chat_id]: appended.length > MAX_MESSAGES_PER_CHAT
+          ? appended.slice(-MAX_MESSAGES_PER_CHAT)
+          : appended,
       };
 
       // Helper function to update chat in list
@@ -1922,6 +1943,13 @@ export const useChatStore = create<ChatState>()(
         totalUnreadCount: newTotalUnreadCount,
       };
     });
+
+    // Proactive cache maintenance every N new messages
+    newMessageCounter++;
+    if (newMessageCounter >= PRUNE_EVERY_N_MESSAGES) {
+      newMessageCounter = 0;
+      import('@shared/utils/cacheMaintenance').then(m => m.runCacheMaintenance()).catch(() => {});
+    }
   },
 
   handleMessageUpdate: (message: Message) => {
@@ -2600,14 +2628,38 @@ export const useChatStore = create<ChatState>()(
     {
       name: 'chat-storage',
       storage: createJSONStorage(() => getZustandChatStorage()),
-      partialize: (state) => ({
-        chats: state.chats,
-        tabs: state.tabs,
-        currentTab: state.currentTab,
-        messages: state.messages,
-        totalUnreadCount: state.totalUnreadCount,
-        selectedChatId: state.selectedChatId, // Desktop mode: persist selected chat
-      }),
+      partialize: (state) => {
+        // Prune messages before persisting to limit storage size
+        const chatIds = Object.keys(state.messages).map(Number);
+        const activeChatId = state.activeChat?.id ?? state.selectedChatId;
+        // Sort by recency, keep active chat first
+        chatIds.sort((a, b) => {
+          if (a === activeChatId) return -1;
+          if (b === activeChatId) return 1;
+          const aMsg = state.messages[a];
+          const bMsg = state.messages[b];
+          const aTime = aMsg?.length ? aMsg[aMsg.length - 1]?.id ?? 0 : 0;
+          const bTime = bMsg?.length ? bMsg[bMsg.length - 1]?.id ?? 0 : 0;
+          return bTime - aTime;
+        });
+        const prunedMessages: Record<number, Message[]> = {};
+        for (let i = 0; i < chatIds.length && i < PERSIST_CHATS_WITH_MESSAGES; i++) {
+          const msgs = state.messages[chatIds[i]];
+          if (msgs && msgs.length > 0) {
+            prunedMessages[chatIds[i]] = msgs.length > PERSIST_MESSAGES_PER_CHAT
+              ? msgs.slice(-PERSIST_MESSAGES_PER_CHAT)
+              : msgs;
+          }
+        }
+        return {
+          chats: state.chats,
+          tabs: state.tabs,
+          currentTab: state.currentTab,
+          messages: prunedMessages,
+          totalUnreadCount: state.totalUnreadCount,
+          selectedChatId: state.selectedChatId,
+        };
+      },
       merge: (persistedState: any, currentState: ChatState) => ({
         ...currentState,
         ...persistedState,

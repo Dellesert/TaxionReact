@@ -67,14 +67,16 @@ class WebSocketService {
   // Deduplicate user_presence events
   private lastPresenceUpdate: Map<number, number> = new Map(); // user_id -> timestamp
   private presenceDebounceMs = 1000; // Ignore duplicates within 1 second
-  private maxPresenceMapSize = 1000; // Maximum entries before cleanup
   private presenceCleanupAgeMs = 300000; // Clean entries older than 5 minutes
+  private presenceCleanupInterval: NodeJS.Timeout | null = null;
 
   // Message batching для оптимизации производительности
   private messageQueue: WSMessage[] = [];
   private batchTimeout: NodeJS.Timeout | null = null;
+  private isProcessingBatch = false;
   private readonly BATCH_DELAY = 50; // Батчим сообщения за 50ms
   private readonly MAX_BATCH_SIZE = 20; // Максимум 20 сообщений в батче
+  private readonly MAX_QUEUE_SIZE = 500; // Максимум сообщений в очереди
 
   /**
    * Connect to WebSocket server
@@ -134,6 +136,14 @@ class WebSocketService {
       this.batchTimeout = null;
     }
     this.messageQueue = [];
+    this.isProcessingBatch = false;
+
+    // Clear presence data
+    this.lastPresenceUpdate.clear();
+    if (this.presenceCleanupInterval) {
+      clearInterval(this.presenceCleanupInterval);
+      this.presenceCleanupInterval = null;
+    }
 
     if (this.ws) {
       this.ws.close();
@@ -165,29 +175,18 @@ class WebSocketService {
   }
 
   /**
-   * Clean up old presence update records to prevent memory leaks
+   * Clean up old presence update records to prevent memory leaks.
+   * Always removes entries older than presenceCleanupAgeMs regardless of map size.
    */
   private cleanupPresenceMap(): void {
-    // Only cleanup if map is getting large
-    if (this.lastPresenceUpdate.size < this.maxPresenceMapSize) {
-      return;
-    }
+    if (this.lastPresenceUpdate.size === 0) return;
 
     const now = Date.now();
-    const entriesToDelete: number[] = [];
-
-    // Find old entries
     for (const [userId, timestamp] of this.lastPresenceUpdate) {
       if (now - timestamp > this.presenceCleanupAgeMs) {
-        entriesToDelete.push(userId);
+        this.lastPresenceUpdate.delete(userId);
       }
     }
-
-    // Delete old entries
-    entriesToDelete.forEach(userId => {
-      this.lastPresenceUpdate.delete(userId);
-    });
-
   }
 
   /**
@@ -335,6 +334,14 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
     // Start heartbeat
     this.startHeartbeat();
 
+    // Start periodic presence map cleanup (every 60s)
+    if (this.presenceCleanupInterval) {
+      clearInterval(this.presenceCleanupInterval);
+    }
+    this.presenceCleanupInterval = setInterval(() => {
+      this.cleanupPresenceMap();
+    }, 60000);
+
     // Backend automatically subscribes user to their personal channel
     // All chat events (new_message, chat_create, etc.) are delivered automatically
   }
@@ -386,10 +393,17 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
    * Группирует сообщения для обработки пакетами, снижая нагрузку на UI
    */
   private queueMessage(message: WSMessage): void {
+    // Drop oldest messages if queue is overflowing
+    if (this.messageQueue.length >= this.MAX_QUEUE_SIZE) {
+      const dropped = this.messageQueue.length - this.MAX_QUEUE_SIZE + 1;
+      this.messageQueue = this.messageQueue.slice(dropped);
+      console.warn(`⚠️ WebSocket queue overflow: dropped ${dropped} oldest messages`);
+    }
+
     this.messageQueue.push(message);
 
     // Если достигли максимального размера батча, обрабатываем немедленно
-    if (this.messageQueue.length >= this.MAX_BATCH_SIZE) {
+    if (this.messageQueue.length >= this.MAX_BATCH_SIZE && !this.isProcessingBatch) {
       this.processBatch();
       return;
     }
@@ -412,17 +426,37 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
       this.batchTimeout = null;
     }
 
-    if (this.messageQueue.length === 0) {
+    if (this.messageQueue.length === 0 || this.isProcessingBatch) {
       return;
     }
 
-    const batch = [...this.messageQueue];
-    this.messageQueue = [];
+    this.isProcessingBatch = true;
 
+    try {
+      const batch = [...this.messageQueue];
+      this.messageQueue = [];
 
-    // Обрабатываем сообщения последовательно
-    for (const message of batch) {
-      await this.processMessage(message);
+      // Обрабатываем сообщения последовательно
+      for (const message of batch) {
+        try {
+          await this.processMessage(message);
+        } catch (err) {
+          console.error('❌ Error processing batched message:', err);
+        }
+      }
+    } finally {
+      this.isProcessingBatch = false;
+
+      // Process any messages that accumulated during batch processing
+      if (this.messageQueue.length > 0) {
+        if (this.messageQueue.length >= this.MAX_BATCH_SIZE) {
+          this.processBatch();
+        } else if (!this.batchTimeout) {
+          this.batchTimeout = setTimeout(() => {
+            this.processBatch();
+          }, this.BATCH_DELAY);
+        }
+      }
     }
   }
 
