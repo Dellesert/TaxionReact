@@ -143,7 +143,7 @@ export const AbsenceListScreen: React.FC = () => {
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<AbsenceType | null>(
     filters.type || null
   );
-  const [startMonth, setStartMonth] = useState(() => new Date(new Date().getFullYear(), 0, 1));
+  const [startMonth, setStartMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [endMonth, setEndMonth] = useState(() => new Date(new Date().getFullYear(), 11, 1));
 
   // User filter state
