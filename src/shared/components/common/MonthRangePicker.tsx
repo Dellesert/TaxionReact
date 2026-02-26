@@ -2,7 +2,7 @@
  * MonthRangePicker
  * Универсальный компонент выбора диапазона месяцев с попапом-сеткой.
  * Поддерживает кросс-годовые диапазоны, hover-превью, анимации.
- * На web/Electron рендерится через portal, на мобильных — не рендерит попап.
+ * На web/Electron рендерится через portal, на мобильных — через Modal.
  */
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
@@ -15,6 +15,7 @@ import {
   Animated,
   Easing,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -294,9 +295,139 @@ export const MonthRangePicker: React.FC<MonthRangePickerProps> = React.memo(({
     </View>
   );
 
-  // ─── Render popup ─────────────────────────────────────────
+  // ─── Render month grid (shared between web popup and mobile modal) ───
 
-  if (Platform.OS !== 'web' || !isRendered || !popupPosition) {
+  const renderMonthGrid = () => (
+    <>
+      {/* Year navigation */}
+      <View style={styles.yearNav}>
+        <TouchableOpacity
+          onPress={handlePrevYear}
+          style={[styles.yearNavArrow, { backgroundColor: theme.backgroundTertiary }]}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={16} color={theme.text} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={isCurrentDisplayYear ? undefined : handleTodayYear}
+          disabled={isCurrentDisplayYear}
+          style={styles.yearNavLabel}
+          activeOpacity={isCurrentDisplayYear ? 1 : 0.6}
+        >
+          <Text style={[styles.yearNavText, { color: theme.text }]}>
+            {displayYear}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleNextYear}
+          style={[styles.yearNavArrow, { backgroundColor: theme.backgroundTertiary }]}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-forward" size={16} color={theme.text} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Month grid 4x3 */}
+      <View style={styles.grid}>
+        {SHORT_MONTH_NAMES.map((name, index) => {
+          const state = getCellState(index);
+          const isEndpoint = state === 'range_start' || state === 'range_end' || state === 'range_endpoint';
+          const isInRange = state === 'in_range';
+
+          return (
+            <TouchableOpacity
+              key={index}
+              onPress={() => handleMonthPress(index)}
+              activeOpacity={0.7}
+              style={[
+                styles.cell,
+                isEndpoint && { backgroundColor: theme.primary },
+                isInRange && { backgroundColor: theme.primaryLight },
+              ]}
+              {...(Platform.OS === 'web' ? {
+                // @ts-ignore
+                onMouseEnter: (e: any) => {
+                  if (phase === 'picking_end') {
+                    setHoverTarget({ year: displayYear, month: index });
+                  }
+                  if (!isEndpoint && !isInRange && e.currentTarget?.style) {
+                    e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
+                  }
+                },
+                // @ts-ignore
+                onMouseLeave: (e: any) => {
+                  if (phase === 'picking_end') {
+                    setHoverTarget(null);
+                  }
+                  if (!isEndpoint && !isInRange && e.currentTarget?.style) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                },
+              } : {})}
+            >
+              <Text
+                style={[
+                  styles.cellText,
+                  { color: isEndpoint ? '#FFFFFF' : theme.text },
+                ]}
+              >
+                {name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Phase hint */}
+      {phase === 'picking_end' && (
+        <Text style={[styles.hint, { color: theme.textSecondary }]}>
+          Выберите конец диапазона
+        </Text>
+      )}
+    </>
+  );
+
+  // ─── Mobile modal ─────────────────────────────────────────
+
+  if (Platform.OS !== 'web') {
+    return (
+      <>
+        {trigger}
+        <Modal
+          visible={isOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={handleClose}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={handleClose}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={() => {}}
+              style={[
+                styles.modalContent,
+                {
+                  backgroundColor: theme.card,
+                  shadowColor: '#000',
+                },
+              ]}
+            >
+              {renderMonthGrid()}
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+      </>
+    );
+  }
+
+  // ─── Web popup ─────────────────────────────────────────
+
+  if (!isRendered || !popupPosition) {
     return trigger;
   }
 
@@ -321,94 +452,7 @@ export const MonthRangePicker: React.FC<MonthRangePickerProps> = React.memo(({
           },
         ]}
       >
-        {/* Year navigation */}
-        <View style={styles.yearNav}>
-          <View
-            style={[styles.yearNavArrow, { backgroundColor: theme.backgroundTertiary }]}
-            // @ts-ignore
-            onClick={handlePrevYear}
-            onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.7')}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-          >
-            <Ionicons name="chevron-back" size={16} color={theme.text} />
-          </View>
-
-          <View
-            style={styles.yearNavLabel}
-            // @ts-ignore
-            onClick={isCurrentDisplayYear ? undefined : handleTodayYear}
-            onMouseEnter={(e: any) => !isCurrentDisplayYear && e.currentTarget?.style && (e.currentTarget.style.opacity = '0.7')}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-          >
-            <Text style={[styles.yearNavText, { color: theme.text }]}>
-              {displayYear}
-            </Text>
-          </View>
-
-          <View
-            style={[styles.yearNavArrow, { backgroundColor: theme.backgroundTertiary }]}
-            // @ts-ignore
-            onClick={handleNextYear}
-            onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.7')}
-            onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-          >
-            <Ionicons name="chevron-forward" size={16} color={theme.text} />
-          </View>
-        </View>
-
-        {/* Month grid 4x3 */}
-        <View style={styles.grid}>
-          {SHORT_MONTH_NAMES.map((name, index) => {
-            const state = getCellState(index);
-            const isEndpoint = state === 'range_start' || state === 'range_end' || state === 'range_endpoint';
-            const isInRange = state === 'in_range';
-
-            return (
-              <View
-                key={index}
-                style={[
-                  styles.cell,
-                  isEndpoint && { backgroundColor: theme.primary },
-                  isInRange && { backgroundColor: theme.primaryLight },
-                ]}
-                // @ts-ignore
-                onClick={() => handleMonthPress(index)}
-                onMouseEnter={(e: any) => {
-                  if (phase === 'picking_end') {
-                    setHoverTarget({ year: displayYear, month: index });
-                  }
-                  if (!isEndpoint && !isInRange && e.currentTarget?.style) {
-                    e.currentTarget.style.backgroundColor = theme.backgroundTertiary;
-                  }
-                }}
-                onMouseLeave={(e: any) => {
-                  if (phase === 'picking_end') {
-                    setHoverTarget(null);
-                  }
-                  if (!isEndpoint && !isInRange && e.currentTarget?.style) {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }
-                }}
-              >
-                <Text
-                  style={[
-                    styles.cellText,
-                    { color: isEndpoint ? '#FFFFFF' : theme.text },
-                  ]}
-                >
-                  {name}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-
-        {/* Phase hint */}
-        {phase === 'picking_end' && (
-          <Text style={[styles.hint, { color: theme.textSecondary }]}>
-            Выберите конец диапазона
-          </Text>
-        )}
+        {renderMonthGrid()}
       </Animated.View>
     </>
   );
@@ -536,5 +580,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     marginTop: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: POPUP_WIDTH,
+    borderRadius: 12,
+    padding: 16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
 });
