@@ -136,13 +136,13 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
     !isCreator
   ) {
     return (
-      <View style={[styles.stickyBarWrapper, { bottom: bottomInset + 80 }]}>
+      <View style={[styles.stickyBarWrapper, { bottom: 0 }]}>
         <LinearGradient
           colors={[bgTransparent, bgColor]}
           style={styles.gradientBackdrop}
           pointerEvents="none"
         />
-        <View style={[styles.stickyBarContent, { backgroundColor: theme.background }]}>
+        <View style={[styles.stickyBarContent, { backgroundColor: theme.background, paddingBottom: bottomInset + 80 + 12 }]}>
           {isGroupAssigneeDone ? (
             <TouchableOpacity
               style={[
@@ -193,13 +193,13 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
     canChangeStatus
   ) {
     return (
-      <View style={[styles.stickyBarWrapper, { bottom: bottomInset + 80 }]}>
+      <View style={[styles.stickyBarWrapper, { bottom: 0 }]}>
         <LinearGradient
           colors={[bgTransparent, bgColor]}
           style={styles.gradientBackdrop}
           pointerEvents="none"
         />
-        <View style={[styles.stickyBarContent, { backgroundColor: theme.background }]}>
+        <View style={[styles.stickyBarContent, { backgroundColor: theme.background, paddingBottom: bottomInset + 80 + 12 }]}>
           {/* Start/Submit Button - for new or in_progress tasks */}
           {(task.status === 'new' || task.status === 'in_progress') && (
             <TouchableOpacity
