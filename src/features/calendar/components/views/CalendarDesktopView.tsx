@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl, TouchableOpacity } from 'react-native';
 import { Event, CalendarView, WeekDisplayMode } from '../../types/calendar.types';
-import { EventSection, getViewLabel } from '../../utils/calendarHelpers';
+import { EventSection, getViewLabel, getDateRangeForView, groupEventsByDate } from '../../utils/calendarHelpers';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useMonthEvents } from '../../hooks/useMonthEvents';
 import { addMonths, subMonths } from 'date-fns';
@@ -47,24 +47,27 @@ interface CalendarDesktopViewProps {
   onWeekDisplayModeChange?: (mode: WeekDisplayMode) => void;
   /** Hide toolbar when controls are in TitleBar (Electron) */
   hideToolbar?: boolean;
+  /** Increment to trigger month events refresh (e.g. after event creation) */
+  refreshTrigger?: number;
 }
 
 export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
   selectedDate,
-  events,
-  sections,
-  isLoading,
-  refreshing,
+  events: _events,
+  sections: _sections,
+  isLoading: _isLoading,
+  refreshing: _refreshing,
   initialView = 'day',
   onDatePress,
-  onEventPress,
-  onRefresh,
+  onEventPress: _onEventPress,
+  onRefresh: _onRefresh,
   onEventUpdated,
   onViewChange,
   onAddPress,
   weekDisplayMode: externalWeekDisplayMode,
   onWeekDisplayModeChange,
   hideToolbar = false,
+  refreshTrigger,
 }) => {
   const { theme } = useTheme();
   const navigation = useNavigation();
@@ -87,8 +90,47 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialView]);
 
-  // Load events for the entire month for the mini calendar
-  const { monthEvents, isLoadingMonth } = useMonthEvents(selectedDate);
+  // Load events for the entire month — used for both sidebar AND center panel
+  const { monthEvents, isLoadingMonth, refreshMonthEvents } = useMonthEvents(selectedDate);
+
+  // Derive center-panel events from monthEvents (avoids a separate API call)
+  const viewEvents = useMemo(() => {
+    if (viewMode === 'month') return monthEvents;
+    const { startDate, endDate } = getDateRangeForView(selectedDate, viewMode);
+    const start = startDate.getTime();
+    const end = endDate.getTime();
+    return monthEvents.filter(event => {
+      const t = new Date(event.start_time).getTime();
+      return t >= start && t <= end;
+    });
+  }, [monthEvents, selectedDate, viewMode]);
+
+  const filteredViewEvents = useMemo(() =>
+    searchQuery
+      ? viewEvents.filter(e =>
+          e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          e.description?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : viewEvents
+  , [viewEvents, searchQuery]);
+
+  const viewSections = useMemo(() => groupEventsByDate(filteredViewEvents), [filteredViewEvents]);
+
+  // Refresh state for center panel pull-to-refresh
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleInternalRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await refreshMonthEvents();
+    setIsRefreshing(false);
+  }, [refreshMonthEvents]);
+
+  // Refresh month events when refreshTrigger changes (e.g. after event creation)
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      refreshMonthEvents();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger]);
 
   const handleDayPress = (date: Date) => {
     setSelectedEvent(null);
@@ -119,6 +161,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
 
   const handleEventUpdate = () => {
     setSelectedEvent(null);
+    refreshMonthEvents();
     onEventUpdated();
   };
 
@@ -252,7 +295,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
               return holiday ? <HolidayBanner holidayName={holiday.name} /> : null;
             })()}
 
-            {isLoading ? (
+            {isLoadingMonth ? (
               <EventListSkeleton />
             ) : (
               <ContentPane>
@@ -260,38 +303,38 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
                   weekDisplayMode === 'timeline' ? (
                     <WeekTimelineView
                       selectedDate={selectedDate}
-                      events={events}
+                      events={filteredViewEvents}
                       onEventPress={handleEventPress}
                     />
                   ) : (
-                    sections.length === 0 ? (
+                    viewSections.length === 0 ? (
                       <ScrollView
                         contentContainerStyle={styles.emptyStateContainer}
-                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleInternalRefresh} />}
                       >
                         <CalendarEmptyState />
                       </ScrollView>
                     ) : (
                       <CalendarEventsList
-                        sections={sections}
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
+                        sections={viewSections}
+                        refreshing={isRefreshing}
+                        onRefresh={handleInternalRefresh}
                         onEventPress={handleEventPress}
                       />
                     )
                   )
-                ) : sections.length === 0 ? (
+                ) : viewSections.length === 0 ? (
                   <ScrollView
                     contentContainerStyle={styles.emptyStateContainer}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                    refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleInternalRefresh} />}
                   >
                     <CalendarEmptyState />
                   </ScrollView>
                 ) : (
                   <CalendarEventsList
-                    sections={sections}
-                    refreshing={refreshing}
-                    onRefresh={onRefresh}
+                    sections={viewSections}
+                    refreshing={isRefreshing}
+                    onRefresh={handleInternalRefresh}
                     onEventPress={handleEventPress}
                   />
                 )}

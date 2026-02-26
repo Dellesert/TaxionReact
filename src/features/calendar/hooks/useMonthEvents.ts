@@ -8,6 +8,7 @@ import { useCalendarStore } from '@shared/store/calendarStore';
 interface UseMonthEventsReturn {
   monthEvents: Event[];
   isLoadingMonth: boolean;
+  refreshMonthEvents: () => Promise<void>;
 }
 
 /**
@@ -77,8 +78,30 @@ export const useMonthEvents = (selectedDate: Date): UseMonthEventsReturn => {
     loadMonthEvents();
   }, [monthKey]);
 
+  // Force refresh (bypasses cache)
+  const refreshMonthEvents = useCallback(async () => {
+    try {
+      if (isMockMode()) {
+        setMonthEvents([]);
+        return;
+      }
+      const monthStart = startOfMonth(selectedDate);
+      const monthEnd = endOfMonth(selectedDate);
+      const filters = {
+        start: monthStart.toISOString(),
+        end: monthEnd.toISOString(),
+      };
+      const response = await calendarApi.getEvents(filters, 100, 0);
+      setMonthEvents(response.events);
+      setEventsForRange(monthKey, response.events);
+    } catch (error) {
+      console.error('Failed to refresh month events:', error);
+    }
+  }, [selectedDate, monthKey, setEventsForRange]);
+
   return {
     monthEvents,
     isLoadingMonth,
+    refreshMonthEvents,
   };
 };

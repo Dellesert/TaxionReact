@@ -15,9 +15,10 @@ import { CalendarEmptyState } from '../components/states/CalendarEmptyState';
 import { InfiniteMonthCalendar } from '../components/views/InfiniteMonthCalendar';
 import { TitleBarCalendarControls } from '../components/common/TitleBarCalendarControls';
 
-// Lazy-load heavy components that are only shown on user action
+import { CalendarDesktopView } from '../components/views/CalendarDesktopView';
+
+// Lazy-load heavy modals that are only shown on user action
 const CreateEventModal = lazy(() => import('../components/modals/CreateEventModal'));
-const CalendarDesktopView = lazy(() => import('../components/views/CalendarDesktopView').then(m => ({ default: m.CalendarDesktopView })));
 const UserProfileModal = lazy(() => import('@shared/components/common/UserProfileModal').then(m => ({ default: m.UserProfileModal })));
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
@@ -219,6 +220,7 @@ const CalendarScreen: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery] = useState('');
   const [mobileRefreshTrigger, setMobileRefreshTrigger] = useState(0);
+  const [desktopRefreshTrigger, setDesktopRefreshTrigger] = useState(0);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileUserId, setProfileUserId] = useState<number | null>(null);
 
@@ -252,18 +254,13 @@ const CalendarScreen: React.FC = () => {
     handleDatePress,
   } = useCalendarNavigation();
 
-  const { events, isLoading, refreshing, loadEvents, handleRefresh } = useCalendarData(
+  const { events, isLoading, refreshing, handleRefresh } = useCalendarData(
     selectedDate,
     selectedView
   );
 
-  // Load events on mount and when dependencies change (desktop only -
-  // mobile has its own data loading in MobileCalendarContent)
-  useEffect(() => {
-    if (!isDesktop) return;
-    loadEvents().catch(() => showError('Не удалось загрузить события'));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, selectedView, isDesktop]);
+  // Desktop data loading is handled by CalendarDesktopView via useMonthEvents
+  // (single API call instead of two separate ones)
 
   // Handlers
   const handleEventPress = (event: Event) => {
@@ -281,13 +278,13 @@ const CalendarScreen: React.FC = () => {
 
   const handleEventCreated = () => {
     setShowCreateModal(false);
-    loadEvents();
-    // Trigger refresh for mobile view
+    // Trigger refresh for the active view
+    setDesktopRefreshTrigger(prev => prev + 1);
     setMobileRefreshTrigger(prev => prev + 1);
   };
 
   const handleEventUpdated = () => {
-    loadEvents();
+    // Desktop refresh handled internally by CalendarDesktopView
   };
 
   // Desktop-specific handler that can change view
@@ -354,26 +351,25 @@ const CalendarScreen: React.FC = () => {
       {/* Content container with background */}
       <View style={[styles.content, { backgroundColor: theme.background }]}>
         {isWideScreen ? (
-          /* Desktop View - Three Panel Layout (lazy-loaded) */
-          <Suspense fallback={<View style={{ flex: 1 }} />}>
-            <CalendarDesktopView
-              selectedDate={selectedDate}
-              events={filteredEvents}
-              sections={sections}
-              isLoading={isLoading}
-              refreshing={refreshing}
-              initialView={selectedView}
-              onDatePress={handleDesktopDatePress}
-              onEventPress={handleEventPress}
-              onRefresh={handleRefresh}
-              onEventUpdated={handleEventUpdated}
-              onViewChange={handleDesktopViewChange}
-              onAddPress={handleAddEvent}
-              weekDisplayMode={weekDisplayMode}
-              onWeekDisplayModeChange={setWeekDisplayMode}
-              hideToolbar={isElectron && isDesktop}
-            />
-          </Suspense>
+          /* Desktop View - Three Panel Layout */
+          <CalendarDesktopView
+            selectedDate={selectedDate}
+            events={filteredEvents}
+            sections={sections}
+            isLoading={isLoading}
+            refreshing={refreshing}
+            initialView={selectedView}
+            onDatePress={handleDesktopDatePress}
+            onEventPress={handleEventPress}
+            onRefresh={handleRefresh}
+            onEventUpdated={handleEventUpdated}
+            onViewChange={handleDesktopViewChange}
+            onAddPress={handleAddEvent}
+            weekDisplayMode={weekDisplayMode}
+            onWeekDisplayModeChange={setWeekDisplayMode}
+            hideToolbar={isElectron && isDesktop}
+            refreshTrigger={desktopRefreshTrigger}
+          />
         ) : (
           /* Mobile View - New Week Strip Layout */
           <MobileCalendarContent
