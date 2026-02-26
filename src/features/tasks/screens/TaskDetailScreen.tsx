@@ -34,6 +34,7 @@ import { useTaskComments } from '../hooks/useTaskComments';
 import { useTaskAttachments } from '../hooks/useTaskAttachments';
 import { useTaskActivities } from '../hooks/useTaskActivities';
 import { useTaskActions } from '../hooks/useTaskActions';
+import { useTaskStore } from '@shared/store/taskStore';
 import { getOrCreateDirectChat } from '@/features/chat/api/chat.api';
 import * as DocumentPicker from 'expo-document-picker';
 import { isDelegatedByUser, areAllSubtasksCompleted, areAllChecklistItemsCompleted } from '../utils/taskHelpers';
@@ -382,6 +383,12 @@ const TaskDetailScreen: React.FC = () => {
       async () => {
         try {
           await handleDeleteTask();
+          // Remove the task from Zustand store so the list updates immediately
+          // (the focus listener skips reload when returning from detail view)
+          if (task) {
+            const status = task.status as 'new' | 'in_progress' | 'review' | 'done';
+            useTaskStore.getState().removeTasks([task.id], status);
+          }
           showSuccess('Задача удалена');
           if (navigation.canGoBack()) {
             navigation.goBack();

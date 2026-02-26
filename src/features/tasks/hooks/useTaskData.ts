@@ -96,6 +96,10 @@ export const useTaskData = (taskId: string) => {
 
       setTask(response);
 
+      // Sync updated task to Zustand store so the task list reflects changes
+      const status = response.status as 'new' | 'in_progress' | 'review' | 'done';
+      useTaskStore.getState().mergeTasks([response], status);
+
       // Always load subtasks to ensure fresh data
       await loadSubtasks(taskIdNum);
     } catch (error: any) {
