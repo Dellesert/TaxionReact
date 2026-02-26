@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, Text, TextInput, ActivityIndicator, StyleSheet, Keyboard, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Task } from '../../types/task.types';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -72,6 +73,10 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
   // Calculate bottom position based on keyboard
   const bottomPosition = keyboardHeight > 0 ? keyboardHeight : bottomInset + 80;
 
+  // Transparent version of background for gradient
+  const bgColor = theme.background;
+  const bgTransparent = bgColor + '00';
+
   // Comments tab: show comment input
   if (activeTab === 'comments' && !isDelegatedByMe && task.status !== 'done') {
     return (
@@ -131,42 +136,51 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
     !isCreator
   ) {
     return (
-      <View style={[styles.fixedActionsContainer, { bottom: bottomInset + 80 }]}>
-        {isGroupAssigneeDone ? (
-          <TouchableOpacity
-            style={[
-              styles.fixedActionButton,
-              styles.secondaryFixedButton,
-              {
-                backgroundColor: theme.backgroundSecondary,
-                borderColor: theme.border,
-              },
-            ]}
-            onPress={onUnmarkGroupDone}
-          >
-            <Ionicons name="close-circle-outline" size={20} color={theme.text} />
-            <Text style={[styles.fixedActionButtonText, { color: theme.text }]}>
-              Отменить выполнение
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[
-              styles.fixedActionButton,
-              styles.primaryFixedButton,
-              {
-                backgroundColor: '#10B981',
-                shadowColor: '#10B981',
-              },
-            ]}
-            onPress={onMarkGroupDone}
-          >
-            <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
-            <Text style={[styles.fixedActionButtonText, styles.primaryFixedButtonText]}>
-              Отметить выполненным
-            </Text>
-          </TouchableOpacity>
-        )}
+      <View style={[styles.stickyBarWrapper, { bottom: bottomInset + 80 }]}>
+        <LinearGradient
+          colors={[bgTransparent, bgColor]}
+          style={styles.gradientBackdrop}
+          pointerEvents="none"
+        />
+        <View style={[styles.stickyBarContent, { backgroundColor: theme.background }]}>
+          {isGroupAssigneeDone ? (
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.secondaryButton,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  borderColor: theme.border,
+                },
+              ]}
+              onPress={onUnmarkGroupDone}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close-circle-outline" size={20} color={theme.text} />
+              <Text style={[styles.actionButtonText, { color: theme.text }]}>
+                Отменить выполнение
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.primaryButton,
+                {
+                  backgroundColor: '#10B981',
+                  shadowColor: '#10B981',
+                },
+              ]}
+              onPress={onMarkGroupDone}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="checkmark-circle-outline" size={22} color="#FFFFFF" />
+              <Text style={[styles.actionButtonText, styles.primaryButtonText]}>
+                Отметить выполненным
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     );
   }
@@ -179,93 +193,107 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
     canChangeStatus
   ) {
     return (
-      <View style={[styles.fixedActionsContainer, { bottom: bottomInset + 80 }]}>
-        {/* Start/Submit Button - for new or in_progress tasks */}
-        {(task.status === 'new' || task.status === 'in_progress') && (
-          <TouchableOpacity
-            style={[
-              styles.fixedActionButton,
-              styles.primaryFixedButton,
-              {
-                backgroundColor: theme.primary,
-                shadowColor: theme.primary,
-              },
-              task.status === 'in_progress' &&
-                (!allSubtasksCompleted || !allChecklistItemsCompleted) &&
-                styles.disabledButton,
-            ]}
-            onPress={onTaskAction}
-            disabled={
-              task.status === 'in_progress' &&
-              (!allSubtasksCompleted || !allChecklistItemsCompleted)
-            }
-          >
-            <Ionicons
-              name={
+      <View style={[styles.stickyBarWrapper, { bottom: bottomInset + 80 }]}>
+        <LinearGradient
+          colors={[bgTransparent, bgColor]}
+          style={styles.gradientBackdrop}
+          pointerEvents="none"
+        />
+        <View style={[styles.stickyBarContent, { backgroundColor: theme.background }]}>
+          {/* Start/Submit Button - for new or in_progress tasks */}
+          {(task.status === 'new' || task.status === 'in_progress') && (
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.primaryButton,
+                {
+                  backgroundColor: task.status === 'new' ? theme.primary : '#10B981',
+                  shadowColor: task.status === 'new' ? theme.primary : '#10B981',
+                },
+                task.status === 'in_progress' &&
+                  (!allSubtasksCompleted || !allChecklistItemsCompleted) &&
+                  styles.disabledButton,
+              ]}
+              onPress={onTaskAction}
+              disabled={
                 task.status === 'in_progress' &&
                 (!allSubtasksCompleted || !allChecklistItemsCompleted)
-                  ? 'alert-circle-outline'
-                  : 'play-circle-outline'
               }
-              size={20}
-              color="#FFFFFF"
-            />
-            <Text style={[styles.fixedActionButtonText, styles.primaryFixedButtonText]}>
-              {getActionButtonText(task, isCreator, allSubtasksCompleted, allChecklistItemsCompleted)}
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Review Buttons - for creator when task is in review */}
-        {task.status === 'review' && isCreator && (
-          <>
-            <TouchableOpacity
-              style={[
-                styles.fixedActionButton,
-                styles.secondaryFixedButton,
-                {
-                  backgroundColor: theme.backgroundSecondary,
-                  borderColor: theme.border,
-                },
-              ]}
-              onPress={() => onStatusChange?.('in_progress')}
-            >
-              <Ionicons name="arrow-back-circle-outline" size={20} color={theme.text} />
-              <Text style={[styles.fixedActionButtonText, { color: theme.text }]}>Вернуть</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.fixedActionButton,
-                styles.primaryFixedButton,
-                {
-                  backgroundColor: theme.primary,
-                  shadowColor: theme.primary,
-                },
-                (!allSubtasksCompleted || !allChecklistItemsCompleted) && styles.disabledButton,
-              ]}
-              onPress={() => onStatusChange?.('done')}
-              disabled={!allSubtasksCompleted || !allChecklistItemsCompleted}
+              activeOpacity={0.7}
             >
               <Ionicons
                 name={
-                  !allSubtasksCompleted || !allChecklistItemsCompleted
+                  task.status === 'in_progress' &&
+                  (!allSubtasksCompleted || !allChecklistItemsCompleted)
                     ? 'alert-circle-outline'
+                    : task.status === 'new'
+                    ? 'play-circle-outline'
                     : 'checkmark-circle-outline'
                 }
-                size={20}
+                size={22}
                 color="#FFFFFF"
               />
-              <Text style={[styles.fixedActionButtonText, styles.primaryFixedButtonText]}>
-                {!allSubtasksCompleted
-                  ? 'Завершите подзадачи'
-                  : !allChecklistItemsCompleted
-                  ? 'Завершите чек-листы'
-                  : 'Принять'}
+              <Text style={[styles.actionButtonText, styles.primaryButtonText]}>
+                {getActionButtonText(task, isCreator, allSubtasksCompleted, allChecklistItemsCompleted)}
               </Text>
             </TouchableOpacity>
-          </>
-        )}
+          )}
+
+          {/* Review Buttons - for creator when task is in review */}
+          {task.status === 'review' && isCreator && (
+            <View style={styles.reviewButtonsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  styles.secondaryButton,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    borderColor: theme.border,
+                    flex: 1,
+                  },
+                ]}
+                onPress={() => onStatusChange?.('in_progress')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="arrow-back-circle-outline" size={20} color={theme.text} />
+                <Text style={[styles.actionButtonText, { color: theme.text }]}>Вернуть</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  styles.primaryButton,
+                  {
+                    backgroundColor: '#10B981',
+                    shadowColor: '#10B981',
+                    flex: 1.5,
+                  },
+                  (!allSubtasksCompleted || !allChecklistItemsCompleted) && styles.disabledButton,
+                ]}
+                onPress={() => onStatusChange?.('done')}
+                disabled={!allSubtasksCompleted || !allChecklistItemsCompleted}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={
+                    !allSubtasksCompleted || !allChecklistItemsCompleted
+                      ? 'alert-circle-outline'
+                      : 'checkmark-circle-outline'
+                  }
+                  size={22}
+                  color="#FFFFFF"
+                />
+                <Text style={[styles.actionButtonText, styles.primaryButtonText]}>
+                  {!allSubtasksCompleted
+                    ? 'Завершите подзадачи'
+                    : !allChecklistItemsCompleted
+                    ? 'Завершите чек-листы'
+                    : 'Принять'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </View>
     );
   }
@@ -274,46 +302,58 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
 };
 
 const styles = StyleSheet.create({
-  fixedActionsContainer: {
+  // Sticky bottom bar wrapper
+  stickyBarWrapper: {
     position: 'absolute',
     left: 0,
     right: 0,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    flexDirection: 'row',
-    gap: 8,
   },
-  fixedActionButton: {
-    flex: 1,
+  gradientBackdrop: {
+    height: 32,
+  },
+  stickyBarContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+
+  // Action buttons
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    paddingVertical: 14,
+    borderRadius: 16,
+    gap: 10,
   },
-  primaryFixedButton: {
+  primaryButton: {
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  secondaryFixedButton: {
-    borderWidth: 1,
+  secondaryButton: {
+    borderWidth: 1.5,
   },
   disabledButton: {
     backgroundColor: '#9CA3AF',
     opacity: 0.6,
+    shadowOpacity: 0,
   },
-  fixedActionButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
-  primaryFixedButtonText: {
+  primaryButtonText: {
     color: '#FFFFFF',
   },
+  reviewButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+
+  // Comment input (unchanged)
   fixedCommentInputContainer: {
     position: 'absolute',
     left: 0,
