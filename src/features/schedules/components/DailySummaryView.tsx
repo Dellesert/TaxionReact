@@ -107,6 +107,7 @@ const AbsenceRow: React.FC<{
 }> = ({ absence }) => {
   const { theme } = useTheme();
   const typeLabel = ABSENCE_TYPE_LABELS[absence.type as AbsenceType] || absence.type;
+  const substituteNames = absence.substitutes?.map(s => s.name).join(', ');
 
   return (
     <View style={[styles.absenceRow, { borderBottomColor: theme.border }]}>
@@ -117,6 +118,7 @@ const AbsenceRow: React.FC<{
         </Text>
         <Text style={[styles.absenceType, { color: theme.textSecondary }]}>
           {typeLabel}
+          {substituteNames ? ` (замещает: ${substituteNames})` : ''}
           {absence.reason ? ` — ${absence.reason}` : ''}
         </Text>
       </View>

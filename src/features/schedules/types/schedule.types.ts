@@ -427,6 +427,7 @@ export interface DailySummaryAbsence {
   user: ScheduleUser;
   type: string;
   reason?: string;
+  substitutes?: ScheduleUser[];
 }
 
 export interface DailySummary {
