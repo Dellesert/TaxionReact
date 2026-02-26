@@ -626,7 +626,7 @@ export const useChatScroll = (
       // Это новые сообщения в начале массива (новые добавляются в начало в обратном порядке)
       // Берём первые newMessagesAdded элементов
       const newMessages = messages.slice(0, newMessagesAdded);
-      const newFromOthers = newMessages.filter(msg => msg.sender_id !== currentUserId).length;
+      const newFromOthers = newMessages.filter(msg => msg.sender_id !== currentUserId || msg.message_type === 'system').length;
 
       if (newFromOthers > 0) {
         // УПРОЩЕННАЯ ЛОГИКА: Автоскролл если пользователь близко к низу (~5 сообщений)
@@ -664,7 +664,7 @@ export const useChatScroll = (
           // Находим самое старое непрочитанное среди НОВЫХ сообщений
           let oldestInNewBatch = -1;
           for (let i = 0; i < newMessagesAdded && i < messages.length; i++) {
-            if (messages[i].sender_id !== currentUserId) {
+            if (messages[i].sender_id !== currentUserId || messages[i].message_type === 'system') {
               oldestInNewBatch = i;
             }
           }
