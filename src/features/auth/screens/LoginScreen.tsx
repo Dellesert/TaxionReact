@@ -5,6 +5,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Animated } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { AuthStackParamList } from '@navigation/AuthNavigator';
@@ -32,6 +33,7 @@ const LoginScreen: React.FC = () => {
   const notification = useNotification();
   const { theme } = useTheme();
   const isWideScreen = useIsWideScreen();
+  const insets = useSafeAreaInsets();
   const { savedAccounts, isSwitching, quickSwitch } = useAccountStore();
   const [showQRLogin, setShowQRLogin] = useState(false);
 
@@ -219,6 +221,7 @@ const LoginScreen: React.FC = () => {
               {
                 backgroundColor: theme.background,
                 transform: [{ translateY: formTranslateY }],
+                paddingBottom: 40 + insets.bottom,
               },
             ]}
           >
