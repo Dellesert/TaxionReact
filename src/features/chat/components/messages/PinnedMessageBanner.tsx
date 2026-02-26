@@ -13,6 +13,7 @@ import { Message } from '../../types/chat.types';
 import { getFileIcon, decodeFileName } from '../../utils/file.utils';
 import { isImageFile, isVideoFile, replaceLocalhostWithIP } from '../../utils/message.utils';
 import { getThumbnailUrl } from '../../utils/thumbnail.utils';
+import { stripFormatting } from '../../utils/formatting';
 import Avatar from '@shared/components/common/Avatar';
 
 interface PinnedMessageBannerProps {
@@ -167,11 +168,12 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
   });
 
   const getMessagePreview = (message: Message): { text: string; icon?: string; thumbnailUrl?: string } => {
-    // Если есть текст, показываем его
+    // Если есть текст, показываем его (без маркеров форматирования)
     if (message.content && message.content.trim().length > 0) {
-      const text = message.content.length > 50
-        ? message.content.substring(0, 50) + '...'
-        : message.content;
+      const stripped = stripFormatting(message.content);
+      const text = stripped.length > 50
+        ? stripped.substring(0, 50) + '...'
+        : stripped;
       return { text };
     }
 
