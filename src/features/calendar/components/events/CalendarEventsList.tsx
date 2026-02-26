@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingTop: 4,
-    paddingBottom: 100,
+    paddingBottom: 150,
   },
   holidayTag: {
     flexDirection: 'row',

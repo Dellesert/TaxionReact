@@ -115,7 +115,7 @@ export const PollListContent: React.FC<PollListContentProps> = ({
 const styles = StyleSheet.create({
   listContent: {
     paddingTop: 8,
-    paddingBottom: 120,
+    paddingBottom: 150,
   },
   gridContent: {
     paddingHorizontal: 8,

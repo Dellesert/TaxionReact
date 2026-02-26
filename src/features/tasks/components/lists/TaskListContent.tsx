@@ -152,7 +152,7 @@ export const TaskListContent: React.FC<TaskListContentProps> = ({
 const styles = StyleSheet.create({
   taskList: {
     paddingTop: 12,
-    paddingBottom: 120,
+    paddingBottom: 150,
   },
   taskItem: {
     marginBottom: 8,
