@@ -571,24 +571,9 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
     );
   }
 
-  // If no subtasks, show button to create first subtask (or return null if no button)
+  // If no subtasks, don't render anything (create subtask is available in the header menu)
   if (subtasks.length === 0) {
-    // If there's no create button permission, don't render anything
-    if (!onCreateSubtaskPress) {
-      return null;
-    }
-
-    return (
-      <View style={styles.container}>
-        <TouchableOpacity
-          style={styles.createFirstSubtaskButton}
-          onPress={onCreateSubtaskPress}
-        >
-          <Ionicons name="git-branch-outline" size={20} color="#3b82f6" />
-          <Text style={styles.createFirstSubtaskText}>Разбить на подзадачи</Text>
-        </TouchableOpacity>
-      </View>
-    );
+    return null;
   }
 
   // If there are subtasks, show list with add button at the end
