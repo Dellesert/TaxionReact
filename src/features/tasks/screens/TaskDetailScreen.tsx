@@ -687,7 +687,7 @@ const TaskDetailScreen: React.FC = () => {
                 paddingBottom:
                   activeTab === 'comments' && !isDelegatedByMe && task?.status !== 'done'
                     ? insets.bottom + 170
-                    : insets.bottom + 100,
+                    : insets.bottom + 160,
               }}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
