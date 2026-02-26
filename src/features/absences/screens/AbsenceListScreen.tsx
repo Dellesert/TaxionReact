@@ -153,6 +153,9 @@ export const AbsenceListScreen: React.FC = () => {
   const userFilterButtonRef = useRef<any>(null);
   const [userFilterButtonPosition, setUserFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
 
+  // Calendar sidebar multi-select state (client-side filtering, empty = all)
+  const [selectedCalendarUserIds, setSelectedCalendarUserIds] = useState<number[]>([]);
+
   // View mode state (list vs calendar) - only for desktop
   const [viewMode, setViewMode] = useState<AbsenceViewMode>('list');
   const [displayedViewMode, setDisplayedViewMode] = useState<AbsenceViewMode>('list');
@@ -218,7 +221,21 @@ export const AbsenceListScreen: React.FC = () => {
     AsyncStorage.setItem(ABSENCE_VIEW_MODE_STORAGE_KEY, mode).catch((error) => {
       console.error('Failed to save absence view mode:', error);
     });
-  }, []);
+    // When switching to calendar, clear single-user API filter so sidebar shows all users
+    if (mode === 'calendar' && selectedUserId) {
+      setSelectedUserId(null);
+      setSelectedUserName(null);
+      const monthRange = getMonthRange(startMonth, endMonth);
+      const newFilters = {
+        ...filters,
+        ...monthRange,
+        type: selectedTypeFilter || undefined,
+        user_id: undefined,
+      };
+      setFilters(newFilters);
+      loadAbsences(newFilters, true);
+    }
+  }, [selectedUserId, filters, setFilters, loadAbsences, startMonth, endMonth, selectedTypeFilter]);
 
   // Save color mode when it changes
   const handleColorModeChange = useCallback((mode: AbsenceColorMode) => {
@@ -310,6 +327,19 @@ export const AbsenceListScreen: React.FC = () => {
     loadAbsences(newFilters, true);
   }, [filters, setFilters, loadAbsences, startMonth, endMonth]);
 
+  // Calendar sidebar multi-select handlers
+  const handleCalendarUserToggle = useCallback((userId: number) => {
+    setSelectedCalendarUserIds(prev =>
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  }, []);
+
+  const handleCalendarSelectAll = useCallback(() => {
+    setSelectedCalendarUserIds([]);
+  }, []);
+
   const handleFilterToggle = useCallback(() => {
     if (filterButtonRef.current) {
       filterButtonRef.current.measure((_x, _y, width, height, pageX, pageY) => {
@@ -389,6 +419,14 @@ export const AbsenceListScreen: React.FC = () => {
       ABSENCE_TYPE_LABELS[absence.type]?.toLowerCase().includes(query)
     );
   }, [absences, searchQuery]);
+
+  // Calendar-specific filtered absences (client-side multi-user filtering)
+  const calendarFilteredAbsences = useMemo(() => {
+    if (selectedCalendarUserIds.length === 0) return filteredAbsences;
+    return filteredAbsences.filter(a =>
+      a.user && selectedCalendarUserIds.includes(a.user.id)
+    );
+  }, [filteredAbsences, selectedCalendarUserIds]);
 
   // Unique users from absences for the filter dropdown
   const absenceUsers = useMemo(() => {
@@ -721,19 +759,19 @@ export const AbsenceListScreen: React.FC = () => {
                   <TouchableOpacity
                     style={[
                       styles.employeeItem,
-                      { backgroundColor: !selectedUserId ? theme.primary + '15' : 'transparent' },
+                      { backgroundColor: selectedCalendarUserIds.length === 0 ? theme.primary + '15' : 'transparent' },
                     ]}
-                    onPress={() => handleUserFilterChange(null, null)}
+                    onPress={handleCalendarSelectAll}
                   >
                     <View style={[styles.employeeAvatar, { backgroundColor: theme.backgroundSecondary }]}>
                       <Ionicons name="people" size={18} color={theme.textSecondary} />
                     </View>
                     <View style={styles.employeeInfo}>
-                      <Text style={[styles.employeeName, { color: !selectedUserId ? theme.primary : theme.text }]}>
+                      <Text style={[styles.employeeName, { color: selectedCalendarUserIds.length === 0 ? theme.primary : theme.text }]}>
                         Все сотрудники
                       </Text>
                     </View>
-                    {!selectedUserId && (
+                    {selectedCalendarUserIds.length === 0 && (
                       <Ionicons name="checkmark" size={18} color={theme.primary} />
                     )}
                   </TouchableOpacity>
@@ -764,14 +802,15 @@ export const AbsenceListScreen: React.FC = () => {
                     const users = Array.from(usersMap.values()).sort((a, b) => a.name.localeCompare(b.name));
                     return users.map((user) => {
                       const userColor = user.color || getUserColorById(user.id);
+                      const isSelected = selectedCalendarUserIds.includes(user.id);
                       return (
                         <TouchableOpacity
                           key={user.id}
                           style={[
                             styles.employeeItem,
-                            { backgroundColor: selectedUserId === user.id ? theme.primary + '15' : 'transparent' },
+                            { backgroundColor: isSelected ? theme.primary + '15' : 'transparent' },
                           ]}
-                          onPress={() => handleUserFilterChange(user.id, user.name)}
+                          onPress={() => handleCalendarUserToggle(user.id)}
                         >
                           <View style={styles.avatarWithColor}>
                             <Avatar name={user.name} imageUrl={user.avatar} size={36} />
@@ -779,7 +818,7 @@ export const AbsenceListScreen: React.FC = () => {
                           </View>
                           <View style={styles.employeeInfo}>
                             <Text
-                              style={[styles.employeeName, { color: selectedUserId === user.id ? theme.primary : theme.text }]}
+                              style={[styles.employeeName, { color: isSelected ? theme.primary : theme.text }]}
                               numberOfLines={1}
                             >
                               {user.name}
@@ -788,7 +827,7 @@ export const AbsenceListScreen: React.FC = () => {
                               {user.count} {user.count === 1 ? 'отсутствие' : user.count < 5 ? 'отсутствия' : 'отсутствий'} · {user.totalDays} дн.
                             </Text>
                           </View>
-                          {selectedUserId === user.id && (
+                          {isSelected && (
                             <Ionicons name="checkmark" size={18} color={theme.primary} />
                           )}
                         </TouchableOpacity>
@@ -802,7 +841,7 @@ export const AbsenceListScreen: React.FC = () => {
                     {colorMode === 'by_user' ? (
                       (() => {
                         const usersMap = new Map<number, { id: number; name: string; color?: string }>();
-                        for (const absence of filteredAbsences) {
+                        for (const absence of calendarFilteredAbsences) {
                           if (absence.user && !usersMap.has(absence.user.id)) {
                             usersMap.set(absence.user.id, {
                               id: absence.user.id,
@@ -824,7 +863,7 @@ export const AbsenceListScreen: React.FC = () => {
                       })()
                     ) : (
                       ABSENCE_TYPES
-                        .filter(type => filteredAbsences.some(a => a.type === type))
+                        .filter(type => calendarFilteredAbsences.some(a => a.type === type))
                         .map((type) => (
                           <View key={type} style={styles.legendItem}>
                             <View style={[styles.legendColorBar, { backgroundColor: ABSENCE_TYPE_COLORS[type] }]} />
@@ -851,7 +890,7 @@ export const AbsenceListScreen: React.FC = () => {
                 <View style={{ flex: 1, backgroundColor: theme.background }}>
                   <AbsenceYearCalendar
                     year={selectedYear}
-                    absences={filteredAbsences}
+                    absences={calendarFilteredAbsences}
                     selectedTypeFilter={selectedTypeFilter}
                     colorMode={colorMode}
                     onAbsencePress={handleAbsencePress}
