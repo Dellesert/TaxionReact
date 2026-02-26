@@ -12,6 +12,12 @@ import {
 
   FlatList,
 } from 'react-native';
+
+let ReactDOM: any;
+if (Platform.OS === 'web') {
+  ReactDOM = require('react-dom');
+}
+
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -452,26 +458,7 @@ export const AbsenceListScreen: React.FC = () => {
       key: 'substitution',
       title: 'Замещение',
       flex: 1.5,
-      render: (absence, theme) => {
-        const hasSubs = absence.substitutions && absence.substitutions.length > 0;
-        const subCount = absence.substitution_count ?? absence.substitutions?.length ?? 0;
-        if (hasSubs) {
-          const names = absence.substitutions!.map(s => s.substitute?.name || `#${s.substitute_id}`).join(', ');
-          return (
-            <Text style={[absenceLocalStyles.cellText, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
-              {names}
-            </Text>
-          );
-        }
-        if (subCount > 0) {
-          return (
-            <Text style={[absenceLocalStyles.cellText, { color: theme.textSecondary }]}>
-              {subCount} зам.
-            </Text>
-          );
-        }
-        return <Text style={[absenceLocalStyles.cellText, { color: theme.textTertiary }]}>—</Text>;
-      },
+      render: (absence, theme) => <SubstitutionCell absence={absence} theme={theme} />,
     },
   ], []);
 
@@ -1719,5 +1706,116 @@ const absenceLocalStyles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
+// Substitution cell with hover tooltip (portal-based for desktop)
+const SubstitutionCell: React.FC<{ absence: Absence; theme: any }> = ({ absence, theme }) => {
+  const [hovered, setHovered] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = useCallback((e: any) => {
+    const target = e?.currentTarget;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      if (target?.getBoundingClientRect) {
+        const rect = target.getBoundingClientRect();
+        setTooltipPos({ top: rect.bottom + 4, left: rect.left });
+      }
+      setHovered(true);
+    }, 300);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setHovered(false);
+    setTooltipPos(null);
+  }, []);
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  const hasSubs = absence.substitutions && absence.substitutions.length > 0;
+  const subCount = absence.substitution_count ?? absence.substitutions?.length ?? 0;
+
+  if (hasSubs) {
+    const names = absence.substitutions!.map(s => s.substitute?.name || `#${s.substitute_id}`).join(', ');
+
+    const tooltip = hovered && tooltipPos ? (
+      <div
+        style={{
+          position: 'fixed' as const,
+          top: tooltipPos.top,
+          left: tooltipPos.left,
+          zIndex: 9999,
+          pointerEvents: 'none' as const,
+        }}
+      >
+        <View
+          style={{
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: theme.border,
+            backgroundColor: theme.card,
+            minWidth: 160,
+            maxWidth: 280,
+            gap: 6,
+            // @ts-ignore - web only
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          }}
+        >
+          {absence.substitutions!.map((sub) => {
+            const name = sub.substitute?.name || `#${sub.substitute_id}`;
+            const startDate = formatAbsenceDate(sub.start_date);
+            const endDate = formatAbsenceDate(sub.end_date);
+            return (
+              <View key={sub.id} style={{ gap: 2 }}>
+                <Text style={{ fontSize: 13, fontWeight: '500', lineHeight: 18, color: theme.text }} numberOfLines={1}>
+                  {name}
+                </Text>
+                <Text style={{ fontSize: 12, lineHeight: 16, color: theme.textSecondary }}>
+                  {startDate} — {endDate}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      </div>
+    ) : null;
+
+    const portal = tooltip && typeof document !== 'undefined' && ReactDOM?.createPortal
+      ? ReactDOM.createPortal(tooltip, document.body)
+      : null;
+
+    return (
+      <View
+        style={{ flex: 1 }}
+        // @ts-ignore - web only
+        onMouseEnter={Platform.OS === 'web' ? handleMouseEnter : undefined}
+        onMouseLeave={Platform.OS === 'web' ? handleMouseLeave : undefined}
+      >
+        <Text style={[absenceLocalStyles.cellText, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
+          {names}
+        </Text>
+        {portal}
+      </View>
+    );
+  }
+
+  if (subCount > 0) {
+    return (
+      <Text style={[absenceLocalStyles.cellText, { color: theme.textSecondary }]}>
+        {subCount} зам.
+      </Text>
+    );
+  }
+
+  return <Text style={[absenceLocalStyles.cellText, { color: theme.textTertiary }]}>—</Text>;
+};
 
 export default AbsenceListScreen;
