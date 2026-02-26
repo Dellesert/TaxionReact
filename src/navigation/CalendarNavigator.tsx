@@ -13,6 +13,7 @@ import { useDesktopNavigation } from '@shared/contexts/DesktopNavigationContext'
 import { CalendarStackParamList } from './types';
 import CalendarScreen from '@/features/calendar/screens/CalendarScreen';
 import EventDetailScreen from '@/features/calendar/screens/EventDetailScreen';
+import { SwipeBackView } from '@shared/components/common/SwipeBackView';
 
 const Stack = createNativeStackNavigator<CalendarStackParamList>();
 
@@ -61,7 +62,9 @@ const CalendarNavigator: React.FC = () => {
         },
         animation: 'default',
         animationDuration: 150,
+        gestureEnabled: true,
       }}
+      screenLayout={({ children }) => <SwipeBackView>{children}</SwipeBackView>}
     >
       <Stack.Screen
         name="CalendarMain"

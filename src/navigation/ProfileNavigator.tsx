@@ -27,6 +27,7 @@ import UserGroupsScreen from '@/features/admin/screens/UserGroupsScreen';
 import EditUserGroupScreen from '@/features/admin/screens/EditUserGroupScreen';
 import PerformanceScreen from '@/features/profile/screens/PerformanceScreen';
 import QRScannerScreen from '@/features/auth/screens/QRScannerScreen';
+import { SwipeBackView } from '@shared/components/common/SwipeBackView';
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
@@ -62,7 +63,9 @@ const ProfileNavigator: React.FC = () => {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
+          gestureEnabled: true,
         }}
+        screenLayout={({ children }) => <SwipeBackView>{children}</SwipeBackView>}
       >
         <Stack.Screen name="ProfileMain" component={ProfileSplitView} />
         {/* Analytics sub-screens for drill-down navigation */}
@@ -81,7 +84,9 @@ const ProfileNavigator: React.FC = () => {
         headerShown: false,
         animation: 'default',
         animationDuration: 150,
+        gestureEnabled: true,
       }}
+      screenLayout={({ children }) => <SwipeBackView>{children}</SwipeBackView>}
     >
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />

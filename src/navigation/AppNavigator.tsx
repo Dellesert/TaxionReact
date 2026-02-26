@@ -19,6 +19,7 @@ import ActiveSessionsScreen from '@/features/profile/screens/ActiveSessionsScree
 import PasskeyManagementScreen from '@/features/profile/screens/PasskeyManagementScreen';
 import AboutScreen from '@/features/profile/screens/AboutScreen';
 import { InAppNotificationContainer } from '@shared/components/common/InAppNotificationContainer';
+import { SwipeBackView } from '@shared/components/common/SwipeBackView';
 import * as Linking from 'expo-linking';
 
 export type RootStackParamList = {
@@ -105,9 +106,11 @@ const AppNavigator = React.forwardRef<any, AppNavigatorProps>((props, ref) => {
   return (
     <NavigationContainer ref={ref} theme={navigationTheme} linking={linking}>
       <Stack.Navigator
+        screenLayout={({ children }) => <SwipeBackView>{children}</SwipeBackView>}
         screenOptions={{
           headerShown: false,
           animation: 'fade',
+          gestureEnabled: true,
         }}
       >
         {!isAuthenticated ? (

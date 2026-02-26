@@ -13,6 +13,7 @@ import { useDesktopNavigation } from '@shared/contexts/DesktopNavigationContext'
 import { TaskStackParamList } from './types';
 import TaskListScreen from '@/features/tasks/screens/TaskListScreen';
 import TaskDetailScreen from '@/features/tasks/screens/TaskDetailScreen';
+import { SwipeBackView } from '@shared/components/common/SwipeBackView';
 
 const Stack = createNativeStackNavigator<TaskStackParamList>();
 
@@ -62,7 +63,9 @@ const TaskNavigator: React.FC = () => {
         },
         animation: 'default',
         animationDuration: 150,
+        gestureEnabled: true,
       }}
+      screenLayout={({ children }) => <SwipeBackView>{children}</SwipeBackView>}
     >
       <Stack.Screen
         name="TaskList"

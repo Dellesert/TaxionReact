@@ -15,6 +15,7 @@ import ChatScreen from '@/features/chat/screens/ChatScreen';
 import ChatSettingsScreen from '@/features/chat/screens/ChatSettingsScreen';
 import ThreadScreen from '@/features/chat/screens/ThreadScreen';
 import ChatSplitView from '@/features/chat/screens/ChatSplitView';
+import { SwipeBackView } from '@shared/components/common/SwipeBackView';
 
 const Stack = createNativeStackNavigator<ChatStackParamList>();
 
@@ -50,6 +51,7 @@ const ChatNavigator: React.FC = () => {
   // Mobile режим
   return (
     <Stack.Navigator
+      screenLayout={({ children }) => <SwipeBackView>{children}</SwipeBackView>}
       screenOptions={{
         headerStyle: {
           backgroundColor: theme.backgroundSecondary,
@@ -69,10 +71,8 @@ const ChatNavigator: React.FC = () => {
         animationDuration: 150,
         // Card presentation
         presentation: 'card',
-        // Enable gestures for smooth swipe back
+        // Enable gestures for smooth swipe back (iOS native)
         gestureEnabled: true,
-        // fullScreenGestureEnabled on Android conflicts with scrollable content (FlashList)
-        // which captures horizontal touches. Use edge-only swipe on Android.
         fullScreenGestureEnabled: Platform.OS === 'ios',
       }}
     >

@@ -19,6 +19,7 @@ import PollListScreen from '@/features/polls/screens/PollListScreen';
 import PollDetailScreen from '@/features/polls/screens/PollDetailScreen';
 import PollVotersScreen from '@/features/polls/screens/PollVotersScreen';
 import { AbsenceListScreen } from '@/features/absences/screens/AbsenceListScreen';
+import { SwipeBackView } from '@shared/components/common/SwipeBackView';
 
 const Stack = createNativeStackNavigator<DashboardStackParamList>();
 
@@ -43,7 +44,9 @@ const DashboardNavigator: React.FC = () => {
         },
         animation: 'default',
         animationDuration: 150,
+        gestureEnabled: true,
       }}
+      screenLayout={({ children }) => <SwipeBackView>{children}</SwipeBackView>}
     >
       <Stack.Screen
         name="DashboardMain"

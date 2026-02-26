@@ -14,6 +14,7 @@ import { PollStackParamList } from './types';
 import PollListScreen from '@/features/polls/screens/PollListScreen';
 import PollDetailScreen from '@/features/polls/screens/PollDetailScreen';
 import PollVotersScreen from '@/features/polls/screens/PollVotersScreen';
+import { SwipeBackView } from '@shared/components/common/SwipeBackView';
 
 const Stack = createNativeStackNavigator<PollStackParamList>();
 
@@ -46,6 +47,7 @@ const PollNavigator: React.FC = () => {
 
   return (
     <Stack.Navigator
+      screenLayout={({ children }) => <SwipeBackView>{children}</SwipeBackView>}
       screenOptions={{
         headerStyle: {
           backgroundColor: theme.backgroundSecondary,
@@ -62,6 +64,7 @@ const PollNavigator: React.FC = () => {
         },
         animation: 'default',
         animationDuration: 150,
+        gestureEnabled: true,
       }}
     >
       <Stack.Screen

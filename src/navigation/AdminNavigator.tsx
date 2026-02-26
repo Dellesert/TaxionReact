@@ -16,6 +16,7 @@ import PerformanceAnalyticsScreen from '@/features/admin/screens/PerformanceAnal
 import DepartmentsAnalyticsScreen from '@/features/admin/screens/DepartmentsAnalyticsScreen';
 import SecurityAnalyticsScreen from '@/features/admin/screens/SecurityAnalyticsScreen';
 import { AdminContentArea } from '@/features/admin/components/common/AdminContentArea';
+import { SwipeBackView } from '@shared/components/common/SwipeBackView';
 
 // Wrapper for Metrics that adapts to screen size
 const MetricsAnalyticsWrapper: React.FC = () => {
@@ -50,7 +51,9 @@ const AdminNavigator: React.FC = () => {
         headerShown: false,
         animation: 'default',
         animationDuration: 150,
+        gestureEnabled: true,
       }}
+      screenLayout={({ children }) => <SwipeBackView>{children}</SwipeBackView>}
       initialRouteName={isWideScreen ? 'AdminHub' : getMobileInitialRoute()}
     >
       {isWideScreen && (
