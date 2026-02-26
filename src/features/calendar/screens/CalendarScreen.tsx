@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Platform } from 'react-native';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,16 +8,17 @@ import { endOfWeek } from 'date-fns';
 import { Event, CalendarView } from '../types/calendar.types';
 import { EventListSkeleton } from '../components/states/EventListSkeleton';
 import { CalendarSkeleton } from '../components/states/CalendarSkeleton';
-import CreateEventModal from '../components/modals/CreateEventModal';
-import { InfiniteMonthCalendar } from '../components/views/InfiniteMonthCalendar';
 import { CalendarHeader } from '../components/navigation/CalendarHeader';
 import { WeekDayStrip } from '../components/navigation/WeekDayStrip';
 import { CalendarEventsList } from '../components/events/CalendarEventsList';
 import { CalendarEmptyState } from '../components/states/CalendarEmptyState';
-import { CalendarDesktopView } from '../components/views/CalendarDesktopView';
+import { InfiniteMonthCalendar } from '../components/views/InfiniteMonthCalendar';
 import { TitleBarCalendarControls } from '../components/common/TitleBarCalendarControls';
 
-import { UserProfileModal } from '@shared/components/common/UserProfileModal';
+// Lazy-load heavy components that are only shown on user action
+const CreateEventModal = lazy(() => import('../components/modals/CreateEventModal'));
+const CalendarDesktopView = lazy(() => import('../components/views/CalendarDesktopView').then(m => ({ default: m.CalendarDesktopView })));
+const UserProfileModal = lazy(() => import('@shared/components/common/UserProfileModal').then(m => ({ default: m.UserProfileModal })));
 import { useTheme } from '@shared/hooks/useTheme';
 import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
@@ -256,11 +257,13 @@ const CalendarScreen: React.FC = () => {
     selectedView
   );
 
-  // Load events on mount and when dependencies change
+  // Load events on mount and when dependencies change (desktop only -
+  // mobile has its own data loading in MobileCalendarContent)
   useEffect(() => {
+    if (!isDesktop) return;
     loadEvents().catch(() => showError('Не удалось загрузить события'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, selectedView]);
+  }, [selectedDate, selectedView, isDesktop]);
 
   // Handlers
   const handleEventPress = (event: Event) => {
@@ -351,24 +354,26 @@ const CalendarScreen: React.FC = () => {
       {/* Content container with background */}
       <View style={[styles.content, { backgroundColor: theme.background }]}>
         {isWideScreen ? (
-          /* Desktop View - Three Panel Layout */
-          <CalendarDesktopView
-            selectedDate={selectedDate}
-            events={filteredEvents}
-            sections={sections}
-            isLoading={isLoading}
-            refreshing={refreshing}
-            initialView={selectedView}
-            onDatePress={handleDesktopDatePress}
-            onEventPress={handleEventPress}
-            onRefresh={handleRefresh}
-            onEventUpdated={handleEventUpdated}
-            onViewChange={handleDesktopViewChange}
-            onAddPress={handleAddEvent}
-            weekDisplayMode={weekDisplayMode}
-            onWeekDisplayModeChange={setWeekDisplayMode}
-            hideToolbar={isElectron && isDesktop}
-          />
+          /* Desktop View - Three Panel Layout (lazy-loaded) */
+          <Suspense fallback={<View style={{ flex: 1 }} />}>
+            <CalendarDesktopView
+              selectedDate={selectedDate}
+              events={filteredEvents}
+              sections={sections}
+              isLoading={isLoading}
+              refreshing={refreshing}
+              initialView={selectedView}
+              onDatePress={handleDesktopDatePress}
+              onEventPress={handleEventPress}
+              onRefresh={handleRefresh}
+              onEventUpdated={handleEventUpdated}
+              onViewChange={handleDesktopViewChange}
+              onAddPress={handleAddEvent}
+              weekDisplayMode={weekDisplayMode}
+              onWeekDisplayModeChange={setWeekDisplayMode}
+              hideToolbar={isElectron && isDesktop}
+            />
+          </Suspense>
         ) : (
           /* Mobile View - New Week Strip Layout */
           <MobileCalendarContent
@@ -380,38 +385,46 @@ const CalendarScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Create Event Modal */}
-      <CreateEventModal
-        visible={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onEventCreated={handleEventCreated}
-      />
+      {/* Create Event Modal (lazy-loaded) */}
+      {showCreateModal && (
+        <Suspense fallback={null}>
+          <CreateEventModal
+            visible={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onEventCreated={handleEventCreated}
+          />
+        </Suspense>
+      )}
 
-      {/* Birthday Profile Modal */}
-      <UserProfileModal
-        visible={showProfileModal}
-        userId={profileUserId}
-        onClose={() => {
-          setShowProfileModal(false);
-          setProfileUserId(null);
-        }}
-        onOpenChat={async (userId) => {
-          try {
-            const chat = await getOrCreateDirectChat(userId);
-            setShowProfileModal(false);
-            setProfileUserId(null);
-            const rootNavigation = navigation.getParent();
-            if (rootNavigation) {
-              rootNavigation.navigate('Chats', {
-                screen: 'Chat',
-                params: { chatId: chat.id },
-              });
-            }
-          } catch (error: any) {
-            showError(error.message || 'Не удалось открыть чат');
-          }
-        }}
-      />
+      {/* Birthday Profile Modal (lazy-loaded) */}
+      {showProfileModal && (
+        <Suspense fallback={null}>
+          <UserProfileModal
+            visible={showProfileModal}
+            userId={profileUserId}
+            onClose={() => {
+              setShowProfileModal(false);
+              setProfileUserId(null);
+            }}
+            onOpenChat={async (userId) => {
+              try {
+                const chat = await getOrCreateDirectChat(userId);
+                setShowProfileModal(false);
+                setProfileUserId(null);
+                const rootNavigation = navigation.getParent();
+                if (rootNavigation) {
+                  rootNavigation.navigate('Chats', {
+                    screen: 'Chat',
+                    params: { chatId: chat.id },
+                  });
+                }
+              } catch (error: any) {
+                showError(error.message || 'Не удалось открыть чат');
+              }
+            }}
+          />
+        </Suspense>
+      )}
     </SafeAreaView>
   );
 };

@@ -3,7 +3,7 @@
  * Стек навигации для календаря событий
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy } from 'react';
 import { InteractionManager } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
@@ -12,8 +12,10 @@ import { useIsWideScreen } from '@shared/hooks/useIsWideScreen';
 import { useDesktopNavigation } from '@shared/contexts/DesktopNavigationContext';
 import { CalendarStackParamList } from './types';
 import CalendarScreen from '@/features/calendar/screens/CalendarScreen';
-import EventDetailScreen from '@/features/calendar/screens/EventDetailScreen';
 import { SwipeBackView } from '@shared/components/common/SwipeBackView';
+
+// Lazy-load EventDetailScreen - only needed when navigating to event details
+const EventDetailScreen = lazy(() => import('@/features/calendar/screens/EventDetailScreen'));
 
 const Stack = createNativeStackNavigator<CalendarStackParamList>();
 

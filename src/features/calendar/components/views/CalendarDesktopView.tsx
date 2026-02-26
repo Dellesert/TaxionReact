@@ -88,7 +88,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
   }, [initialView]);
 
   // Load events for the entire month for the mini calendar
-  const { monthEvents } = useMonthEvents(selectedDate);
+  const { monthEvents, isLoadingMonth } = useMonthEvents(selectedDate);
 
   const handleDayPress = (date: Date) => {
     setSelectedEvent(null);
@@ -177,7 +177,7 @@ export const CalendarDesktopView: React.FC<CalendarDesktopViewProps> = ({
               />
             </View>
           )}
-          {isLoading ? (
+          {isLoadingMonth ? (
             <LeftSidebarSkeleton />
           ) : (
             <ContentPane>

@@ -21,14 +21,14 @@ interface TextPart {
  * Компонент для отображения текста с кликабельными ссылками
  * Поддерживает URL-адреса (http, https), email и телефонные номера
  */
+// Регулярные выражения для различных типов ссылок
+const urlRegex = /(https?:\/\/[^\s]+)/gi;
+const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
+const phoneRegex = /(\+?\d{1,3}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9})/g;
+
 export const LinkifiedText: React.FC<LinkifiedTextProps> = ({ text, style, searchQuery }) => {
   const { theme } = useTheme();
   const { showError } = useNotification();
-
-  // Регулярные выражения для различных типов ссылок
-  const urlRegex = /(https?:\/\/[^\s]+)/gi;
-  const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
-  const phoneRegex = /(\+?\d{1,3}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9})/g;
 
   // Функция для разбиения текста по поисковому запросу
   const applySearchHighlight = (parts: TextPart[], query: string): TextPart[] => {
@@ -91,13 +91,16 @@ export const LinkifiedText: React.FC<LinkifiedTextProps> = ({ text, style, searc
     // Находим все совпадения для всех типов ссылок
     const allMatches: { index: number; text: string; type: LinkType }[] = [];
 
-    // URL
     let match;
+
+    // URL
+    urlRegex.lastIndex = 0;
     while ((match = urlRegex.exec(inputText)) !== null) {
       allMatches.push({ index: match.index, text: match[0], type: 'url' });
     }
 
     // Email
+    emailRegex.lastIndex = 0;
     while ((match = emailRegex.exec(inputText)) !== null) {
       // Проверяем, что email не является частью URL
       const isPartOfUrl = allMatches.some(
@@ -109,6 +112,7 @@ export const LinkifiedText: React.FC<LinkifiedTextProps> = ({ text, style, searc
     }
 
     // Phone
+    phoneRegex.lastIndex = 0;
     while ((match = phoneRegex.exec(inputText)) !== null) {
       allMatches.push({ index: match.index, text: match[0], type: 'phone' });
     }

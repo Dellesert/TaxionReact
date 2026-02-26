@@ -10,6 +10,9 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { Event } from '@/features/calendar/types/calendar.types';
 import { getZustandCalendarStorage, isNative } from '@shared/storage';
 
+// Maximum number of cached date ranges to keep (prevents unbounded growth)
+const MAX_CACHE_ENTRIES = 30;
+
 interface CalendarCacheStore {
   // Cached data - keyed by date range string
   eventsByRange: Record<string, Event[]>;
@@ -27,10 +30,17 @@ let preloadedEventsByRange: Record<string, Event[]> | null = null;
 if (!isNative) {
   try {
     const stored = localStorage.getItem('taxion-calendar-storage:calendar-storage');
-    if (stored) {
+    // Skip preload if stored data is too large (> 500KB) to avoid blocking main thread
+    if (stored && stored.length < 500_000) {
       const parsed = JSON.parse(stored);
       if (parsed?.state?.eventsByRange && typeof parsed.state.eventsByRange === 'object') {
-        preloadedEventsByRange = parsed.state.eventsByRange;
+        const entries = Object.entries(parsed.state.eventsByRange);
+        // Only keep the most recent entries within limit
+        if (entries.length > MAX_CACHE_ENTRIES) {
+          preloadedEventsByRange = Object.fromEntries(entries.slice(-MAX_CACHE_ENTRIES)) as Record<string, Event[]>;
+        } else {
+          preloadedEventsByRange = parsed.state.eventsByRange;
+        }
       }
     }
   } catch {
@@ -45,13 +55,24 @@ export const useCalendarStore = create<CalendarCacheStore>()(
       lastUpdated: null,
 
       setEventsForRange: (rangeKey: string, events: Event[]) => {
-        set((state) => ({
-          eventsByRange: {
+        set((state) => {
+          const updated = {
             ...state.eventsByRange,
             [rangeKey]: events,
-          },
-          lastUpdated: Date.now(),
-        }));
+          };
+          // Evict oldest entries if cache exceeds limit
+          const keys = Object.keys(updated);
+          if (keys.length > MAX_CACHE_ENTRIES) {
+            const toRemove = keys.slice(0, keys.length - MAX_CACHE_ENTRIES);
+            for (const key of toRemove) {
+              delete updated[key];
+            }
+          }
+          return {
+            eventsByRange: updated,
+            lastUpdated: Date.now(),
+          };
+        });
       },
 
       getEventsForRange: (rangeKey: string) => {
