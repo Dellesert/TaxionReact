@@ -4,18 +4,19 @@
  * Включает переключатель года, фильтр и кнопку создания
  */
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
-import { ExpandableCreateButton, ExpandableFilterButton } from '@shared/components/common';
+import { ExpandableCreateButton, ExpandableFilterButton, MonthRangePicker } from '@shared/components/common';
 import type { AbsenceType, AbsenceColorMode } from '../types/absence.types';
 
 export type AbsenceViewMode = 'list' | 'calendar' | 'timeline';
 
 interface TitleBarAbsenceControlsProps {
-  selectedYear: number;
-  onYearChange: (year: number) => void;
+  startMonth: Date;
+  endMonth: Date;
+  onMonthRangeChange: (start: Date, end: Date) => void;
   onFilterPress?: () => void;
   selectedTypeFilter?: AbsenceType | null;
   onCreatePress?: () => void;
@@ -33,13 +34,14 @@ interface TitleBarAbsenceControlsProps {
   colorMode?: AbsenceColorMode;
   /** Callback when color mode changes */
   onColorModeChange?: (mode: AbsenceColorMode) => void;
-  /** Hide year picker (e.g. when it's shown in card header instead) */
+  /** Hide month range picker (e.g. when it's shown in card header instead) */
   hideYearPicker?: boolean;
 }
 
 export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = ({
-  selectedYear,
-  onYearChange,
+  startMonth,
+  endMonth,
+  onMonthRangeChange,
   onFilterPress,
   selectedTypeFilter,
   onCreatePress,
@@ -53,22 +55,6 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
   hideYearPicker = false,
 }) => {
   const { theme } = useTheme();
-
-  const handlePrevYear = () => {
-    onYearChange(selectedYear - 1);
-  };
-
-  const handleNextYear = () => {
-    onYearChange(selectedYear + 1);
-  };
-
-  const handleToday = () => {
-    onYearChange(new Date().getFullYear());
-  };
-
-  const isCurrentYear = useMemo(() => {
-    return selectedYear === new Date().getFullYear();
-  }, [selectedYear]);
 
   const hasActiveFilters = !!selectedTypeFilter;
 
@@ -246,41 +232,14 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
           </View>
         )}
 
-        {/* Year Picker */}
+        {/* Month Range Picker */}
         {!hideYearPicker && (
-          <View style={[styles.yearPicker, { backgroundColor: theme.card }]}>
-            <View
-              style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
-              // @ts-ignore - Web-only
-              onClick={handlePrevYear}
-              onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.8')}
-              onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-            >
-              <Ionicons name="chevron-back" size={14} color={theme.text} />
-            </View>
-
-            <View
-              style={styles.yearButton}
-              // @ts-ignore - Web-only
-              onClick={isCurrentYear ? undefined : handleToday}
-              onMouseEnter={(e: any) => !isCurrentYear && e.currentTarget?.style && (e.currentTarget.style.opacity = '0.7')}
-              onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-            >
-              <Text style={[styles.yearText, { color: theme.text }]}>
-                {selectedYear}
-              </Text>
-            </View>
-
-            <View
-              style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
-              // @ts-ignore - Web-only
-              onClick={handleNextYear}
-              onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.8')}
-              onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-            >
-              <Ionicons name="chevron-forward" size={14} color={theme.text} />
-            </View>
-          </View>
+          <MonthRangePicker
+            startMonth={startMonth}
+            endMonth={endMonth}
+            onChange={onMonthRangeChange}
+            compact
+          />
         )}
       </View>
     );
@@ -289,40 +248,13 @@ export const TitleBarAbsenceControls: React.FC<TitleBarAbsenceControlsProps> = (
   // Default: show all controls
   return (
     <View style={styles.container}>
-      {/* Year Picker */}
-      <View style={[styles.yearPicker, { backgroundColor: theme.card }]}>
-        <View
-          style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
-          // @ts-ignore - Web-only
-          onClick={handlePrevYear}
-          onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.8')}
-          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-        >
-          <Ionicons name="chevron-back" size={14} color={theme.text} />
-        </View>
-
-        <View
-          style={styles.yearButton}
-          // @ts-ignore - Web-only
-          onClick={isCurrentYear ? undefined : handleToday}
-          onMouseEnter={(e: any) => !isCurrentYear && e.currentTarget?.style && (e.currentTarget.style.opacity = '0.7')}
-          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-        >
-          <Text style={[styles.yearText, { color: theme.text }]}>
-            {selectedYear}
-          </Text>
-        </View>
-
-        <View
-          style={[styles.arrowButton, { backgroundColor: theme.backgroundTertiary }]}
-          // @ts-ignore - Web-only
-          onClick={handleNextYear}
-          onMouseEnter={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '0.8')}
-          onMouseLeave={(e: any) => e.currentTarget?.style && (e.currentTarget.style.opacity = '1')}
-        >
-          <Ionicons name="chevron-forward" size={14} color={theme.text} />
-        </View>
-      </View>
+      {/* Month Range Picker */}
+      <MonthRangePicker
+        startMonth={startMonth}
+        endMonth={endMonth}
+        onChange={onMonthRangeChange}
+        compact
+      />
 
       {/* Filter Button */}
       {onFilterPress && (
@@ -353,32 +285,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   } as any,
-  yearPicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderRadius: 8,
-  } as any,
-  arrowButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    transition: 'opacity 0.15s ease',
-  } as any,
-  yearButton: {
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    cursor: 'pointer',
-  } as any,
-  yearText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
   viewGroup: {
     flexDirection: 'row',
     alignItems: 'center',

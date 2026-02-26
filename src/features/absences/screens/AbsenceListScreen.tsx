@@ -26,7 +26,7 @@ import { useAbsenceStore } from '../store/absenceStore';
 import { AbsenceList } from '../components/AbsenceList';
 import { CreateAbsenceModal } from '../components/CreateAbsenceModal';
 import { EditAbsenceModal } from '../components/EditAbsenceModal';
-import { YearPicker } from '../components/YearPicker';
+import { MonthRangePicker } from '@shared/components/common/MonthRangePicker';
 import { TitleBarAbsenceControls, AbsenceViewMode } from '../components/TitleBarAbsenceControls';
 import { AbsenceYearCalendar } from '../components/AbsenceYearCalendar';
 import { AbsenceTimeline } from '../components/AbsenceTimeline';
@@ -48,11 +48,18 @@ import { AbsenceCalendarSkeleton } from '../components/states/AbsenceCalendarSke
 import { AbsenceTimelineSkeleton } from '../components/states/AbsenceTimelineSkeleton';
 import { useAbsencePermissions } from '../hooks/useAbsencePermissions';
 
-// Helper to get year date range
-const getYearRange = (year: number): { start_date: string; end_date: string } => ({
-  start_date: `${year}-01-01`,
-  end_date: `${year}-12-31`,
-});
+// Helper to get month range for API filters
+const getMonthRange = (start: Date, end: Date): { start_date: string; end_date: string } => {
+  const sy = start.getFullYear();
+  const sm = String(start.getMonth() + 1).padStart(2, '0');
+  const ey = end.getFullYear();
+  const em = end.getMonth();
+  const lastDay = new Date(ey, em + 1, 0).getDate();
+  return {
+    start_date: `${sy}-${sm}-01`,
+    end_date: `${ey}-${String(em + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+  };
+};
 
 // Parse date string to local date
 const parseLocalDate = (dateStr: string): Date => {
@@ -136,7 +143,8 @@ export const AbsenceListScreen: React.FC = () => {
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<AbsenceType | null>(
     filters.type || null
   );
-  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+  const [startMonth, setStartMonth] = useState(() => new Date(new Date().getFullYear(), 0, 1));
+  const [endMonth, setEndMonth] = useState(() => new Date(new Date().getFullYear(), 11, 1));
 
   // User filter state
   const [showUserPicker, setShowUserPicker] = useState(false);
@@ -220,21 +228,32 @@ export const AbsenceListScreen: React.FC = () => {
     });
   }, []);
 
-  // Initial load with current year filter
+  // Derived selectedYear for calendar/timeline backward compatibility
+  const selectedYear = startMonth.getFullYear();
+
+  // Initial load with current month range filter
   useEffect(() => {
-    const yearRange = getYearRange(selectedYear);
-    loadAbsences({ sort_order: 'asc', ...yearRange }, true);
+    const monthRange = getMonthRange(startMonth, endMonth);
+    loadAbsences({ sort_order: 'asc', ...monthRange }, true);
   }, []);
 
-  // Handle year change
-  const handleYearChange = useCallback((year: number) => {
-    setSelectedYear(year);
+  // Handle month range change
+  const handleMonthRangeChange = useCallback((start: Date, end: Date) => {
+    setStartMonth(start);
+    setEndMonth(end);
     setCurrentPage(1);
-    const yearRange = getYearRange(year);
-    const newFilters = { ...filters, ...yearRange };
+    const monthRange = getMonthRange(start, end);
+    const newFilters = { ...filters, ...monthRange };
     setFilters(newFilters);
     loadAbsences(newFilters, true);
   }, [filters, setFilters, loadAbsences]);
+
+  // Backward-compatible year change for calendar/timeline sub-components
+  const handleYearChange = useCallback((year: number) => {
+    const start = new Date(year, 0, 1);
+    const end = new Date(year, 11, 1);
+    handleMonthRangeChange(start, end);
+  }, [handleMonthRangeChange]);
 
   const handleRefresh = useCallback(() => {
     setCurrentPage(1);
@@ -265,31 +284,31 @@ export const AbsenceListScreen: React.FC = () => {
   const handleApplyFilter = useCallback((type: AbsenceType | null) => {
     setSelectedTypeFilter(type);
     setCurrentPage(1);
-    const yearRange = getYearRange(selectedYear);
+    const monthRange = getMonthRange(startMonth, endMonth);
     const newFilters = {
       ...filters,
-      ...yearRange,
+      ...monthRange,
       type: type || undefined,
       user_id: selectedUserId || undefined,
     };
     setFilters(newFilters);
     loadAbsences(newFilters, true);
     setShowFilterMenu(false);
-  }, [filters, setFilters, loadAbsences, selectedYear, selectedUserId]);
+  }, [filters, setFilters, loadAbsences, startMonth, endMonth, selectedUserId]);
 
   const handleUserFilterChange = useCallback((userId: number | null, userName: string | null) => {
     setSelectedUserId(userId);
     setSelectedUserName(userName);
     setCurrentPage(1);
-    const yearRange = getYearRange(selectedYear);
+    const monthRange = getMonthRange(startMonth, endMonth);
     const newFilters = {
       ...filters,
-      ...yearRange,
+      ...monthRange,
       user_id: userId || undefined,
     };
     setFilters(newFilters);
     loadAbsences(newFilters, true);
-  }, [filters, setFilters, loadAbsences, selectedYear]);
+  }, [filters, setFilters, loadAbsences, startMonth, endMonth]);
 
   const handleFilterToggle = useCallback(() => {
     if (filterButtonRef.current) {
@@ -318,14 +337,14 @@ export const AbsenceListScreen: React.FC = () => {
   }, []);
 
 
-  // TitleBar left controls - year picker and view toggle
-  // In calendar view, year picker is shown in the card header instead
+  // TitleBar left controls - view toggle (year picker now in MonthRangePicker)
   const titleBarLeftControls = useMemo(() => {
     if (!isElectron || !isDesktop) return null;
     return (
       <TitleBarAbsenceControls
-        selectedYear={selectedYear}
-        onYearChange={handleYearChange}
+        startMonth={startMonth}
+        endMonth={endMonth}
+        onMonthRangeChange={handleMonthRangeChange}
         viewMode={viewMode}
         onViewModeChange={isViewModeLoaded ? handleViewModeChange : undefined}
         colorMode={colorMode}
@@ -334,15 +353,16 @@ export const AbsenceListScreen: React.FC = () => {
         hideYearPicker
       />
     );
-  }, [isElectron, isDesktop, selectedYear, handleYearChange, viewMode, handleViewModeChange, isViewModeLoaded, colorMode, handleColorModeChange]);
+  }, [isElectron, isDesktop, startMonth, endMonth, handleMonthRangeChange, viewMode, handleViewModeChange, isViewModeLoaded, colorMode, handleColorModeChange]);
 
   // TitleBar right controls - filter and create buttons
   const titleBarRightControls = useMemo(() => {
     if (!isElectron || !isDesktop) return null;
     return (
       <TitleBarAbsenceControls
-        selectedYear={selectedYear}
-        onYearChange={handleYearChange}
+        startMonth={startMonth}
+        endMonth={endMonth}
+        onMonthRangeChange={handleMonthRangeChange}
         onFilterPress={handleFilterToggle}
         selectedTypeFilter={selectedTypeFilter}
         onCreatePress={canCreate ? handleCreateAbsence : undefined}
@@ -350,7 +370,7 @@ export const AbsenceListScreen: React.FC = () => {
         filterButtonRef={filterButtonRef}
       />
     );
-  }, [isElectron, isDesktop, selectedYear, handleYearChange, handleFilterToggle, selectedTypeFilter, handleCreateAbsence]);
+  }, [isElectron, isDesktop, startMonth, endMonth, handleMonthRangeChange, handleFilterToggle, selectedTypeFilter, handleCreateAbsence]);
 
   // Integrate controls with TitleBar in Electron
   useTitleBarControlsIntegration({
@@ -485,9 +505,10 @@ export const AbsenceListScreen: React.FC = () => {
           <View style={[styles.desktopHeader, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.desktopHeaderLeft}>
               <Text style={[styles.desktopTitle, { color: theme.text }]}>Нерабочие дни</Text>
-              <YearPicker
-                selectedYear={selectedYear}
-                onYearChange={handleYearChange}
+              <MonthRangePicker
+                startMonth={startMonth}
+                endMonth={endMonth}
+                onChange={handleMonthRangeChange}
               />
             </View>
             <View style={styles.desktopHeaderRight}>
@@ -617,31 +638,11 @@ export const AbsenceListScreen: React.FC = () => {
               )}
             </TouchableOpacity>
 
-            <View style={styles.mobileYearSwitcher}>
-              <TouchableOpacity
-                onPress={() => handleYearChange(selectedYear - 1)}
-                style={styles.mobileYearArrow}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="chevron-back" size={20} color={theme.textSecondary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleYearChange(new Date().getFullYear())}
-                activeOpacity={selectedYear === new Date().getFullYear() ? 1 : 0.6}
-                disabled={selectedYear === new Date().getFullYear()}
-              >
-                <Text style={[styles.mobileYearText, { color: theme.text }]}>
-                  {selectedYear}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleYearChange(selectedYear + 1)}
-                style={styles.mobileYearArrow}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-              </TouchableOpacity>
-            </View>
+            <MonthRangePicker
+              startMonth={startMonth}
+              endMonth={endMonth}
+              onChange={handleMonthRangeChange}
+            />
           </View>
         )}
 
@@ -827,32 +828,12 @@ export const AbsenceListScreen: React.FC = () => {
               <View style={[styles.calendarMainPanel, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.border }]}>
                 <View style={[styles.calendarMainHeader, { borderColor: theme.border }]}>
                   <Text style={[styles.calendarMainTitle, { color: theme.text }]}>Календарь</Text>
-                  {/* Year Picker in card header */}
-                  <View style={styles.calendarHeaderYearPicker}>
-                    <TouchableOpacity
-                      onPress={() => handleYearChange(selectedYear - 1)}
-                      style={styles.calendarHeaderArrow}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleYearChange(new Date().getFullYear())}
-                      activeOpacity={selectedYear === new Date().getFullYear() ? 1 : 0.6}
-                      disabled={selectedYear === new Date().getFullYear()}
-                    >
-                      <Text style={[styles.calendarHeaderYearText, { color: theme.text }]}>
-                        {selectedYear}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleYearChange(selectedYear + 1)}
-                      style={styles.calendarHeaderArrow}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
+                  <MonthRangePicker
+                    startMonth={startMonth}
+                    endMonth={endMonth}
+                    onChange={handleMonthRangeChange}
+                    compact
+                  />
                 </View>
                 <View style={{ flex: 1, backgroundColor: theme.background }}>
                   <AbsenceYearCalendar
@@ -901,34 +882,16 @@ export const AbsenceListScreen: React.FC = () => {
                   ? `По запросу «${searchQuery}» ничего не найдено`
                   : selectedTypeFilter
                     ? `Нет записей типа «${ABSENCE_TYPE_LABELS[selectedTypeFilter]}»`
-                    : `Нет записей за ${selectedYear} год`
+                    : 'Нет записей за выбранный период'
               }
               headerContent={
                 <View style={[styles.listCardHeader, { borderColor: theme.border }]}>
                   <View style={styles.listCardHeaderLeft}>
-                    <TouchableOpacity
-                      onPress={() => handleYearChange(selectedYear - 1)}
-                      style={styles.listHeaderArrow}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleYearChange(new Date().getFullYear())}
-                      activeOpacity={selectedYear === new Date().getFullYear() ? 1 : 0.6}
-                      disabled={selectedYear === new Date().getFullYear()}
-                    >
-                      <Text style={[styles.listHeaderYearText, { color: theme.text }]}>
-                        {selectedYear}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleYearChange(selectedYear + 1)}
-                      style={styles.listHeaderArrow}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
-                    </TouchableOpacity>
+                    <MonthRangePicker
+                      startMonth={startMonth}
+                      endMonth={endMonth}
+                      onChange={handleMonthRangeChange}
+                    />
                   </View>
                   <TouchableOpacity
                     ref={userFilterButtonRef}
@@ -989,8 +952,8 @@ export const AbsenceListScreen: React.FC = () => {
               searchQuery
                 ? `Ничего не найдено по запросу "${searchQuery}"`
                 : selectedTypeFilter
-                  ? `Нет типа "${ABSENCE_TYPE_LABELS[selectedTypeFilter]}" за ${selectedYear}`
-                  : `Нет отпусков за ${selectedYear}`
+                  ? `Нет типа "${ABSENCE_TYPE_LABELS[selectedTypeFilter]}" за выбранный период`
+                  : 'Нет отпусков за выбранный период'
             }
           />
         )}

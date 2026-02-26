@@ -8,3 +8,4 @@ export { default as Loading } from './Loading';
 export { ExpandableCreateButton } from './ExpandableCreateButton';
 export { ExpandableFilterButton } from './ExpandableFilterButton';
 export { HoverTooltip } from './HoverTooltip';
+export { MonthRangePicker } from './MonthRangePicker';
