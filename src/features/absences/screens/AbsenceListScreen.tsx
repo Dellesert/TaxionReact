@@ -405,6 +405,19 @@ export const AbsenceListScreen: React.FC = () => {
     return Array.from(usersMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [absences]);
 
+  // Today's date for comparing past absences
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  // Style past absences (end_date before today) as muted
+  const getAbsenceRowStyle = useCallback((absence: Absence) => {
+    const endDate = parseLocalDate(absence.end_date);
+    return endDate < today ? { opacity: 0.45 } : undefined;
+  }, [today]);
+
   // Column definitions for DataTable (list view)
   const absenceColumns: DataTableColumn<Absence>[] = useMemo(() => [
     {
@@ -870,6 +883,7 @@ export const AbsenceListScreen: React.FC = () => {
               keyExtractor={(a) => String(a.id)}
               onRowPress={handleAbsencePress}
               isLoading={isLoading}
+              getRowStyle={getAbsenceRowStyle}
               pagination={{
                 currentPage,
                 totalItems: total,
