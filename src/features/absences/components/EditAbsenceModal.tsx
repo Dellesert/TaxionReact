@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -23,7 +23,7 @@ import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useAbsenceStore } from '../store/absenceStore';
 import { AbsenceTypeIcon } from './AbsenceTypeIcon';
-import { SubstitutionsSection } from './SubstitutionsSection';
+import { SubstitutionsSection, type SubstitutionsSectionRef } from './SubstitutionsSection';
 import {
   Absence,
   AbsenceType,
@@ -57,6 +57,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
   const { showSuccess, showError } = useNotification();
 
   const { updateAbsence, deleteAbsence, isSubmitting } = useAbsenceStore();
+  const substitutionsSectionRef = useRef<SubstitutionsSectionRef>(null);
 
   // Local confirm dialog state (для корректной работы на iOS)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -132,6 +133,10 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
       };
 
       await updateAbsence(absence.id, data);
+      // Save any pending substitutions that were added locally
+      if (substitutionsSectionRef.current?.hasPendingChanges()) {
+        await substitutionsSectionRef.current.savePendingSubstitutions();
+      }
       showSuccess('Обновлено');
       onAbsenceUpdated?.();
       onClose();
@@ -357,6 +362,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
             {/* Substitutions */}
             {absence && (
               <SubstitutionsSection
+                ref={substitutionsSectionRef}
                 absenceId={absence.id}
                 absenceUserId={absence.user_id}
                 absenceStartDate={absence.start_date}

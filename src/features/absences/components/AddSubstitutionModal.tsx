@@ -37,6 +37,8 @@ interface AddSubstitutionModalProps {
   absenceEndDate: string;
   editingSubstitution?: Substitution | null;
   onSuccess?: () => void;
+  /** When provided, new substitutions are added locally instead of via API */
+  onAddLocally?: (data: CreateSubstitutionRequest, displayName: string) => void;
 }
 
 export const AddSubstitutionModal: React.FC<AddSubstitutionModalProps> = ({
@@ -48,6 +50,7 @@ export const AddSubstitutionModal: React.FC<AddSubstitutionModalProps> = ({
   absenceEndDate,
   editingSubstitution,
   onSuccess,
+  onAddLocally,
 }) => {
   const { theme, isDark } = useTheme();
   const isDesktop = useIsWideScreen();
@@ -161,8 +164,12 @@ export const AddSubstitutionModal: React.FC<AddSubstitutionModalProps> = ({
           end_date: endDateISO,
           note: note.trim() || undefined,
         };
-        await createSubstitution(absenceId, data);
-        showSuccess('Замещение добавлено');
+        if (onAddLocally) {
+          onAddLocally(data, selectedUserName || `Сотрудник #${selectedUserId}`);
+        } else {
+          await createSubstitution(absenceId, data);
+          showSuccess('Замещение добавлено');
+        }
       }
       onSuccess?.();
       onClose();
