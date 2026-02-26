@@ -5,6 +5,8 @@
   border-radius: 10px;
   box-shadow: none;
   font-size: 12px;
+  display: flex !important;
+  flex-direction: row !important;
 }
 
 .react-datepicker__header {
@@ -81,7 +83,8 @@
 /* Time picker styles */
 .react-datepicker__time-container {
   border-left: 1px solid rgba(0,0,0,0.06) !important;
-  width: 75px;
+  width: 80px !important;
+  flex-shrink: 0;
 }
 
 .react-datepicker__time-container .react-datepicker__time {
@@ -89,11 +92,12 @@
 }
 
 .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box {
-  width: 75px;
+  width: 80px !important;
 }
 
 .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list {
   padding: 2px 0;
+  max-height: 220px !important;
 }
 
 .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item {

@@ -302,8 +302,6 @@ const styles = StyleSheet.create({
   webModal: {
     borderRadius: 12,
     padding: 12,
-    minWidth: 260,
-    maxWidth: 300,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
