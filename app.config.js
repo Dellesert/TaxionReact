@@ -57,7 +57,7 @@ module.exports = {
         backgroundColor: "#E94444"
       },
       adaptiveIcon: {
-        foregroundImage: "./assets/images/icon.png",
+        foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#E94444"
       },
       edgeToEdgeEnabled: true,
@@ -104,7 +104,7 @@ module.exports = {
       [
         "expo-notifications",
         {
-          icon: "./assets/images/icon.png",
+          icon: "./assets/images/icon_alpha.png",
           color: "#E94444",
           mode: "production"
         }
