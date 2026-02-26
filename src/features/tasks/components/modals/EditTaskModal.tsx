@@ -3,7 +3,7 @@
  * Модальное окно для редактирования задачи
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -228,12 +228,15 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
     }
   };
 
-  const handleDateChange = (_event: any, selectedDate?: Date) => {
+  const handleDateChange = useCallback((_event: any, selectedDate?: Date) => {
     // Убрали setShowDatePicker(false) - теперь DatePickerModal сам управляет закрытием через onClose
     if (selectedDate) {
       setDueDate(selectedDate);
     }
-  };
+  }, []);
+
+  const datePickerMinDate = useMemo(() => new Date(), []);
+  const handleCloseDatePicker = useCallback(() => setShowDatePicker(false), []);
 
   // ===== DESKTOP ELECTRON: Full-screen two-column layout =====
   if (isDesktopElectron) {
@@ -578,10 +581,10 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
           {showDatePicker && (
             <DatePickerModal
               visible={showDatePicker}
-              value={dueDate || new Date()}
+              value={dueDate || datePickerMinDate}
               onChange={handleDateChange}
-              onClose={() => setShowDatePicker(false)}
-              minimumDate={new Date()}
+              onClose={handleCloseDatePicker}
+              minimumDate={datePickerMinDate}
               mode="datetime"
             />
           )}
@@ -876,10 +879,10 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
         {showDatePicker && (
           <DatePickerModal
             visible={showDatePicker}
-            value={dueDate || new Date()}
+            value={dueDate || datePickerMinDate}
             onChange={handleDateChange}
-            onClose={() => setShowDatePicker(false)}
-            minimumDate={new Date()}
+            onClose={handleCloseDatePicker}
+            minimumDate={datePickerMinDate}
             mode="datetime"
           />
         )}

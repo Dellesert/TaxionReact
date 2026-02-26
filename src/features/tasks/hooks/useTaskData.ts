@@ -97,8 +97,16 @@ export const useTaskData = (taskId: string) => {
       setTask(response);
 
       // Sync updated task to Zustand store so the task list reflects changes
-      const status = response.status as 'new' | 'in_progress' | 'review' | 'done';
-      useTaskStore.getState().mergeTasks([response], status);
+      const store = useTaskStore.getState();
+      const newStatus = response.status as 'new' | 'in_progress' | 'review' | 'done';
+      const allStatuses: ('new' | 'in_progress' | 'review' | 'done')[] = ['new', 'in_progress', 'review', 'done'];
+      // Remove from other status tabs (handles status changes between tabs)
+      for (const s of allStatuses) {
+        if (s !== newStatus) {
+          store.removeTasks([response.id], s);
+        }
+      }
+      store.mergeTasks([response], newStatus);
 
       // Always load subtasks to ensure fresh data
       await loadSubtasks(taskIdNum);

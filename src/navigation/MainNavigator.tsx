@@ -14,6 +14,7 @@ import { useChatStore } from '@shared/store/chatStore';
 import { ChatSelectionProvider } from '@shared/contexts/ChatSelectionContext';
 import { useDesktopNavigation } from '@shared/contexts/DesktopNavigationContext';
 import { MainTabParamList } from './types';
+import { ErrorBoundary } from '@shared/components/common/ErrorBoundary';
 
 // ChatNavigator загружается сразу (начальный экран)
 import ChatNavigator from './ChatNavigator';
@@ -127,13 +128,15 @@ const MainNavigatorContent: React.FC = () => {
           totalUnreadCount={totalUnreadCount}
         />
         <View style={styles.desktopContent}>
-          <Suspense fallback={
-            <View style={styles.lazyFallback}>
-              <ActivityIndicator size="large" color={theme.primary} />
-            </View>
-          }>
-            {renderContent()}
-          </Suspense>
+          <ErrorBoundary key={currentActiveTab}>
+            <Suspense fallback={
+              <View style={styles.lazyFallback}>
+                <ActivityIndicator size="large" color={theme.primary} />
+              </View>
+            }>
+              {renderContent()}
+            </Suspense>
+          </ErrorBoundary>
         </View>
       </View>
     );
