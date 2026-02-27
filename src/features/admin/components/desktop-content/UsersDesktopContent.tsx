@@ -249,6 +249,36 @@ const UsersDesktopContent: React.FC = () => {
     }
   };
 
+  const handleToggleUserHidden = async (targetUser: User) => {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      showConfirm(
+        targetUser.is_hidden ? 'Показать пользователя' : 'Скрыть пользователя',
+        `Вы уверены, что хотите ${targetUser.is_hidden ? 'показать' : 'скрыть'} пользователя "${targetUser.name}"?${!targetUser.is_hidden ? '\nСкрытый пользователь не будет виден в списках для обычных сотрудников.' : ''}`,
+        () => resolve(true),
+        () => resolve(false),
+        {
+          confirmText: targetUser.is_hidden ? 'Показать' : 'Скрыть',
+          cancelText: 'Отмена',
+          destructive: !targetUser.is_hidden,
+        }
+      );
+    });
+    if (!confirmed) return;
+
+    try {
+      if (targetUser.is_hidden) {
+        await userApi.unhideUser(targetUser.id);
+      } else {
+        await userApi.hideUser(targetUser.id);
+      }
+      showSuccess(`Пользователь ${targetUser.is_hidden ? 'показан' : 'скрыт'}`);
+      loadUsers();
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.error || error?.message || 'Не удалось изменить видимость пользователя';
+      showError(errorMessage);
+    }
+  };
+
   // Client-side filtering as fallback
   const filteredUsers = useMemo(() => {
     let result = users;
@@ -301,6 +331,11 @@ const UsersDesktopContent: React.FC = () => {
               {!u.is_active && (
                 <View style={styles.inactiveBadge}>
                   <Text style={styles.inactiveBadgeText}>Неактивен</Text>
+                </View>
+              )}
+              {u.is_hidden && (
+                <View style={styles.hiddenBadge}>
+                  <Text style={styles.hiddenBadgeText}>Скрыт</Text>
                 </View>
               )}
             </View>
@@ -359,7 +394,7 @@ const UsersDesktopContent: React.FC = () => {
     {
       key: 'actions',
       title: 'Действия',
-      width: 80,
+      width: 110,
       render: (u, t) => (
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
           {(u.role === 'employee' || u.role === 'department_head') && (
@@ -385,6 +420,21 @@ const UsersDesktopContent: React.FC = () => {
                 name={u.is_active ? 'close-circle-outline' : 'checkmark-circle-outline'}
                 size={14}
                 color={u.is_active ? '#EF4444' : '#10B981'}
+              />
+            </TouchableOpacity>
+          )}
+          {(u.role === 'employee' || u.role === 'department_head') && (
+            <TouchableOpacity
+              style={[styles.tableActionButton, { backgroundColor: t.backgroundTertiary }]}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleToggleUserHidden(u);
+              }}
+            >
+              <Ionicons
+                name={u.is_hidden ? 'eye-outline' : 'eye-off-outline'}
+                size={14}
+                color={u.is_hidden ? '#10B981' : '#F59E0B'}
               />
             </TouchableOpacity>
           )}
@@ -483,6 +533,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#EF4444',
+  },
+  hiddenBadge: {
+    backgroundColor: 'rgba(217, 119, 6, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  hiddenBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#D97706',
   },
   roleBadge: {
     alignSelf: 'flex-start',

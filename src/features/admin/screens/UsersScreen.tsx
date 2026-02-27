@@ -189,6 +189,36 @@ const UsersScreen: React.FC = () => {
     }
   };
 
+  const handleToggleUserHidden = async (user: User) => {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      showConfirm(
+        user.is_hidden ? 'Показать пользователя' : 'Скрыть пользователя',
+        `Вы уверены, что хотите ${user.is_hidden ? 'показать' : 'скрыть'} пользователя "${user.name}"?${!user.is_hidden ? '\nСкрытый пользователь не будет виден в списках для обычных сотрудников.' : ''}`,
+        () => resolve(true),
+        () => resolve(false),
+        {
+          confirmText: user.is_hidden ? 'Показать' : 'Скрыть',
+          cancelText: 'Отмена',
+          destructive: !user.is_hidden,
+        }
+      );
+    });
+    if (!confirmed) return;
+
+    try {
+      if (user.is_hidden) {
+        await userApi.unhideUser(user.id);
+      } else {
+        await userApi.hideUser(user.id);
+      }
+      showSuccess(`Пользователь ${user.is_hidden ? 'показан' : 'скрыт'}`);
+      loadUsers();
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.error || error?.message || 'Не удалось изменить видимость пользователя';
+      showError(errorMessage);
+    }
+  };
+
   // Backend now handles all filtering and search
   const filteredUsers = users;
 
@@ -314,6 +344,11 @@ const UsersScreen: React.FC = () => {
                           <Text style={styles.inactiveBadgeText}>Неактивен</Text>
                         </View>
                       )}
+                      {user.is_hidden && (
+                        <View style={styles.hiddenBadge}>
+                          <Text style={styles.hiddenBadgeText}>Скрыт</Text>
+                        </View>
+                      )}
                     </View>
                     <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{user.email}</Text>
                     {user.position && (
@@ -354,6 +389,19 @@ const UsersScreen: React.FC = () => {
                           name={user.is_active ? 'close-circle-outline' : 'checkmark-circle-outline'}
                           size={18}
                           color={user.is_active ? '#EF4444' : '#10B981'}
+                        />
+                      </TouchableOpacity>
+                    )}
+                    {/* Hide/unhide button for employee and department_head */}
+                    {(user.role === 'employee' || user.role === 'department_head') && (
+                      <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: theme.backgroundSecondary }]}
+                        onPress={() => handleToggleUserHidden(user)}
+                      >
+                        <Ionicons
+                          name={user.is_hidden ? 'eye-outline' : 'eye-off-outline'}
+                          size={18}
+                          color={user.is_hidden ? '#10B981' : '#F59E0B'}
                         />
                       </TouchableOpacity>
                     )}
@@ -491,6 +539,17 @@ const styles = StyleSheet.create({
   inactiveBadgeText: {
     fontSize: 11,
     color: '#DC2626',
+    fontWeight: '500',
+  },
+  hiddenBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  hiddenBadgeText: {
+    fontSize: 11,
+    color: '#D97706',
     fontWeight: '500',
   },
   userEmail: {

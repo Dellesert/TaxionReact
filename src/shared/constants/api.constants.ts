@@ -83,6 +83,8 @@ export const API_ENDPOINTS = {
     UPDATE_USER_STATUS: (id: number) => `/admin/users/${id}/status`,
     ACTIVATE: (id: number) => `/admin/users/${id}/activate`,
     DEACTIVATE: (id: number) => `/admin/users/${id}/deactivate`,
+    HIDE: (id: number) => `/admin/users/${id}/hide`,
+    UNHIDE: (id: number) => `/admin/users/${id}/unhide`,
   },
 
   // Department
