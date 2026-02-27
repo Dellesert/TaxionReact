@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, endOfDay, isPast as isDatePast } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { AbsenceTypeIcon } from './AbsenceTypeIcon';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -26,6 +26,7 @@ export const AbsenceCard: React.FC<AbsenceCardProps> = ({
 }) => {
   const { theme } = useTheme();
   const typeColor = ABSENCE_TYPE_COLORS[absence.type];
+  const isPast = isDatePast(endOfDay(parseISO(absence.end_date)));
 
   const formatDate = (dateString: string) => {
     try {
@@ -65,6 +66,7 @@ export const AbsenceCard: React.FC<AbsenceCardProps> = ({
         {
           backgroundColor: theme.card,
         },
+        isPast && { opacity: 0.45 },
         style,
       ]}
       onPress={onPress}
