@@ -688,7 +688,7 @@ const TaskDetailScreen: React.FC = () => {
                   activeTab === 'comments' && !isDelegatedByMe && task?.status !== 'done'
                     ? insets.bottom + 170
                     : activeTab === 'overview'
-                    ? insets.bottom + 16
+                    ? insets.bottom + 100
                     : insets.bottom + 160,
               }}
               showsVerticalScrollIndicator={false}

@@ -61,6 +61,7 @@ export const TaskOverviewTab: React.FC<TaskOverviewTabProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isGroupListExpanded, setIsGroupListExpanded] = useState(false);
 
   const priorityConfig = task.priority ? getPriorityConfig(task.priority) : null;
 
@@ -317,7 +318,10 @@ export const TaskOverviewTab: React.FC<TaskOverviewTabProps> = ({
 
               {/* Assignee List */}
               <View style={styles.groupAssigneeList}>
-                {task.group_assignees!.map((assignee: GroupAssigneeInfo) => (
+                {(isGroupListExpanded
+                  ? task.group_assignees!
+                  : task.group_assignees!.slice(0, 5)
+                ).map((assignee: GroupAssigneeInfo) => (
                   <TouchableOpacity
                     key={assignee.user_id}
                     style={[styles.groupAssigneeRow, { borderBottomColor: theme.border }]}
@@ -362,6 +366,24 @@ export const TaskOverviewTab: React.FC<TaskOverviewTabProps> = ({
                     </View>
                   </TouchableOpacity>
                 ))}
+                {task.group_assignees!.length > 5 && (
+                  <TouchableOpacity
+                    style={styles.groupExpandButton}
+                    onPress={() => setIsGroupListExpanded(!isGroupListExpanded)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={isGroupListExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={18}
+                      color={isDark ? '#c4b5fd' : '#8B5CF6'}
+                    />
+                    <Text style={[styles.groupExpandButtonText, { color: isDark ? '#c4b5fd' : '#8B5CF6' }]}>
+                      {isGroupListExpanded
+                        ? 'Скрыть'
+                        : `Показать ещё ${task.group_assignees!.length - 5}`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </>
@@ -774,6 +796,17 @@ const styles = StyleSheet.create({
   },
   groupAssigneeStatusText: {
     fontSize: 12,
+    fontWeight: '600',
+  },
+  groupExpandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+  },
+  groupExpandButtonText: {
+    fontSize: 14,
     fontWeight: '600',
   },
 
