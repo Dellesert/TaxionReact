@@ -76,6 +76,8 @@ export interface DataTableProps<T> {
   renderAfterRows?: React.ReactNode;
   /** Override the outer card container style */
   containerStyle?: ViewStyle;
+  /** Custom row number renderer. Overrides default sequential numbering. */
+  getRowNumber?: (item: T, index: number) => string | number;
   /** Server-side pagination configuration. When provided, pagination controls
    *  are rendered in the footer and row numbering accounts for page offset. */
   pagination?: DataTablePaginationProps;
@@ -91,7 +93,7 @@ interface SortState {
 
 interface DataTableRowProps<T> {
   item: T;
-  rowNumber: number;
+  rowNumber: string | number;
   columns: DataTableColumn<T>[];
   onPress?: (item: T) => void;
   rowStyle?: ViewStyle;
@@ -310,6 +312,7 @@ export function DataTable<T>({
   emptyComponent,
   headerContent,
   getRowStyle,
+  getRowNumber,
   refreshControl,
   renderAfterRows,
   containerStyle,
@@ -457,11 +460,16 @@ export function DataTable<T>({
             {sortedData.map((item, index) => {
               const key = keyExtractor(item, index);
               const rowStyle = getRowStyle?.(item);
+              const rowNumber = getRowNumber
+                ? getRowNumber(item, index)
+                : pagination
+                  ? (pagination.currentPage - 1) * pagination.pageSize + index + 1
+                  : index + 1;
               return (
                 <DataTableRow<T>
                   key={key}
                   item={item}
-                  rowNumber={pagination ? (pagination.currentPage - 1) * pagination.pageSize + index + 1 : index + 1}
+                  rowNumber={rowNumber}
                   columns={columns}
                   onPress={onRowPress}
                   rowStyle={rowStyle}

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { Task } from '../../types/task.types';
 import type { TasksByStatus, TotalsByStatus, LoadingByStatus, StatusTab } from '../../hooks/useTaskListData';
 import { useAuthStore } from '@shared/store/authStore';
+import { useTheme } from '@shared/hooks/useTheme';
 import { useTaskPermissions } from '../../hooks/useTaskPermissions';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useNotification } from '@shared/contexts/NotificationContext';
@@ -22,6 +23,7 @@ interface TaskTableViewProps {
   loading: LoadingByStatus;
   searchQuery: string;
   advancedFilters: AdvancedTaskFilters;
+  expandAllSubtasks?: boolean;
   onTaskPress: (task: Task) => void;
   onTaskUpdated?: () => void;
 }
@@ -30,6 +32,8 @@ type TaskRow = {
   task: Task;
   level: number;
   isSubtask: boolean;
+  isLastSubtask: boolean;
+  parentTaskId?: number;
 };
 
 export const TaskTableView: React.FC<TaskTableViewProps> = ({
@@ -38,10 +42,12 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   loading,
   searchQuery,
   advancedFilters,
+  expandAllSubtasks = false,
   onTaskPress,
   onTaskUpdated,
 }) => {
   const { user } = useAuthStore();
+  const { theme, isDark } = useTheme();
   const { showConfirm } = useActionModal();
   const { showSuccess, showError } = useNotification();
 
@@ -64,36 +70,90 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   const [showDelegateModal, setShowDelegateModal] = useState(false);
   const [showSubtaskModal, setShowSubtaskModal] = useState(false);
 
-  // Combine all tasks from all statuses and apply client-side filters
-  const allTasks = React.useMemo(() => {
+  // Combine all tasks, separate top-level from subtasks
+  const { topLevelTasks, orphanSubtasks } = React.useMemo(() => {
     const combined: Task[] = [];
     STATUS_TABS_ORDER.forEach(status => {
       combined.push(...tasks[status]);
     });
-    return applyClientSideFilters(combined, advancedFilters);
+    const filtered = applyClientSideFilters(combined, advancedFilters);
+
+    // Build set of all task IDs in current result
+    const allTaskIds = new Set(filtered.map(t => t.id));
+
+    const topLevel: Task[] = [];
+    const orphans: Task[] = [];
+
+    for (const task of filtered) {
+      if (!task.parent_task_id) {
+        // Top-level task (no parent)
+        topLevel.push(task);
+      } else if (!allTaskIds.has(task.parent_task_id)) {
+        // Orphan subtask: parent not in current list
+        orphans.push(task);
+      }
+      // Skip subtasks whose parent IS in the list — they appear via parent.subtasks
+    }
+
+    return { topLevelTasks: topLevel, orphanSubtasks: orphans };
   }, [tasks, advancedFilters]);
+
+  // Sync expandedTaskIds with expandAllSubtasks prop
+  useEffect(() => {
+    if (expandAllSubtasks) {
+      const idsToExpand = new Set<number>();
+      topLevelTasks.forEach(task => {
+        if ((task.subtasks && task.subtasks.length > 0) || (task.subtask_count && task.subtask_count > 0)) {
+          idsToExpand.add(task.id);
+        }
+      });
+      setExpandedTaskIds(idsToExpand);
+    } else {
+      setExpandedTaskIds(new Set());
+    }
+  }, [expandAllSubtasks, topLevelTasks]);
 
   // Build hierarchical list with subtasks
   const tasksWithSubtasks = React.useMemo(() => {
     const result: TaskRow[] = [];
 
-    const addTaskWithSubtasks = (task: Task, level: number) => {
-      result.push({ task, level, isSubtask: level > 0 });
+    const addTaskWithSubtasks = (task: Task, level: number, siblings?: Task[]) => {
+      const isLast = siblings ? siblings[siblings.length - 1]?.id === task.id : false;
+
+      result.push({
+        task,
+        level,
+        isSubtask: level > 0,
+        isLastSubtask: level > 0 && isLast,
+        parentTaskId: task.parent_task_id,
+      });
 
       if (expandedTaskIds.has(task.id)) {
         const taskSubtasks = task.subtasks || [];
         taskSubtasks.forEach(subtask => {
-          addTaskWithSubtasks(subtask, level + 1);
+          addTaskWithSubtasks(subtask, level + 1, taskSubtasks);
         });
       }
     };
 
-    allTasks.forEach(task => {
+    // Top-level tasks with expandable subtasks
+    topLevelTasks.forEach(task => {
       addTaskWithSubtasks(task, 0);
     });
 
+    // Orphan subtasks (parent not visible) — shown at top level with indicator
+    orphanSubtasks.forEach(task => {
+      result.push({
+        task,
+        level: 0,
+        isSubtask: false,
+        isLastSubtask: false,
+        parentTaskId: task.parent_task_id,
+      });
+    });
+
     return result;
-  }, [allTasks, expandedTaskIds]);
+  }, [topLevelTasks, orphanSubtasks, expandedTaskIds]);
 
   // Get permissions for selected task
   const permissions = useTaskPermissions(selectedTask);
@@ -296,6 +356,9 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
     return tasksWithSubtasks.slice(start, start + TASK_PAGE_SIZE);
   }, [tasksWithSubtasks, currentPage]);
 
+  // Disable DataTable sorting when subtasks are expanded to preserve hierarchy
+  const hasExpandedTasks = expandedTaskIds.size > 0;
+
   // Column definitions
   const columns: DataTableColumn<TaskRow>[] = useMemo(() => [
     {
@@ -303,13 +366,32 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       title: 'Название',
       flex: 3,
       minWidth: 250,
-      sortable: true,
+      sortable: !hasExpandedTasks,
       sortValue: (row) => row.task.title.toLowerCase(),
-      render: ({ task, isSubtask }, theme) => {
-        const hasSubtasks = (task.subtasks?.length || 0) > 0;
+      render: ({ task, isSubtask, isLastSubtask, parentTaskId }, thm) => {
+        const hasSubtasks = (task.subtasks?.length || 0) > 0 || (task.subtask_count || 0) > 0;
         const isExpanded = expandedTaskIds.has(task.id);
+        const subtaskCount = task.subtasks?.length || task.subtask_count || 0;
+        const isOrphan = !isSubtask && !!parentTaskId;
+
         return (
           <View style={localStyles.titleRow}>
+            {/* Tree connector for subtask rows */}
+            {isSubtask && (
+              <View style={localStyles.treeConnectorContainer}>
+                <View style={[
+                  localStyles.treeVerticalLine,
+                  { backgroundColor: thm.border },
+                  isLastSubtask && localStyles.treeVerticalLineShort,
+                ]} />
+                <View style={[
+                  localStyles.treeHorizontalLine,
+                  { backgroundColor: thm.border },
+                ]} />
+              </View>
+            )}
+
+            {/* Expand/collapse button for parent tasks with subtasks */}
             {hasSubtasks && !isSubtask && (
               <TouchableOpacity
                 style={localStyles.expandButton}
@@ -321,16 +403,54 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                 <Ionicons
                   name={isExpanded ? 'chevron-down' : 'chevron-forward'}
                   size={14}
-                  color={theme.text}
+                  color={thm.text}
                 />
               </TouchableOpacity>
             )}
-            {isSubtask && (
-              <Ionicons name="return-down-forward-outline" size={12} color={theme.textSecondary} style={{ marginRight: 4 }} />
+
+            {/* Spacer for tasks without subtasks (alignment) */}
+            {!hasSubtasks && !isSubtask && !isOrphan && (
+              <View style={{ width: 20, marginRight: 4 }} />
             )}
-            <Text style={[localStyles.cellText, { color: theme.text, fontWeight: isSubtask ? '400' : '500' }]} numberOfLines={1}>
+
+            {/* Orphan subtask indicator */}
+            {isOrphan && (
+              <View style={[localStyles.orphanBadge, { backgroundColor: thm.backgroundTertiary }]}>
+                <Ionicons name="git-branch-outline" size={12} color={thm.textSecondary} />
+              </View>
+            )}
+
+            {/* Task title */}
+            <Text
+              style={[
+                localStyles.cellText,
+                {
+                  color: thm.text,
+                  fontWeight: isSubtask ? '400' : '500',
+                  fontSize: isSubtask ? 12 : 13,
+                },
+              ]}
+              numberOfLines={1}
+            >
               {task.title}
             </Text>
+
+            {/* Subtask count badge next to parent title */}
+            {hasSubtasks && !isSubtask && subtaskCount > 0 && (
+              <View style={[
+                localStyles.subtaskCountBadge,
+                {
+                  backgroundColor: isDark
+                    ? 'rgba(255, 255, 255, 0.08)'
+                    : 'rgba(0, 0, 0, 0.05)',
+                },
+              ]}>
+                <Ionicons name="git-branch-outline" size={10} color={thm.textSecondary} />
+                <Text style={[localStyles.subtaskCountText, { color: thm.textSecondary }]}>
+                  {subtaskCount}
+                </Text>
+              </View>
+            )}
           </View>
         );
       },
@@ -340,7 +460,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       title: 'Статус',
       flex: 1.5,
       minWidth: 130,
-      sortable: true,
+      sortable: !hasExpandedTasks,
       sortValue: (row) => {
         const order: Record<string, number> = { new: 0, in_progress: 1, review: 2, done: 3, cancelled: 4 };
         return order[row.task.status] ?? 5;
@@ -356,15 +476,15 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       title: 'Приоритет',
       flex: 1,
       minWidth: 100,
-      sortable: true,
+      sortable: !hasExpandedTasks,
       sortValue: (row) => {
         const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
         return order[row.task.priority] ?? 4;
       },
-      render: ({ task }, theme) => (
+      render: ({ task }, thm) => (
         <View style={localStyles.priorityContainer}>
           <View style={[localStyles.priorityDot, { backgroundColor: getPriorityColor(task.priority) }]} />
-          <Text style={[localStyles.cellText, { color: theme.text }]}>
+          <Text style={[localStyles.cellText, { color: thm.text }]}>
             {getPriorityLabel(task.priority)}
           </Text>
         </View>
@@ -375,21 +495,21 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       title: 'Дедлайн',
       flex: 1,
       minWidth: 100,
-      sortable: true,
+      sortable: !hasExpandedTasks,
       sortValue: (row) => row.task.due_date || 'zzzz',
-      render: ({ task }, theme) => {
+      render: ({ task }, thm) => {
         if (task.due_date) {
           return (
             <View style={localStyles.deadlineContainer}>
               <Ionicons
                 name="calendar-outline"
                 size={14}
-                color={getDeadlineColor(getDeadlineStatus(task.due_date)) || theme.textSecondary}
+                color={getDeadlineColor(getDeadlineStatus(task.due_date)) || thm.textSecondary}
               />
               <Text style={[
                 localStyles.cellText,
                 {
-                  color: getDeadlineColor(getDeadlineStatus(task.due_date)) || theme.text,
+                  color: getDeadlineColor(getDeadlineStatus(task.due_date)) || thm.text,
                   fontWeight: getDeadlineStatus(task.due_date) === 'overdue' ? '600' : '400'
                 }
               ]}>
@@ -398,7 +518,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
             </View>
           );
         }
-        return <Text style={[localStyles.cellText, { color: theme.textSecondary }]}>—</Text>;
+        return <Text style={[localStyles.cellText, { color: thm.textSecondary }]}>—</Text>;
       },
     },
     {
@@ -406,10 +526,10 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       title: 'Создано',
       flex: 1,
       minWidth: 100,
-      sortable: true,
+      sortable: !hasExpandedTasks,
       sortValue: (row) => row.task.created_at || '',
-      render: ({ task }, theme) => (
-        <Text style={[localStyles.cellText, { color: theme.text }]}>
+      render: ({ task }, thm) => (
+        <Text style={[localStyles.cellText, { color: thm.text }]}>
           {formatDate(task.created_at)}
         </Text>
       ),
@@ -419,16 +539,16 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       title: 'Автор',
       flex: 1,
       minWidth: 100,
-      sortable: true,
+      sortable: !hasExpandedTasks,
       sortValue: (row) => row.task.creator?.name?.toLowerCase() || '',
-      render: ({ task }, theme) => (
+      render: ({ task }, thm) => (
         <View style={localStyles.creatorContainer}>
           <Avatar
             name={task.creator?.name || '?'}
             imageUrl={task.creator?.avatar}
             size={22}
           />
-          <Text style={[localStyles.cellText, { color: theme.text }]} numberOfLines={1}>
+          <Text style={[localStyles.cellText, { color: thm.text }]} numberOfLines={1}>
             {user && task.creator?.id === user.id ? 'Я' : (task.creator?.name?.split(' ')[0] || '—')}
           </Text>
         </View>
@@ -438,20 +558,20 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       key: 'actions',
       title: 'Действия',
       width: 80,
-      render: ({ task }, theme) => {
+      render: ({ task }, thm) => {
         if (!hasAvailableActions(task)) return null;
         return (
           <TouchableOpacity
             ref={(ref: any) => { menuButtonRefs.current[task.id] = ref; }}
-            style={[localStyles.actionButton, { backgroundColor: theme.backgroundSecondary }]}
+            style={[localStyles.actionButton, { backgroundColor: thm.backgroundSecondary }]}
             onPress={(e) => handleOpenActionMenu(task, e)}
           >
-            <Ionicons name="ellipsis-horizontal" size={18} color={theme.text} />
+            <Ionicons name="ellipsis-horizontal" size={18} color={thm.text} />
           </TouchableOpacity>
         );
       },
     },
-  ], [expandedTaskIds, handleToggleExpand, user, hasAvailableActions, handleOpenActionMenu]);
+  ], [expandedTaskIds, hasExpandedTasks, handleToggleExpand, user, hasAvailableActions, handleOpenActionMenu, isDark]);
 
   return (
     <View style={localStyles.container}>
@@ -464,7 +584,32 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
         emptyIcon={searchQuery ? 'search-outline' : 'document-text-outline'}
         emptyTitle={searchQuery ? 'Задачи не найдены' : 'Нет задач'}
         emptySubtitle={searchQuery ? 'Попробуйте изменить параметры поиска' : user?.role !== 'employee' ? 'Создайте новую задачу для начала работы' : 'Задачи пока не назначены'}
-        getRowStyle={(row) => row.isSubtask ? { paddingLeft: 32 } : undefined}
+        getRowStyle={(row) => {
+          if (row.isSubtask) {
+            return {
+              backgroundColor: isDark
+                ? 'rgba(255, 255, 255, 0.02)'
+                : 'rgba(0, 0, 0, 0.015)',
+              paddingLeft: 16 + (row.level * 24),
+            };
+          }
+          if (row.parentTaskId) {
+            return {
+              borderLeftWidth: 3,
+              borderLeftColor: isDark ? '#4B5563' : '#D1D5DB',
+            };
+          }
+          return undefined;
+        }}
+        getRowNumber={(row, index) => {
+          if (row.isSubtask) return '';
+          // Count parent rows up to this index
+          let parentCount = 0;
+          for (let i = 0; i <= index; i++) {
+            if (!paginatedTasks[i]?.isSubtask) parentCount++;
+          }
+          return (currentPage - 1) * TASK_PAGE_SIZE + parentCount;
+        }}
         pagination={{
           currentPage,
           totalItems: totalTaskItems,
@@ -594,5 +739,55 @@ const localStyles = StyleSheet.create({
     ...(Platform.OS === 'web' && {
       cursor: 'pointer',
     }),
+  },
+  // Tree connector styles
+  treeConnectorContainer: {
+    width: 20,
+    height: 36,
+    position: 'relative',
+    marginRight: 4,
+  },
+  treeVerticalLine: {
+    position: 'absolute',
+    left: 8,
+    top: 0,
+    bottom: 0,
+    width: 1.5,
+    opacity: 0.4,
+  },
+  treeVerticalLineShort: {
+    bottom: 18,
+  },
+  treeHorizontalLine: {
+    position: 'absolute',
+    left: 8,
+    top: 18,
+    width: 10,
+    height: 1.5,
+    opacity: 0.4,
+  },
+  // Subtask count badge
+  subtaskCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+    flexShrink: 0,
+  },
+  subtaskCountText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  // Orphan subtask indicator
+  orphanBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
   },
 });

@@ -148,6 +148,7 @@ export const TaskViewSwitcher: React.FC<TaskViewSwitcherProps> = (props) => {
                 loading={props.loading}
                 searchQuery={props.searchQuery}
                 advancedFilters={props.advancedFilters}
+                expandAllSubtasks={props.expandAllSubtasks}
                 onTaskPress={props.onTaskPress}
                 onTaskUpdated={props.onTaskUpdated}
               />
