@@ -687,6 +687,8 @@ const TaskDetailScreen: React.FC = () => {
                 paddingBottom:
                   activeTab === 'comments' && !isDelegatedByMe && task?.status !== 'done'
                     ? insets.bottom + 170
+                    : activeTab === 'overview'
+                    ? insets.bottom + 16
                     : insets.bottom + 160,
               }}
               showsVerticalScrollIndicator={false}
@@ -703,6 +705,10 @@ const TaskDetailScreen: React.FC = () => {
                   permissions={permissions}
                   currentUserId={user?.id}
                   isDelegatedByMe={isDelegatedByMe}
+                  isCreator={isCreator}
+                  allSubtasksCompleted={allSubtasksCompleted}
+                  allChecklistItemsCompleted={allChecklistItemsCompleted}
+                  canChangeStatus={permissions.can_change_status}
                   onChecklistChanged={() => {
                     loadTaskSilently();
                     loadActivitiesSilently();
@@ -717,6 +723,12 @@ const TaskDetailScreen: React.FC = () => {
                   }}
                   onCreateSubtaskPress={() => setShowSubtaskModal(true)}
                   onUserPress={handleUserPress}
+                  onTaskAction={handleTaskAction}
+                  onStatusChange={handleStatusChange}
+                  isGroupTask={isGroupTask}
+                  isGroupAssigneeDone={isGroupAssigneeDone}
+                  onMarkGroupDone={handleMarkGroupDone}
+                  onUnmarkGroupDone={handleUnmarkGroupDone}
                 />
               )}
 
@@ -764,8 +776,8 @@ const TaskDetailScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Fixed Action Buttons - только для мобильной версии */}
-        {!isDesktop && task && (
+        {/* Fixed Action Buttons - только для мобильной версии, только для комментариев (кнопка статуса теперь внутри карточки на overview) */}
+        {!isDesktop && task && activeTab === 'comments' && (
           <TaskActionButtons
             task={task}
             activeTab={activeTab}

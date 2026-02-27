@@ -47,6 +47,7 @@ interface TaskChecklistsViewProps {
   canEdit?: boolean; // Создатель и делегировавший могут создавать/редактировать/удалять чек-листы
   canToggleOnly?: boolean; // Исполнители могут только чекать/анчекать пункты
   readOnly?: boolean; // Только просмотр, никаких изменений
+  flat?: boolean; // Убирает карточный стиль (border, shadow, borderRadius) при встраивании в общую карточку
 }
 
 // Simple Progress Indicator Component (no SVG)
@@ -237,6 +238,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
   canEdit = true,
   canToggleOnly = false,
   readOnly = false,
+  flat = false,
 }) => {
   const { theme, isDark } = useTheme();
   const { user } = useAuthStore();
@@ -405,7 +407,7 @@ export const TaskChecklistsView: React.FC<TaskChecklistsViewProps> = ({
     const isExpanded = expandedChecklists.has(checklist.id);
 
     return (
-      <View style={[styles.checklistContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+      <View style={[styles.checklistContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }, flat && styles.checklistContainerFlat]}>
         {/* Checklist Header */}
         <TouchableOpacity
           style={[
@@ -623,6 +625,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 3,
     elevation: 2,
+  },
+  checklistContainerFlat: {
+    borderWidth: 0,
+    borderRadius: 0,
+    marginBottom: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+    paddingHorizontal: 0,
   },
   checklistHeader: {
     flexDirection: 'row',

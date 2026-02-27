@@ -304,9 +304,75 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   const renderDelegationChain = () => {
     const avatarSize = isKanbanMode ? 16 : 18;
     const textStyle = isKanbanMode ? styles.kanbanDelegationText : styles.delegationText;
+    const isGroupTask = task.task_type === 'group';
+    const MAX_VISIBLE_IN_CHAIN = 3;
+
+    // Compact rendering for group tasks or long chains
+    const renderCompactChain = (
+      firstUser: { name: string; id?: number; avatar?: string },
+      restUsers: { name: string; id?: number; avatar?: string }[],
+    ) => {
+      const visibleAvatars = restUsers.slice(0, 3);
+      const hiddenCount = restUsers.length - visibleAvatars.length;
+
+      return (
+        <View style={styles.delegationChain}>
+          <View style={styles.avatarChain}>
+            {/* First user (delegator/creator) */}
+            <View style={styles.chainItem}>
+              <Avatar
+                name={firstUser.name}
+                imageUrl={firstUser.avatar}
+                size={avatarSize}
+              />
+              <Text style={[textStyle, { color: theme.textSecondary }]} numberOfLines={1}>
+                {formatUserName(firstUser.name, firstUser.id)}
+              </Text>
+              <Text style={[styles.chainArrow, isKanbanMode && styles.kanbanChainArrow]}>→</Text>
+            </View>
+            {/* Stacked avatars of assignees */}
+            <View style={styles.stackedAvatarsContainer}>
+              {visibleAvatars.map((user, index) => (
+                <View
+                  key={user.id || index}
+                  style={[
+                    styles.stackedAvatar,
+                    { marginLeft: index === 0 ? 0 : -(avatarSize * 0.35) },
+                    { zIndex: visibleAvatars.length - index },
+                    { borderColor: theme.backgroundSecondary },
+                  ]}
+                >
+                  <Avatar
+                    name={user.name}
+                    imageUrl={user.avatar}
+                    size={avatarSize}
+                  />
+                </View>
+              ))}
+              {hiddenCount > 0 && (
+                <View style={[
+                  styles.stackedCountBadge,
+                  { marginLeft: -(avatarSize * 0.2) },
+                  { borderColor: theme.backgroundSecondary },
+                ]}>
+                  <Text style={styles.stackedCountText}>+{hiddenCount}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+      );
+    };
 
     // Priority: use delegation_chain if available
     if (task.delegation_chain && task.delegation_chain.length > 0) {
+      // For group tasks or long chains, show compact version
+      if ((isGroupTask || task.delegation_chain.length > MAX_VISIBLE_IN_CHAIN) && task.delegation_chain.length > 2) {
+        const firstUser = task.delegation_chain[0];
+        const restUsers = task.delegation_chain.slice(1);
+        return renderCompactChain(firstUser, restUsers);
+      }
+
       return (
         <View style={styles.delegationChain}>
           <View style={styles.avatarChain}>
@@ -362,6 +428,11 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     }
 
     if (chain.length > 1) {
+      // For group tasks or long chains, show compact version
+      if ((isGroupTask || chain.length > MAX_VISIBLE_IN_CHAIN) && chain.length > 2) {
+        return renderCompactChain(chain[0], chain.slice(1));
+      }
+
       return (
         <View style={styles.delegationChain}>
           <View style={styles.avatarChain}>
@@ -1109,6 +1180,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     flexShrink: 1,
     maxWidth: 100,
+  },
+  stackedAvatarsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stackedAvatar: {
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    borderRadius: 100,
+  },
+  stackedCountBadge: {
+    backgroundColor: '#e5e7eb',
+    borderRadius: 100,
+    height: 18,
+    minWidth: 18,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    zIndex: 0,
+  },
+  stackedCountText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#6b7280',
   },
   attachmentBadge: {
     flexDirection: 'row',

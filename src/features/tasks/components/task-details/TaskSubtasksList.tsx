@@ -167,6 +167,7 @@ interface TaskSubtasksListProps {
   onSubtaskCreated?: () => void;
   onCreateSubtaskPress?: () => void;
   readOnly?: boolean; // If true, hide edit/delete buttons
+  flat?: boolean; // Убирает карточный стиль при встраивании в общую карточку
 }
 
 // Status colors
@@ -216,6 +217,7 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
   onSubtaskCreated,
   onCreateSubtaskPress,
   readOnly = false,
+  flat = false,
 }) => {
   const { theme, isDark } = useTheme();
   const { showError } = useNotification();
@@ -241,6 +243,15 @@ export const TaskSubtasksList: React.FC<TaskSubtasksListProps> = ({
       shadowOpacity: 0.05,
       shadowRadius: 3,
       elevation: 2,
+      ...(flat ? {
+        borderWidth: 0,
+        borderRadius: 0,
+        marginBottom: 0,
+        shadowOpacity: 0,
+        elevation: 0,
+        paddingHorizontal: 0,
+        backgroundColor: 'transparent',
+      } : {}),
     },
     header: {
       flexDirection: 'row',
