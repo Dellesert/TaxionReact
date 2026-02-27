@@ -57,12 +57,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Main: {
         screens: {
           Home: 'home',
-          Chats: {
-            screens: {
-              ChatList: 'chats',
-              Chat: 'chat/:chatId',
-            },
-          },
+          Chats: 'chats',
           Tasks: 'tasks',
           Calendar: 'calendar',
           Polls: 'polls',

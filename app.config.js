@@ -88,8 +88,6 @@ module.exports = {
       "./plugins/withAndroidKeystore.js",
       "./plugins/withAndroidManifestFix.js",
       "./plugins/withAndroidSigningConfig.js",
-      "./plugins/withNotificationServiceAndroid.js",
-      "./plugins/withNotificationServiceExtension.js",
       [
         "./plugins/withAndroidPasskey.js",
         {

@@ -303,10 +303,7 @@ class PushNotificationService {
       return;
     }
 
-    // Для Android: push-уведомления обрабатываются нативным NotificationService.kt
-    // (data-only FCM сообщения с аватаром отправителя как large icon).
-    // Навигация при тапе по уведомлению работает через deep links (tachyon://).
-    // Expo listeners ниже — fallback для локальных уведомлений.
+    // Для Android используем стандартные Expo Notifications listeners
 
     // Listener для входящих уведомлений (когда приложение открыто)
     this.notificationListener = Notifications.addNotificationReceivedListener(
@@ -340,12 +337,9 @@ class PushNotificationService {
         const { title, body } = payload.notification;
         if (title) {
           try {
-            // Используем аватар отправителя как иконку (если есть)
-            const senderAvatar = payload.data?.sender_avatar;
             const notification = new Notification(title, {
               body: body || '',
-              icon: senderAvatar || '/favicon.ico',
-              badge: '/assets/images/icon.png',
+              icon: '/favicon.ico',
               tag: payload.messageId || 'default',
               requireInteraction: true,
               data: payload.data, // Передаем данные в notification
