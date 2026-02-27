@@ -20,6 +20,7 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const isBirthday = event.type === 'birthday';
+  const isPast = new Date(event.end_time) < new Date();
 
   // Предзагрузка при касании (до нажатия) — не для birthday
   const handlePressIn = useCallback(() => {
@@ -67,6 +68,7 @@ export const EventItem: React.FC<EventItemProps> = ({ event, onPress }) => {
         styles.container,
         { backgroundColor: theme.card, borderColor: theme.border },
         isHovered && Platform.OS === 'web' && styles.containerHovered,
+        isPast && { opacity: 0.45 },
       ]}
       onPress={() => onPress(event)}
       onPressIn={handlePressIn}
