@@ -1167,8 +1167,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    flexShrink: 0,
-    maxWidth: '48%',
+    flexShrink: 1,
+    minWidth: 0,
   },
   chainArrow: {
     fontSize: 12,
@@ -1179,7 +1179,6 @@ const styles = StyleSheet.create({
   delegationText: {
     fontSize: 13,
     flexShrink: 1,
-    maxWidth: 100,
   },
   stackedAvatarsContainer: {
     flexDirection: 'row',
