@@ -829,10 +829,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   primaryButton: {
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
   secondaryButton: {
     borderWidth: 1.5,
