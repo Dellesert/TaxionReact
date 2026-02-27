@@ -3,7 +3,7 @@
  * Универсальный компонент меню действий (bottom sheet на мобильном, dropdown на десктопе)
  */
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -111,6 +111,29 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
     onClose();
   }, [onClose]);
 
+  // Calculate desktop menu position, flipping above button if it would overflow viewport
+  const desktopMenuPosition = useMemo(() => {
+    if (!isDesktop || !buttonPosition) return undefined;
+
+    const menuItemHeight = 52;
+    const dividerHeight = 1;
+    const borderWidth = 2;
+    const estimatedMenuHeight = items.length * menuItemHeight + (items.length - 1) * dividerHeight + borderWidth;
+    const gap = 8;
+    const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+
+    const topBelow = buttonPosition.y + buttonPosition.height + gap;
+    const fitsBelow = topBelow + estimatedMenuHeight <= windowHeight - 16;
+
+    return {
+      position: 'absolute' as const,
+      left: buttonPosition.x + buttonPosition.width - 220,
+      ...(fitsBelow
+        ? { top: topBelow }
+        : { top: buttonPosition.y - estimatedMenuHeight - gap }),
+    };
+  }, [isDesktop, buttonPosition, items.length]);
+
   if (items.length === 0) {
     return null;
   }
@@ -121,11 +144,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
         styles.menu,
         { backgroundColor: theme.card, borderColor: theme.border },
         isDesktop && styles.menuDesktop,
-        isDesktop && buttonPosition && {
-          position: 'absolute',
-          top: buttonPosition.y + buttonPosition.height + 8,
-          left: buttonPosition.x + buttonPosition.width - 220, // Выравнивание правого края меню с кнопкой
-        },
+        desktopMenuPosition,
       ]}
     >
       {items.map((item, index) => (

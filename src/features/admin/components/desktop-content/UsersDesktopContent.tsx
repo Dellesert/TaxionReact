@@ -22,6 +22,7 @@ import { useDebounce } from '@shared/hooks/useDebounce';
 import { useTitleBarControlsIntegration } from '@shared/hooks/useTitleBarControlsIntegration';
 import { ExpandableFilterButton } from '@shared/components/common/ExpandableFilterButton';
 import { DataTable, DataTableColumn } from '@shared/components/common/DataTable';
+import { ActionMenu, ActionMenuItem } from '@shared/components/common/ActionMenu';
 import * as userApi from '@api/user.api';
 import { User, UserRole } from '@/types/user.types';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -38,6 +39,12 @@ const UsersDesktopContent: React.FC = () => {
   const [filterMenuVisible, setFilterMenuVisible] = useState(false);
   const [filterButtonPosition, setFilterButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const filterButtonRef = useRef<View>(null) as React.RefObject<View>;
+
+  // Action menu state
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const [menuButtonPosition, setMenuButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
+  const menuButtonRefs = useRef<{ [key: number]: any }>({});
 
   // Check if running in Electron
   const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && !!window.electron;
@@ -279,6 +286,55 @@ const UsersDesktopContent: React.FC = () => {
     }
   };
 
+  // Action menu handlers
+  const handleOpenActionMenu = useCallback((targetUser: User) => {
+    setSelectedUser(targetUser);
+    const button = menuButtonRefs.current[targetUser.id];
+    if (button) {
+      button.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+        setMenuButtonPosition({ x: pageX, y: pageY, width, height });
+        setShowActionMenu(true);
+      });
+    }
+  }, []);
+
+  const handleCloseActionMenu = useCallback(() => {
+    setShowActionMenu(false);
+    setTimeout(() => {
+      setSelectedUser(null);
+      setMenuButtonPosition(undefined);
+    }, 300);
+  }, []);
+
+  const actionMenuItems = useMemo<ActionMenuItem[]>(() => {
+    if (!selectedUser) return [];
+    if (selectedUser.role !== 'employee' && selectedUser.role !== 'department_head') return [];
+
+    return [
+      {
+        key: 'role',
+        icon: 'shield-outline' as keyof typeof Ionicons.glyphMap,
+        label: 'Изменить роль',
+        color: theme.primary,
+        onPress: () => handleChangeRole(selectedUser),
+      },
+      {
+        key: 'status',
+        icon: (selectedUser.is_active ? 'close-circle-outline' : 'checkmark-circle-outline') as keyof typeof Ionicons.glyphMap,
+        label: selectedUser.is_active ? 'Деактивировать' : 'Активировать',
+        color: selectedUser.is_active ? '#EF4444' : '#10B981',
+        onPress: () => handleToggleUserStatus(selectedUser),
+      },
+      {
+        key: 'hidden',
+        icon: (selectedUser.is_hidden ? 'eye-outline' : 'eye-off-outline') as keyof typeof Ionicons.glyphMap,
+        label: selectedUser.is_hidden ? 'Показать' : 'Скрыть',
+        color: selectedUser.is_hidden ? '#10B981' : '#F59E0B',
+        onPress: () => handleToggleUserHidden(selectedUser),
+      },
+    ];
+  }, [selectedUser, theme.primary]);
+
   // Client-side filtering as fallback
   const filteredUsers = useMemo(() => {
     let result = users;
@@ -394,52 +450,22 @@ const UsersDesktopContent: React.FC = () => {
     {
       key: 'actions',
       title: 'Действия',
-      width: 110,
-      render: (u, t) => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-          {(u.role === 'employee' || u.role === 'department_head') && (
-            <TouchableOpacity
-              style={[styles.tableActionButton, { backgroundColor: t.backgroundTertiary }]}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleChangeRole(u);
-              }}
-            >
-              <Ionicons name="shield-outline" size={14} color={t.primary} />
-            </TouchableOpacity>
-          )}
-          {(u.role === 'employee' || u.role === 'department_head') && (
-            <TouchableOpacity
-              style={[styles.tableActionButton, { backgroundColor: t.backgroundTertiary }]}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleToggleUserStatus(u);
-              }}
-            >
-              <Ionicons
-                name={u.is_active ? 'close-circle-outline' : 'checkmark-circle-outline'}
-                size={14}
-                color={u.is_active ? '#EF4444' : '#10B981'}
-              />
-            </TouchableOpacity>
-          )}
-          {(u.role === 'employee' || u.role === 'department_head') && (
-            <TouchableOpacity
-              style={[styles.tableActionButton, { backgroundColor: t.backgroundTertiary }]}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleToggleUserHidden(u);
-              }}
-            >
-              <Ionicons
-                name={u.is_hidden ? 'eye-outline' : 'eye-off-outline'}
-                size={14}
-                color={u.is_hidden ? '#10B981' : '#F59E0B'}
-              />
-            </TouchableOpacity>
-          )}
-        </View>
-      ),
+      width: 80,
+      render: (u, t) => {
+        if (u.role !== 'employee' && u.role !== 'department_head') return null;
+        return (
+          <TouchableOpacity
+            ref={(ref: any) => { menuButtonRefs.current[u.id] = ref; }}
+            style={[styles.actionMenuButton, { backgroundColor: t.backgroundSecondary }]}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleOpenActionMenu(u);
+            }}
+          >
+            <Ionicons name="ellipsis-horizontal" size={18} color={t.text} />
+          </TouchableOpacity>
+        );
+      },
     },
   ], []);
 
@@ -461,6 +487,15 @@ const UsersDesktopContent: React.FC = () => {
           pageSize: PAGE_SIZE,
           onPageChange: setCurrentPage,
         }}
+      />
+
+      {/* User Action Menu */}
+      <ActionMenu
+        visible={showActionMenu}
+        items={actionMenuItems}
+        onClose={handleCloseActionMenu}
+        isDesktop={true}
+        buttonPosition={menuButtonPosition}
       />
 
       {/* Role Filter Dropdown */}
@@ -555,10 +590,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  tableActionButton: {
+  actionMenuButton: {
     width: 28,
     height: 28,
-    borderRadius: 6,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     // @ts-ignore
