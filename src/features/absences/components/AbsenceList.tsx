@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   SectionList,
   View,
@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { endOfDay, parseISO, isPast as isDatePast } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { AbsenceCard } from './AbsenceCard';
@@ -72,8 +73,38 @@ export const AbsenceList: React.FC<AbsenceListProps> = ({
   ListHeaderComponent,
 }) => {
   const { theme } = useTheme();
+  const sectionListRef = useRef<SectionList<Absence>>(null);
+  const hasScrolled = useRef(false);
 
   const sections = useMemo(() => groupAbsencesByMonth(absences), [absences]);
+
+  // Scroll to the first current (non-past) absence on initial load
+  const scrollToCurrentAbsence = useCallback(() => {
+    if (hasScrolled.current || sections.length === 0) return;
+
+    for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
+      const section = sections[sectionIndex];
+      for (let itemIndex = 0; itemIndex < section.data.length; itemIndex++) {
+        const absence = section.data[itemIndex];
+        if (!isDatePast(endOfDay(parseISO(absence.end_date)))) {
+          hasScrolled.current = true;
+          setTimeout(() => {
+            sectionListRef.current?.scrollToLocation({
+              sectionIndex,
+              itemIndex,
+              animated: true,
+              viewOffset: 50,
+            });
+          }, 300);
+          return;
+        }
+      }
+    }
+  }, [sections]);
+
+  useEffect(() => {
+    scrollToCurrentAbsence();
+  }, [scrollToCurrentAbsence]);
 
   const renderItem = ({ item }: { item: Absence }) => (
     <AbsenceCard
@@ -126,6 +157,7 @@ export const AbsenceList: React.FC<AbsenceListProps> = ({
 
   return (
     <SectionList
+      ref={sectionListRef}
       sections={sections}
       renderItem={renderItem}
       renderSectionHeader={renderSectionHeader}
