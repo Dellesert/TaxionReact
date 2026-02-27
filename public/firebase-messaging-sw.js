@@ -24,8 +24,8 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification?.title || 'Новое сообщение';
   const notificationOptions = {
     body: payload.notification?.body || '',
-    icon: '/assets/images/icon.png',
-    badge: '/assets/images/icon.png',
+    icon: payload.data?.sender_avatar || '/assets/images/icon.png', // Аватар отправителя или иконка приложения
+    badge: '/assets/images/icon.png', // Маленькая иконка приложения
     data: payload.data, // Данные передаются в notification
     requireInteraction: true, // Уведомление не исчезает автоматически
     tag: payload.messageId || 'default', // Группировка уведомлений
