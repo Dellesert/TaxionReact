@@ -310,9 +310,17 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
 
       {/* Имя отправителя для чужих сообщений (не показываем если уже показан заголовок пересылки) */}
       {!isOwnMessage && !forwardHeader && !message.is_forwarded && (
-        <Text style={[styles.senderName, dynamicStyles.senderName]}>
-          {sender?.name || `User ${message.sender_id}`}
-        </Text>
+        <View style={styles.senderNameRow}>
+          <Text style={[styles.senderName, dynamicStyles.senderName]}>
+            {sender?.name || `User ${message.sender_id}`}
+          </Text>
+          {(sender?.role === 'admin' || sender?.role === 'super_admin') && (
+            <Ionicons name="shield-checkmark" size={14} color="#3B82F6" style={{ marginLeft: 4 }} />
+          )}
+          {sender?.role === 'department_head' && (
+            <Ionicons name="shield-checkmark" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
+          )}
+        </View>
       )}
 
       {/* Цитируемое сообщение (если это ответ) — абсолютное позиционирование,
@@ -553,10 +561,14 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 23,
 
   },
+  senderNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   senderName: {
     fontSize: 12,
     fontWeight: '600',
-    marginBottom: 4,
   },
   messageContentRow: {
     flexDirection: 'row',
@@ -746,7 +758,8 @@ export const MessageBubble = React.memo(MessageBubbleComponent, (prevProps, next
 
   // Сравниваем sender
   if (prevProps.sender?.id !== nextProps.sender?.id ||
-      prevProps.sender?.name !== nextProps.sender?.name) {
+      prevProps.sender?.name !== nextProps.sender?.name ||
+      prevProps.sender?.role !== nextProps.sender?.role) {
     return false;
   }
 
