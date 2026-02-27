@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { View, ScrollView, Dimensions, StyleSheet, useWindowDimensions, TouchableOpacity, Text, Platform, Animated } from 'react-native';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader } from '@shared/components/common/ScreenHeader';
@@ -686,7 +687,7 @@ const TaskDetailScreen: React.FC = () => {
               contentContainerStyle={{
                 paddingBottom:
                   activeTab === 'comments' && !isDelegatedByMe && task?.status !== 'done'
-                    ? insets.bottom + 170
+                    ? 16
                     : activeTab === 'overview'
                     ? insets.bottom + 100
                     : insets.bottom + 160,
@@ -776,28 +777,29 @@ const TaskDetailScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Fixed Action Buttons - только для мобильной версии, только для комментариев (кнопка статуса теперь внутри карточки на overview) */}
-        {!isDesktop && task && activeTab === 'comments' && (
-          <TaskActionButtons
-            task={task}
-            activeTab={activeTab}
-            isCreator={isCreator}
-            allSubtasksCompleted={allSubtasksCompleted}
-            allChecklistItemsCompleted={allChecklistItemsCompleted}
-            isDelegatedByMe={isDelegatedByMe}
-            canChangeStatus={permissions.can_change_status}
-            newComment={newComment}
-            isSendingComment={isSendingComment}
-            onNewCommentChange={setNewComment}
-            onSendComment={handleSendComment}
-            onTaskAction={handleTaskAction}
-            onStatusChange={handleStatusChange}
-            bottomInset={insets.bottom}
-            isGroupTask={isGroupTask}
-            isGroupAssigneeDone={isGroupAssigneeDone}
-            onMarkGroupDone={handleMarkGroupDone}
-            onUnmarkGroupDone={handleUnmarkGroupDone}
-          />
+        {/* Comment input — KeyboardStickyView like ChatScreen (works on both iOS and Android) */}
+        {!isDesktop && task && activeTab === 'comments' && !isDelegatedByMe && task.status !== 'done' && (
+          <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+            <View style={{ backgroundColor: theme.background, paddingBottom: insets.bottom }}>
+              <TaskActionButtons
+                task={task}
+                activeTab={activeTab}
+                isCreator={isCreator}
+                allSubtasksCompleted={allSubtasksCompleted}
+                allChecklistItemsCompleted={allChecklistItemsCompleted}
+                isDelegatedByMe={isDelegatedByMe}
+                canChangeStatus={permissions.can_change_status}
+                newComment={newComment}
+                isSendingComment={isSendingComment}
+                onNewCommentChange={setNewComment}
+                onSendComment={handleSendComment}
+                onTaskAction={handleTaskAction}
+                onStatusChange={handleStatusChange}
+                bottomInset={0}
+                stickyMode
+              />
+            </View>
+          </KeyboardStickyView>
         )}
 
         {/* Modals */}

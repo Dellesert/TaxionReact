@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, TouchableOpacity, Text, TextInput, ActivityIndicator, StyleSheet, Keyboard, Platform } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, TouchableOpacity, Text, TextInput, ActivityIndicator, StyleSheet, Keyboard, Platform, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Task } from '../../types/task.types';
@@ -28,6 +28,8 @@ interface TaskActionButtonsProps {
   isGroupAssigneeDone?: boolean;
   onMarkGroupDone?: () => void;
   onUnmarkGroupDone?: () => void;
+  // When true, renders inline (for use inside KeyboardStickyView)
+  stickyMode?: boolean;
 }
 
 export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
@@ -49,29 +51,45 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
   isGroupAssigneeDone,
   onMarkGroupDone,
   onUnmarkGroupDone,
+  stickyMode,
 }) => {
   const { theme } = useTheme();
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const keyboardHeightAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
     const showSubscription = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
+      Animated.timing(keyboardHeightAnim, {
+        toValue: e.endCoordinates.height,
+        duration: Platform.OS === 'ios' ? 200 : 120,
+        useNativeDriver: true,
+      }).start();
     });
     const hideSubscription = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
+      Animated.timing(keyboardHeightAnim, {
+        toValue: 0,
+        duration: Platform.OS === 'ios' ? 200 : 120,
+        useNativeDriver: true,
+      }).start();
     });
 
     return () => {
       showSubscription.remove();
       hideSubscription.remove();
     };
-  }, []);
+  }, [keyboardHeightAnim]);
 
-  // Calculate bottom position based on keyboard
-  const bottomPosition = keyboardHeight > 0 ? keyboardHeight : bottomInset + 80;
+  // Fixed bottom position (above tab bar / safe area)
+  const fixedBottom = bottomInset + 80;
+
+  // When keyboard height exceeds fixedBottom, translate the input up by the excess
+  const translateY = keyboardHeightAnim.interpolate({
+    inputRange: [0, fixedBottom, fixedBottom + 2000],
+    outputRange: [0, 0, -2000],
+    extrapolate: 'clamp',
+  });
 
   // Transparent version of background for gradient
   const bgColor = theme.background;
@@ -79,17 +97,8 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
 
   // Comments tab: show comment input
   if (activeTab === 'comments' && !isDelegatedByMe && task.status !== 'done') {
-    return (
-      <View
-        style={[
-          styles.fixedCommentInputContainer,
-          {
-            backgroundColor: theme.background,
-            borderTopColor: theme.border,
-            bottom: bottomPosition,
-          },
-        ]}
-      >
+    const inputContent = (
+      <>
         <TextInput
           style={[
             styles.commentInput,
@@ -123,7 +132,40 @@ export const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
             />
           )}
         </TouchableOpacity>
-      </View>
+      </>
+    );
+
+    // stickyMode: inline rendering for use inside KeyboardStickyView
+    if (stickyMode) {
+      return (
+        <View
+          style={[
+            styles.stickyCommentInputContainer,
+            {
+              backgroundColor: theme.background,
+              borderTopColor: theme.border,
+            },
+          ]}
+        >
+          {inputContent}
+        </View>
+      );
+    }
+
+    return (
+      <Animated.View
+        style={[
+          styles.fixedCommentInputContainer,
+          {
+            backgroundColor: theme.background,
+            borderTopColor: theme.border,
+            bottom: fixedBottom,
+            transform: [{ translateY }],
+          },
+        ]}
+      >
+        {inputContent}
+      </Animated.View>
     );
   }
 
@@ -353,7 +395,16 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
-  // Comment input (unchanged)
+  // Comment input (inline for KeyboardStickyView)
+  stickyCommentInputContainer: {
+    borderTopWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end' as const,
+    gap: 8,
+  },
+  // Comment input (absolute positioned)
   fixedCommentInputContainer: {
     position: 'absolute',
     left: 0,
