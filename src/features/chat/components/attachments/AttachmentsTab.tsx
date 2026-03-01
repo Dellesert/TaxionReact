@@ -3,7 +3,7 @@
  * Вкладка вложений чата
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -57,24 +57,24 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
   // Адаптивная сетка для десктопа и мобильных устройств
   const screenWidth = Dimensions.get('window').width;
   const isDesktop = screenWidth > 768;
+  const [gridWidth, setGridWidth] = useState(0);
 
-  // На десктопе используем до 6 колонок с максимальным размером 150px
+  const handleGridLayout = useCallback((e: { nativeEvent: { layout: { width: number } } }) => {
+    setGridWidth(e.nativeEvent.layout.width);
+  }, []);
+
+  // На десктопе 3 колонки с учётом реальной ширины контейнера
   // На мобильных - 3 колонки
   const getImageDimensions = () => {
     if (isDesktop) {
-      // Для десктопа: адаптивная сетка с колонками до 150px
-      const maxImageSize = 150;
-      const totalPadding = 48; // padding контейнера
-      const gap = 6; // gap между элементами
-
-      // Вычисляем количество колонок, которые поместятся
-      const availableWidth = screenWidth - totalPadding;
-      const columns = Math.floor(availableWidth / (maxImageSize + gap));
-      const clampedColumns = Math.max(3, Math.min(6, columns)); // От 3 до 6 колонок
-
-      // Вычисляем размер изображения с учетом gap
-      const totalGapWidth = gap * (clampedColumns - 1);
-      const imageSize = (availableWidth - totalGapWidth) / clampedColumns;
+      const gap = 6;
+      const columns = 3;
+      const gridPadding = 24; // padding: 12 с каждой стороны
+      // Используем измеренную ширину грида, иначе fallback на ширину модального окна
+      const containerWidth = gridWidth > 0 ? gridWidth : Math.min(screenWidth, 900);
+      const availableWidth = containerWidth - gridPadding;
+      const totalGapWidth = gap * (columns - 1);
+      const imageSize = (availableWidth - totalGapWidth) / columns;
 
       return Math.floor(imageSize);
     } else {
@@ -509,7 +509,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
           </View>
         ) : selectedType === 'images' ? (
           // Сетка изображений
-          <View style={styles.imagesGrid}>
+          <View style={styles.imagesGrid} onLayout={handleGridLayout}>
             {filteredAttachments.map((attachment, index) => {
               const isVideo = attachment.file_type === 'video';
 
