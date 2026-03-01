@@ -13,6 +13,7 @@ import { getToken, onMessage, Unsubscribe } from 'firebase/messaging';
 import { iosPushNotificationService } from './pushNotificationIOS.service';
 import { isElectron } from '@shared/utils/platform';
 import { electronPushNotificationService } from './pushNotificationElectron.service';
+import { NOTIFICATION_CHANNELS } from '@shared/constants/app.constants';
 
 // Настройка обработки уведомлений (не для Electron - там нет expo-notifications)
 if (!isElectron()) {
@@ -39,21 +40,21 @@ async function setupAndroidNotificationChannels(): Promise<void> {
   try {
     // 1. Messages - высокий приоритет, звук
     await Notifications.setNotificationChannelAsync('messages', {
-      name: 'Сообщения',
-      description: 'Уведомления о новых сообщениях в чатах',
+      name: NOTIFICATION_CHANNELS.messages.name,
+      description: NOTIFICATION_CHANNELS.messages.description,
       importance: Notifications.AndroidImportance.HIGH,
       sound: 'default',
       enableVibrate: true,
       vibrationPattern: [0, 250, 250, 250],
       showBadge: true,
       enableLights: true,
-      lightColor: '#0066FF',
+      lightColor: NOTIFICATION_CHANNELS.messages.lightColor,
     });
 
     // 2. Tasks - средний приоритет
     await Notifications.setNotificationChannelAsync('tasks', {
-      name: 'Задачи',
-      description: 'Уведомления о задачах и их изменениях',
+      name: NOTIFICATION_CHANNELS.tasks.name,
+      description: NOTIFICATION_CHANNELS.tasks.description,
       importance: Notifications.AndroidImportance.DEFAULT,
       sound: 'default',
       enableVibrate: true,
@@ -63,47 +64,47 @@ async function setupAndroidNotificationChannels(): Promise<void> {
 
     // 3. Calendar - высокий приоритет (важные события)
     await Notifications.setNotificationChannelAsync('calendar', {
-      name: 'Календарь',
-      description: 'События календаря и встречи',
+      name: NOTIFICATION_CHANNELS.calendar.name,
+      description: NOTIFICATION_CHANNELS.calendar.description,
       importance: Notifications.AndroidImportance.HIGH,
       sound: 'default',
       enableVibrate: true,
       vibrationPattern: [0, 300, 200, 300],
       showBadge: true,
       enableLights: true,
-      lightColor: '#FF6600',
+      lightColor: NOTIFICATION_CHANNELS.calendar.lightColor,
     });
 
     // 4. Mentions - высокий приоритет
     await Notifications.setNotificationChannelAsync('mentions', {
-      name: 'Упоминания',
-      description: 'Когда вас упоминают в сообщениях',
+      name: NOTIFICATION_CHANNELS.mentions.name,
+      description: NOTIFICATION_CHANNELS.mentions.description,
       importance: Notifications.AndroidImportance.HIGH,
       sound: 'default',
       enableVibrate: true,
       vibrationPattern: [0, 250, 100, 250],
       showBadge: true,
       enableLights: true,
-      lightColor: '#FF0066',
+      lightColor: NOTIFICATION_CHANNELS.mentions.lightColor,
     });
 
     // 5. Reminders - высокий приоритет (критичные напоминания)
     await Notifications.setNotificationChannelAsync('reminders', {
-      name: 'Напоминания',
-      description: 'Напоминания о событиях и задачах',
+      name: NOTIFICATION_CHANNELS.reminders.name,
+      description: NOTIFICATION_CHANNELS.reminders.description,
       importance: Notifications.AndroidImportance.HIGH,
       sound: 'default',
       enableVibrate: true,
       vibrationPattern: [0, 400, 200, 400],
       showBadge: true,
       enableLights: true,
-      lightColor: '#FFAA00',
+      lightColor: NOTIFICATION_CHANNELS.reminders.lightColor,
     });
 
     // 6. Polls - средний приоритет
     await Notifications.setNotificationChannelAsync('polls', {
-      name: 'Опросы',
-      description: 'Уведомления об опросах',
+      name: NOTIFICATION_CHANNELS.polls.name,
+      description: NOTIFICATION_CHANNELS.polls.description,
       importance: Notifications.AndroidImportance.DEFAULT,
       sound: 'default',
       enableVibrate: true,
@@ -112,8 +113,8 @@ async function setupAndroidNotificationChannels(): Promise<void> {
 
     // 7. System - средний приоритет
     await Notifications.setNotificationChannelAsync('system', {
-      name: 'Системные',
-      description: 'Системные уведомления',
+      name: NOTIFICATION_CHANNELS.system.name,
+      description: NOTIFICATION_CHANNELS.system.description,
       importance: Notifications.AndroidImportance.DEFAULT,
       sound: 'default',
       showBadge: false,
@@ -121,8 +122,8 @@ async function setupAndroidNotificationChannels(): Promise<void> {
 
     // 8. Announcements - средний приоритет
     await Notifications.setNotificationChannelAsync('announcements', {
-      name: 'Объявления',
-      description: 'Важные объявления',
+      name: NOTIFICATION_CHANNELS.announcements.name,
+      description: NOTIFICATION_CHANNELS.announcements.description,
       importance: Notifications.AndroidImportance.DEFAULT,
       sound: 'default',
       enableVibrate: true,

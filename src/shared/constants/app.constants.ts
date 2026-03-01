@@ -138,6 +138,46 @@ export const NOTIFICATION_PRIORITY = {
   URGENT: 'urgent',
 } as const;
 
+// Android Notification Channel Config
+export const NOTIFICATION_CHANNELS = {
+  messages: {
+    name: 'Сообщения',
+    description: 'Уведомления о новых сообщениях в чатах',
+    lightColor: '#0066FF',
+  },
+  tasks: {
+    name: 'Задачи',
+    description: 'Уведомления о задачах и их изменениях',
+  },
+  calendar: {
+    name: 'Календарь',
+    description: 'События календаря и встречи',
+    lightColor: '#FF6600',
+  },
+  mentions: {
+    name: 'Упоминания',
+    description: 'Когда вас упоминают в сообщениях',
+    lightColor: '#FF0066',
+  },
+  reminders: {
+    name: 'Напоминания',
+    description: 'Напоминания о событиях и задачах',
+    lightColor: '#FFAA00',
+  },
+  polls: {
+    name: 'Опросы',
+    description: 'Уведомления об опросах',
+  },
+  system: {
+    name: 'Системные',
+    description: 'Системные уведомления',
+  },
+  announcements: {
+    name: 'Объявления',
+    description: 'Важные объявления',
+  },
+} as const;
+
 // Themes
 export const THEMES = {
   LIGHT: 'light',

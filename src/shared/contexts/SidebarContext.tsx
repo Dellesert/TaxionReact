@@ -3,7 +3,7 @@
  * Контекст для управления состоянием бокового меню
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebar_collapsed';
@@ -58,12 +58,12 @@ export const SidebarProvider: React.FC<SidebarProviderProps> = ({ children }) =>
 
   const sidebarWidth = isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED;
 
-  const value: SidebarContextValue = {
+  const value = useMemo<SidebarContextValue>(() => ({
     isCollapsed,
     sidebarWidth,
     toggleCollapsed,
     setIsCollapsed,
-  };
+  }), [isCollapsed, sidebarWidth, toggleCollapsed, setIsCollapsed]);
 
   return (
     <SidebarContext.Provider value={value}>

@@ -39,6 +39,21 @@ export const getActivityIcon = (activity: TaskActivity): any => {
 };
 
 /**
+ * Semantic colors for activity types
+ */
+const ACTIVITY_COLORS = {
+  green: '#10B981',
+  blue: '#3B82F6',
+  purple: '#8B5CF6',
+  orange: '#F59E0B',
+  cyan: '#06B6D4',
+  pink: '#EC4899',
+  red: '#EF4444',
+  gray: '#94A3B8',
+  grayDefault: '#6B7280',
+} as const;
+
+/**
  * Get activity icon color
  */
 export const getActivityIconColor = (activity: TaskActivity): string => {
@@ -49,7 +64,7 @@ export const getActivityIconColor = (activity: TaskActivity): string => {
     (actionType === 'task_status_changed' || actionType === 'subtask_status_changed') &&
     activity.new_value === 'done'
   ) {
-    return '#10B981';
+    return ACTIVITY_COLORS.green;
   }
 
   // Color by action type
@@ -58,32 +73,32 @@ export const getActivityIconColor = (activity: TaskActivity): string => {
     case 'subtask_created':
     case 'checklist_added':
     case 'checklist_item_completed':
-      return '#10B981'; // Green
+      return ACTIVITY_COLORS.green;
     case 'task_status_changed':
     case 'progress_updated':
-      return '#3B82F6'; // Blue
+      return ACTIVITY_COLORS.blue;
     case 'task_assigned':
     case 'task_updated_title':
     case 'task_updated_description':
-      return '#8B5CF6'; // Purple
+      return ACTIVITY_COLORS.purple;
     case 'task_delegated':
     case 'task_updated_priority':
-      return '#F59E0B'; // Orange
+      return ACTIVITY_COLORS.orange;
     case 'comment_added':
     case 'task_updated_due_date':
-      return '#06B6D4'; // Cyan
+      return ACTIVITY_COLORS.cyan;
     case 'attachment_added':
-      return '#EC4899'; // Pink
+      return ACTIVITY_COLORS.pink;
     case 'attachment_deleted':
     case 'task_deleted':
-      return '#EF4444'; // Red
+      return ACTIVITY_COLORS.red;
     case 'task_emergency_completed':
-      return '#F59E0B'; // Orange (warning color)
+      return ACTIVITY_COLORS.orange;
     case 'task_viewed':
     case 'checklist_item_uncompleted':
-      return '#94A3B8'; // Gray
+      return ACTIVITY_COLORS.gray;
     default:
-      return '#6B7280'; // Default gray
+      return ACTIVITY_COLORS.grayDefault;
   }
 };
 
@@ -131,7 +146,7 @@ export const getActivityDescription = (
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: 'rgba(139, 92, 246, 0.12)',
+          backgroundColor: `${ACTIVITY_COLORS.purple}1F`,
           paddingHorizontal: 10,
           paddingVertical: 5,
           borderRadius: 8,
@@ -139,14 +154,14 @@ export const getActivityDescription = (
           alignSelf: 'flex-start',
           gap: 6,
           borderWidth: 1,
-          borderColor: 'rgba(139, 92, 246, 0.2)',
+          borderColor: `${ACTIVITY_COLORS.purple}33`,
         }}
       >
-        <Ionicons name="git-branch-outline" size={14} color="#8B5CF6" />
+        <Ionicons name="git-branch-outline" size={14} color={ACTIVITY_COLORS.purple} />
         <Text
           style={{
             fontSize: 12,
-            color: '#8B5CF6',
+            color: ACTIVITY_COLORS.purple,
             fontWeight: '600',
             letterSpacing: 0.2,
           }}

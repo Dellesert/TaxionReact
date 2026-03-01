@@ -38,9 +38,11 @@ export const useAdminUsers = () => {
     }
   };
 
+  // FIXME: blockUser/unblockUser only update local state without actual API call.
+  // Backend endpoints need to be implemented first.
   const blockUser = async (userId: number) => {
     try {
-      // await userApi.blockUser(userId); // TODO: Implement API method
+      // await userApi.blockUser(userId);
       setUsers((prevUsers) =>
         prevUsers.map((u) => (u.id === userId ? { ...u, is_active: false } : u))
       );
@@ -52,7 +54,7 @@ export const useAdminUsers = () => {
 
   const unblockUser = async (userId: number) => {
     try {
-      // await userApi.unblockUser(userId); // TODO: Implement API method
+      // await userApi.unblockUser(userId);
       setUsers((prevUsers) =>
         prevUsers.map((u) => (u.id === userId ? { ...u, is_active: true } : u))
       );

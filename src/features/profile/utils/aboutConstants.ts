@@ -22,7 +22,7 @@ export const APP_BUILD = (() => {
 export const APP_NAME = 'Tachyon Messenger';
 export const COMPANY_NAME = 'Tachyon Technologies';
 export const SUPPORT_EMAIL = 'mishajackson@inbox.ru';
-export const WEBSITE_URL = 'https://exmple.com';
+export const WEBSITE_URL = 'https://example.com';
 
 export const APP_DESCRIPTION =
   'Tachyon Messenger — современный корпоративный мессенджер с функциями управления задачами, ' +

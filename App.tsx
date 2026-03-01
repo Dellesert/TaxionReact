@@ -375,11 +375,7 @@ export default function App() {
       }
 
       // Register for push notifications
-      pushNotificationService.registerForPushNotifications().then((token) => {
-        if (token) {
-        } else {
-        }
-      });
+      pushNotificationService.registerForPushNotifications();
 
       // Setup notification listeners
       pushNotificationService.setupNotificationListeners(
@@ -402,8 +398,6 @@ export default function App() {
 
           // Navigate using the same logic as in-app notifications
           const type = notificationData.type as string;
-          const action = notificationData.action as string;
-
 
           const screenName = getNavigationScreenByType(type, notificationData);
           const params = getNavigationParams(type, notificationData);
@@ -507,8 +501,6 @@ export default function App() {
 
 
             const type = notificationData.type as string;
-            const action = notificationData.action as string;
-
 
             const screenName = getNavigationScreenByType(type, notificationData);
             const params = getNavigationParams(type, notificationData);
@@ -587,7 +579,6 @@ export default function App() {
 
               // Start navigation attempt after a small delay
               setTimeout(() => attemptNavigation(), 500);
-            } else {
             }
           }
         });
