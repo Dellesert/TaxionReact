@@ -47,7 +47,7 @@ interface ParticleProps {
 
 const GRID_SIZE = 10;
 const CLOCK_DURATION = 5000;
-const TWO_PI = 3 * Math.PI;
+const TWO_PI = 3   * Math.PI;
 
 // ─── Particle generation ─────────────────────────────────────────────────────
 
