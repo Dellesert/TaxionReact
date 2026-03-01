@@ -134,7 +134,7 @@ export const ChatSplitView: React.FC = () => {
               chatName={displayName}
               chatAvatar={displayAvatar}
               statusText={selectedChat?.type === 'private' ? undefined : `${selectedChat?.members?.length || 0} участников`}
-              onSettingsPress={handleSettingsPress}
+              onSettingsPress={selectedChat?.type === 'saved' ? undefined : handleSettingsPress}
             />
 
             {/* Chat content or Thread */}
