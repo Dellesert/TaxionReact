@@ -96,23 +96,22 @@ echo ""
 
 # ─── Step 3: Pod install (with retry for transient network errors) ───────────
 echo -e "${BLUE}[Step 3/5]${NC} ${BOLD}Installing CocoaPods...${NC}"
+
+clean_stale_artifacts() {
+  rm -rf ios/Pods/hermes-engine-artifacts ios/Pods/ReactNativeDependencies-artifacts ios/Pods/ReactNativeCore-artifacts 2>/dev/null
+  rm -rf ios/Pods/hermes-engine ios/Pods/ReactNativeDependencies ios/Pods/React-Core-prebuilt 2>/dev/null
+}
+
 POD_RETRIES=3
 POD_SUCCESS=0
 for i in $(seq 1 $POD_RETRIES); do
-  # Clean incomplete artifact downloads before retrying
-  if [ "$i" -gt 1 ]; then
-    echo -e "${YELLOW}  Cleaning stale downloads before retry...${NC}"
-    rm -f ios/Pods/hermes-engine-artifacts/*.download 2>/dev/null
-    rm -f ios/Pods/ReactNativeDependencies-artifacts/*.download 2>/dev/null
-    rm -f ios/Pods/ReactNativeCore-artifacts/*.download 2>/dev/null
-    rm -rf ios/Pods/hermes-engine ios/Pods/ReactNativeDependencies ios/Pods/React-Core-prebuilt 2>/dev/null
-  fi
+  clean_stale_artifacts
   if (cd ios && LANG=en_US.UTF-8 pod install); then
     POD_SUCCESS=1
     break
   fi
-  echo -e "${YELLOW}  Pod install failed (attempt $i/$POD_RETRIES). Retrying...${NC}"
-  sleep 3
+  echo -e "${YELLOW}  Pod install failed (attempt $i/$POD_RETRIES). Retrying in 5s...${NC}"
+  sleep 5
 done
 if [ "$POD_SUCCESS" -ne 1 ]; then
   echo -e "${RED}  Pod install failed after $POD_RETRIES attempts.${NC}"
