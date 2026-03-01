@@ -10,7 +10,8 @@ import { useTheme } from '@shared/hooks/useTheme';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { Message } from '../../types/chat.types';
-import { getFileIcon, decodeFileName } from '../../utils/file.utils';
+import { decodeFileName } from '../../utils/file.utils';
+import { FileTypeIcon } from '@shared/components/common/FileTypeIcon';
 import { isImageFile, isVideoFile, replaceLocalhostWithIP } from '../../utils/message.utils';
 import { getThumbnailUrl } from '../../utils/thumbnail.utils';
 import { stripFormatting } from '../../utils/formatting';
@@ -167,7 +168,7 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
     },
   });
 
-  const getMessagePreview = (message: Message): { text: string; icon?: string; thumbnailUrl?: string } => {
+  const getMessagePreview = (message: Message): { text: string; icon?: string; thumbnailUrl?: string; attachmentFileName?: string } => {
     // Если есть текст, показываем его (без маркеров форматирования)
     if (message.content && message.content.trim().length > 0) {
       const stripped = stripFormatting(message.content);
@@ -196,7 +197,6 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
       }
 
       // Для остальных файлов — иконка и имя файла
-      const icon = getFileIcon(mt, attachment.file_name);
       let fileName = decodeFileName(attachment.file_name);
       if (fileName.length > 30) {
         const ext = fileName.split('.').pop();
@@ -205,9 +205,9 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
       }
 
       if (message.attachments.length === 1) {
-        return { text: fileName, icon };
+        return { text: fileName, attachmentFileName: attachment.file_name };
       } else {
-        return { text: `${fileName} и ещё ${message.attachments.length - 1}`, icon };
+        return { text: `${fileName} и ещё ${message.attachments.length - 1}`, attachmentFileName: attachment.file_name };
       }
     }
 
@@ -256,7 +256,11 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
                   </View>
                 ) : (
                   <>
-                    {preview.icon ? (
+                    {preview.attachmentFileName ? (
+                      <View style={styles.fileIcon}>
+                        <FileTypeIcon fileName={preview.attachmentFileName} size={14} />
+                      </View>
+                    ) : preview.icon ? (
                       <Ionicons
                         name={preview.icon as any}
                         size={16}

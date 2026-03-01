@@ -13,7 +13,8 @@ import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { isImageFile, isVideoFile, formatDuration, formatTime, replaceLocalhostWithIP } from '../../utils/message.utils';
 import { MessageStatus } from '../common/MessageStatus';
 import { Message } from '../../types/chat.types';
-import { getFileIcon, decodeFileName } from '../../utils/file.utils';
+import { decodeFileName } from '../../utils/file.utils';
+import { FileTypeIcon } from '@shared/components/common/FileTypeIcon';
 import { getThumbnailUrl } from '../../utils/thumbnail.utils';
 import { getCachedFileUri, cacheFile } from '@shared/utils/fileCache';
 
@@ -557,7 +558,6 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
 
       {/* Render file attachments */}
       {files.map((attachment, index) => {
-        const fileIcon = getFileIcon(attachment.mime_type || attachment.file_type || '', attachment.file_name);
         const decodedFileName = decodeFileName(attachment.file_name);
 
         return (
@@ -568,7 +568,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
             onLongPress={onLongPress}
             delayLongPress={500}
           >
-            <Ionicons name={fileIcon as any} size={24} color={theme.primary} />
+            <FileTypeIcon fileName={attachment.file_name} size={24} />
             <View style={styles.fileInfo}>
               <Text
                 style={[

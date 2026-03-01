@@ -20,6 +20,7 @@ import {
   deleteAttachment,
 } from '../../api/task.api';
 import { Ionicons } from '@expo/vector-icons';
+import { FileTypeIcon } from '@shared/components/common/FileTypeIcon';
 import * as DocumentPicker from 'expo-document-picker';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -33,25 +34,6 @@ interface TaskAttachmentsListProps {
   onAttachmentAdded?: () => void;
 }
 
-// File type icons
-const FILE_TYPE_ICONS: Record<string, string> = {
-  pdf: 'document-text',
-  doc: 'document',
-  docx: 'document',
-  xls: 'grid',
-  xlsx: 'grid',
-  ppt: 'easel',
-  pptx: 'easel',
-  txt: 'document-text-outline',
-  jpg: 'image',
-  jpeg: 'image',
-  png: 'image',
-  gif: 'image',
-  svg: 'image',
-  zip: 'archive',
-  rar: 'archive',
-  '7z': 'archive',
-};
 
 // Format file size
 const formatFileSize = (bytes: number): string => {
@@ -151,13 +133,7 @@ export const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({
     );
   };
 
-  const getFileIcon = (fileName: string): string => {
-    const ext = fileName.split('.').pop()?.toLowerCase() || '';
-    return FILE_TYPE_ICONS[ext] || 'document-outline';
-  };
-
   const renderAttachmentItem = ({ item }: { item: TaskAttachment }) => {
-    const icon = getFileIcon(item.file_name);
     const timeAgo = formatDistanceToNow(new Date(item.created_at), {
       addSuffix: true,
       locale: ru,
@@ -169,7 +145,7 @@ export const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({
     return (
       <View style={styles.attachmentItem}>
         <View style={styles.fileIcon}>
-          <Ionicons name={icon as any} size={24} color="#3b82f6" />
+          <FileTypeIcon fileName={item.file_name} size={24} />
         </View>
 
         <View style={styles.attachmentContent}>

@@ -30,6 +30,7 @@ import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { replaceLocalhostWithIP } from '../../utils/message.utils';
 import { decodeFileName } from '../../utils/file.utils';
+import { FileTypeIcon } from '@shared/components/common/FileTypeIcon';
 import { getThumbnailUrl } from '../../utils/thumbnail.utils';
 import { useChatStore } from '@shared/store/chatStore';
 
@@ -188,17 +189,6 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  const getFileIcon = (mimeType: string): string => {
-    if (mimeType.includes('pdf')) return 'document-text';
-    if (mimeType.includes('word') || mimeType.includes('msword') || mimeType.includes('document')) return 'document';
-    if (mimeType.includes('excel') || mimeType.includes('spreadsheet') || mimeType.includes('sheet')) return 'stats-chart';
-    if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('compressed')) return 'archive';
-    if (mimeType.includes('video')) return 'videocam';
-    if (mimeType.includes('image')) return 'image';
-    if (mimeType.includes('audio')) return 'musical-notes';
-    return 'document-attach';
   };
 
   const handleCloseMediaViewer = () => {
@@ -585,11 +575,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
                   activeOpacity={0.7}
                 >
                   <View style={styles.fileIconContainer}>
-                    <Ionicons
-                      name={getFileIcon(attachment.mime_type) as any}
-                      size={32}
-                      color={theme.primary}
-                    />
+                    <FileTypeIcon fileName={attachment.file_name} size={32} />
                   </View>
                   <View style={styles.fileInfo}>
                     <Text

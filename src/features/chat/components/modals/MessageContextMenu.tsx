@@ -7,7 +7,8 @@ import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { Message } from '../../types/chat.types';
 import { formatDateTime, isImageFile, isVideoFile } from '../../utils/message.utils';
-import { getFileIcon, decodeFileName } from '../../utils/file.utils';
+import { decodeFileName } from '../../utils/file.utils';
+import { FileTypeIcon } from '@shared/components/common/FileTypeIcon';
 import { stripFormatting } from '../../utils/formatting';
 import { ReactionBar } from '../messages/ReactionBar';
 import { FormattedText } from '../common/FormattedText';
@@ -87,12 +88,12 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   }, [chatType, currentUserRole]);
 
   // Получить превью сообщения (текст и/или информация о файле)
-  const getMessagePreview = (): { text: string; icon?: string; attachmentText?: string } => {
+  const getMessagePreview = (): { text: string; icon?: string; attachmentText?: string; attachmentFileName?: string } => {
     const hasText = message.content && message.content.trim().length > 0;
     const hasAttachments = message.attachments && message.attachments.length > 0;
 
     // Вспомогательная функция: получить label для вложения
-    const getAttachmentLabel = (truncateLen: number): { label: string; icon: string } => {
+    const getAttachmentLabel = (truncateLen: number): { label: string; icon?: string; attachmentFileName?: string } => {
       const attachment = message.attachments[0];
       const mt = attachment.mime_type || attachment.file_type || '';
       const isImage = isImageFile(mt);
@@ -104,7 +105,6 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         return { label: mediaLabel + extra, icon: isImage ? 'image-outline' : 'videocam-outline' };
       }
 
-      const icon = getFileIcon(mt, attachment.file_name);
       let fileName = decodeFileName(attachment.file_name);
       if (fileName.length > truncateLen) {
         const ext = fileName.split('.').pop();
@@ -112,16 +112,17 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         fileName = nameWithoutExt.substring(0, truncateLen - 5) + '...' + (ext ? `.${ext}` : '');
       }
       const extra = message.attachments.length > 1 ? ` и ещё ${message.attachments.length - 1}` : '';
-      return { label: fileName + extra, icon };
+      return { label: fileName + extra, attachmentFileName: attachment.file_name };
     };
 
     // Если есть и текст, и вложения
     if (hasText && hasAttachments) {
-      const { label, icon } = getAttachmentLabel(30);
+      const { label, icon, attachmentFileName } = getAttachmentLabel(30);
       return {
         text: message.content,
         icon,
         attachmentText: label,
+        attachmentFileName,
       };
     }
 
@@ -132,8 +133,8 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
 
     // Если только вложения
     if (hasAttachments) {
-      const { label, icon } = getAttachmentLabel(40);
-      return { text: label, icon };
+      const { label, icon, attachmentFileName } = getAttachmentLabel(40);
+      return { text: label, icon, attachmentFileName };
     }
 
     // Если ни текста, ни вложений нет
@@ -195,14 +196,16 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                           numberOfLines={2}
                         />
                         <View style={[styles.previewContent, { marginTop: 6 }]}>
-                          {preview.icon && (
+                          {preview.attachmentFileName ? (
+                            <FileTypeIcon fileName={preview.attachmentFileName} size={14} />
+                          ) : preview.icon ? (
                             <Ionicons
                               name={preview.icon as any}
                               size={16}
                               color={theme.primary}
                               style={styles.previewIcon}
                             />
-                          )}
+                          ) : null}
                           <Text style={[styles.attachmentText, { color: theme.textSecondary }]} numberOfLines={1}>
                             {preview.attachmentText}
                           </Text>
@@ -211,14 +214,16 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                     ) : (
                       /* Если только текст или только вложение - показываем с иконкой */
                       <View style={styles.previewContent}>
-                        {preview.icon && (
+                        {preview.attachmentFileName ? (
+                          <FileTypeIcon fileName={preview.attachmentFileName} size={16} />
+                        ) : preview.icon ? (
                           <Ionicons
                             name={preview.icon as any}
                             size={18}
                             color={theme.primary}
                             style={styles.previewIcon}
                           />
-                        )}
+                        ) : null}
                         <FormattedText
                           text={preview.text}
                           style={[styles.previewText, { color: theme.text }]}
