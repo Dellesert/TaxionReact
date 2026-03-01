@@ -97,11 +97,11 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 0,
+    justifyContent: 'center',
   },
   tab: {
-    flex: 1,
     paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 32,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',

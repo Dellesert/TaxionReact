@@ -59,7 +59,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     paddingTop: 20,
     paddingHorizontal: 16,
     width: '100%',
@@ -67,6 +67,7 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
+    maxWidth: 120,
     alignItems: 'center',
     gap: 6,
     paddingVertical: 6,

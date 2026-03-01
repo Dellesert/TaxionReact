@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   },
   content: {
     width: '100%',
-    maxWidth: 900,
+    maxWidth: 480,
     maxHeight: '90%',
     borderRadius: 12,
     overflow: 'hidden',
