@@ -235,7 +235,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
       const isVideo = fileType.includes('video');
       if (isImage || isVideo) {
         const url = getThumbnailUrl(first, 'small');
-        return { type: isVideo ? 'video' : 'image', thumbUrl: url ? replaceLocalhostWithIP(url) : null };
+        return { type: isVideo ? 'video' : 'image', thumbUrl: url || null };
       }
     }
 
@@ -247,7 +247,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     const isLegacyVideo = legacyType === 'video' || legacyMime.includes('video');
     if (isLegacyImage || isLegacyVideo) {
       const raw = legacyMsg.thumbnail_url || legacyMsg.file_url || null;
-      return { type: isLegacyVideo ? 'video' : 'image', thumbUrl: raw ? replaceLocalhostWithIP(raw) : null };
+      return { type: isLegacyVideo ? 'video' : 'image', thumbUrl: raw };
     }
 
     return null;
