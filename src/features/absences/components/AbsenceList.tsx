@@ -78,45 +78,9 @@ export const AbsenceList: React.FC<AbsenceListProps> = ({
 
   const sections = useMemo(() => groupAbsencesByMonth(absences), [absences]);
 
-  // Scroll to the first current (non-past) absence, re-evaluating when data changes
-  // (handles stale-while-revalidate: stale data may have past items that fresh data won't)
-  const scrollToCurrentAbsence = useCallback(() => {
-    if (sections.length === 0) return;
-
-    for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
-      const section = sections[sectionIndex];
-      for (let itemIndex = 0; itemIndex < section.data.length; itemIndex++) {
-        const absence = section.data[itemIndex];
-        if (!isDatePast(endOfDay(parseISO(absence.end_date)))) {
-          const target = `${sectionIndex}-${itemIndex}`;
-          if (target === lastScrollTargetRef.current) return;
-          const prevTarget = lastScrollTargetRef.current;
-          lastScrollTargetRef.current = target;
-
-          if (sectionIndex === 0 && itemIndex === 0) {
-            // First item is current — if previously scrolled away, reset to top
-            if (prevTarget !== '0-0') {
-              (sectionListRef.current as any)?.scrollToOffset?.({ offset: 0, animated: false });
-            }
-            return;
-          }
-          setTimeout(() => {
-            sectionListRef.current?.scrollToLocation({
-              sectionIndex,
-              itemIndex,
-              animated: true,
-              viewOffset: 50,
-            });
-          }, 300);
-          return;
-        }
-      }
-    }
-  }, [sections]);
-
-  useEffect(() => {
-    scrollToCurrentAbsence();
-  }, [scrollToCurrentAbsence]);
+  // TODO: auto-scroll disabled for debugging
+  // const scrollToCurrentAbsence = useCallback(() => { ... }, [sections]);
+  // useEffect(() => { scrollToCurrentAbsence(); }, [scrollToCurrentAbsence]);
 
   const renderItem = ({ item }: { item: Absence }) => (
     <AbsenceCard
