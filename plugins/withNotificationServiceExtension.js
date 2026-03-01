@@ -9,6 +9,7 @@ const NSE_BUNDLE_ID_SUFFIX = '.NotificationServiceExtension';
 // --- Inline file contents (created during prebuild) ---
 
 const NOTIFICATION_SERVICE_SWIFT = `import UserNotifications
+import UIKit
 
 class NotificationService: UNNotificationServiceExtension {
 
