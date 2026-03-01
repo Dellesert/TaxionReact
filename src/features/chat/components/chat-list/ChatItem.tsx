@@ -558,7 +558,8 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                 }
                 return (
                   <Text style={[styles.preview, dynamicStyles.preview]} numberOfLines={1}>
-                    {preview}
+                    {prefix ? <Text style={styles.previewPrefix}>{prefix}</Text> : null}
+                    {prefix && preview.startsWith(prefix) ? preview.slice(prefix.length) : preview}
                   </Text>
                 );
               })()}
@@ -1002,6 +1003,7 @@ const styles = StyleSheet.create({
   },
   previewPrefix: {
     fontSize: 14,
+    fontWeight: '600',
     flexShrink: 0,
   },
   badges: {
