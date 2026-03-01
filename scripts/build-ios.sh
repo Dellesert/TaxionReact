@@ -88,15 +88,36 @@ node scripts/bump-version.js --ios
 NEW_BUILD=$(node -e "console.log(require('./version.json').ios.buildNumber)")
 echo ""
 
-# ─── Step 2: Expo prebuild (clean) ───────────────────────────────────────────
+# ─── Step 2: Expo prebuild (clean, skip pod install) ────────────────────────
 echo -e "${BLUE}[Step 2/5]${NC} ${BOLD}Expo prebuild (clean)...${NC}"
 rm -rf ios
-APP_ENV="$APP_ENV" npx expo prebuild --platform ios
+APP_ENV="$APP_ENV" npx expo prebuild --platform ios --no-install
 echo ""
 
-# ─── Step 3: Pod install ─────────────────────────────────────────────────────
+# ─── Step 3: Pod install (with retry for transient network errors) ───────────
 echo -e "${BLUE}[Step 3/5]${NC} ${BOLD}Installing CocoaPods...${NC}"
-cd ios && LANG=en_US.UTF-8 pod install && cd ..
+POD_RETRIES=3
+POD_SUCCESS=0
+for i in $(seq 1 $POD_RETRIES); do
+  # Clean incomplete artifact downloads before retrying
+  if [ "$i" -gt 1 ]; then
+    echo -e "${YELLOW}  Cleaning stale downloads before retry...${NC}"
+    rm -f ios/Pods/hermes-engine-artifacts/*.download 2>/dev/null
+    rm -f ios/Pods/ReactNativeDependencies-artifacts/*.download 2>/dev/null
+    rm -f ios/Pods/ReactNativeCore-artifacts/*.download 2>/dev/null
+    rm -rf ios/Pods/hermes-engine ios/Pods/ReactNativeDependencies ios/Pods/React-Core-prebuilt 2>/dev/null
+  fi
+  if (cd ios && LANG=en_US.UTF-8 pod install); then
+    POD_SUCCESS=1
+    break
+  fi
+  echo -e "${YELLOW}  Pod install failed (attempt $i/$POD_RETRIES). Retrying...${NC}"
+  sleep 3
+done
+if [ "$POD_SUCCESS" -ne 1 ]; then
+  echo -e "${RED}  Pod install failed after $POD_RETRIES attempts.${NC}"
+  exit 1
+fi
 echo ""
 
 # ─── Step 4: Archive ─────────────────────────────────────────────────────────
