@@ -469,20 +469,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   style={styles.mutedTimeIcon}
                 />
               )}
-              {chat.last_message && (
-                <Text style={[styles.time, dynamicStyles.time]}>
-                  {formatDistanceToNow(new Date(chat.last_message.created_at), {
-                    addSuffix: false,
-                    locale: ru,
-                  })}
-                </Text>
-              )}
-            </View>
-          </View>
-
-          <View style={styles.footer}>
-            <View style={styles.previewContainer}>
-              {/* Индикатор статуса сообщения (только для своих сообщений) */}
               {(() => {
                 const status = getMessageStatus();
                 if (!status) return null;
@@ -513,7 +499,19 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   />
                 );
               })()}
+              {chat.last_message && (
+                <Text style={[styles.time, dynamicStyles.time]}>
+                  {formatDistanceToNow(new Date(chat.last_message.created_at), {
+                    addSuffix: false,
+                    locale: ru,
+                  })}
+                </Text>
+              )}
+            </View>
+          </View>
 
+          <View style={styles.footer}>
+            <View style={styles.previewContainer}>
               {chat.last_message?.is_forwarded && !typingUsers.length && (
                 <Ionicons
                   name="arrow-redo"
