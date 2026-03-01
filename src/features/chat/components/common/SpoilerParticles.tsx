@@ -45,9 +45,9 @@ interface ParticleProps {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const GRID_SIZE = 5;
-const CLOCK_DURATION = 3000;
-const TWO_PI = 2 * Math.PI;
+const GRID_SIZE = 10;
+const CLOCK_DURATION = 5000;
+const TWO_PI = 3 * Math.PI;
 
 // ─── Particle generation ─────────────────────────────────────────────────────
 
