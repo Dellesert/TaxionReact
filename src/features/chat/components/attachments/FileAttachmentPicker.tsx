@@ -10,6 +10,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
 import { fileApi, FileUploadResponse } from '@api/fileApi';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
@@ -95,6 +96,20 @@ export const FileAttachmentPicker: React.FC<FileAttachmentPickerProps> = ({
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
+        // Сохраняем снятое фото/видео в галерею устройства
+        if (Platform.OS !== 'web') {
+          const { status } = await MediaLibrary.requestPermissionsAsync();
+          if (status === 'granted') {
+            for (const asset of result.assets) {
+              try {
+                await MediaLibrary.saveToLibraryAsync(asset.uri);
+              } catch {
+                // Не блокируем отправку если сохранение не удалось
+              }
+            }
+          }
+        }
+
         const fileObjects = await Promise.all(
           result.assets.map(async (asset) => {
             const isVideo = asset.type === 'video';
