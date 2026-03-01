@@ -478,6 +478,14 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                 );
               })()}
 
+              {chat.last_message?.is_forwarded && !typingUsers.length && (
+                <Ionicons
+                  name="arrow-redo"
+                  size={14}
+                  color={theme.textTertiary}
+                  style={styles.statusIcon}
+                />
+              )}
               <Text style={[styles.preview, dynamicStyles.preview]} numberOfLines={1}>
                 {getLastMessagePreview()}
               </Text>
