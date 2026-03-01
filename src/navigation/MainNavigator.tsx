@@ -15,6 +15,7 @@ import { ChatSelectionProvider } from '@shared/contexts/ChatSelectionContext';
 import { useDesktopNavigation } from '@shared/contexts/DesktopNavigationContext';
 import { MainTabParamList } from './types';
 import { ErrorBoundary } from '@shared/components/common/ErrorBoundary';
+import { usePasskeyPrompt } from '@shared/hooks/usePasskeyPrompt';
 
 // ChatNavigator загружается сразу (начальный экран)
 import ChatNavigator from './ChatNavigator';
@@ -48,6 +49,7 @@ const MainNavigatorContent: React.FC = () => {
   const { theme } = useTheme();
   const isWideScreen = useIsWideScreen();
   const chats = useChatStore((state) => state.chats);
+  usePasskeyPrompt();
   const desktopNav = useDesktopNavigation();
 
   // Подсчитываем общее количество непрочитанных сообщений

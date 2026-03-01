@@ -15,6 +15,7 @@ export const STORAGE_KEYS = {
   ACTIVE_ACCOUNT_ID: 'active_account_id', // Current active user ID
   SESSION_ID_PREFIX: 'session_id_', // + userId -> per-account session
   USER_DATA_PREFIX: 'user_data_', // + userId -> per-account user data
+  PASSKEY_PROMPT_DISMISSED: 'passkey_prompt_dismissed', // + _userId -> don't re-prompt
 } as const;
 
 // Multi-account limits
