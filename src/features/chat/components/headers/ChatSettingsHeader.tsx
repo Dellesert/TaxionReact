@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 
@@ -28,7 +28,11 @@ export const ChatSettingsHeader: React.FC<ChatSettingsHeaderProps> = ({ onBack }
   return (
     <View style={[styles.header, dynamicStyles.header]}>
       <TouchableOpacity onPress={onBack} style={styles.backButton}>
-        <Ionicons name="chevron-back" size={28} color={theme.primary} />
+        <Ionicons
+          name={Platform.OS === 'web' ? 'close' : 'chevron-back'}
+          size={Platform.OS === 'web' ? 24 : 28}
+          color={theme.primary}
+        />
       </TouchableOpacity>
       <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>
         Настройки чата
