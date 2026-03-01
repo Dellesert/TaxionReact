@@ -69,7 +69,7 @@ interface ElectronAPI {
 
   // Notification API
   notification: {
-    show: (title: string, body: string, data?: NotificationData) => Promise<NotificationResponse>;
+    show: (title: string, body: string, data?: NotificationData, iconUrl?: string) => Promise<NotificationResponse>;
     register: (sessionId?: string) => Promise<NotificationRegisterResponse>;
     unregister: () => Promise<NotificationResponse>;
     setBadgeCount: (count: number) => Promise<NotificationResponse>;

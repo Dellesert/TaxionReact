@@ -813,7 +813,7 @@ function setupIPCHandlers() {
   });
 
   // Notification handlers
-  ipcMain.handle('notification:show', async (event, { title, body, data }) => {
+  ipcMain.handle('notification:show', async (event, { title, body, data, iconUrl }) => {
     try {
       // Check if notifications are supported
       if (!Notification.isSupported()) {
@@ -821,10 +821,51 @@ function setupIPCHandlers() {
         return { success: false, error: 'Notifications not supported' };
       }
 
+      // Try to use sender avatar as notification icon (works on Windows/Linux)
+      let notificationIcon = getIconPath();
+      if (iconUrl && process.platform !== 'darwin') {
+        try {
+          const https = require('https');
+          const http = require('http');
+          const iconBuffer = await new Promise((resolve, reject) => {
+            const client = iconUrl.startsWith('https') ? https : http;
+            const request = client.get(iconUrl, { timeout: 3000 }, (res) => {
+              if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                // Follow redirect
+                const redirectClient = res.headers.location.startsWith('https') ? https : http;
+                redirectClient.get(res.headers.location, { timeout: 3000 }, (redirectRes) => {
+                  const chunks = [];
+                  redirectRes.on('data', (chunk) => chunks.push(chunk));
+                  redirectRes.on('end', () => resolve(Buffer.concat(chunks)));
+                  redirectRes.on('error', reject);
+                }).on('error', reject);
+                return;
+              }
+              if (res.statusCode !== 200) {
+                reject(new Error(`HTTP ${res.statusCode}`));
+                return;
+              }
+              const chunks = [];
+              res.on('data', (chunk) => chunks.push(chunk));
+              res.on('end', () => resolve(Buffer.concat(chunks)));
+              res.on('error', reject);
+            });
+            request.on('error', reject);
+            request.on('timeout', () => { request.destroy(); reject(new Error('timeout')); });
+          });
+          const avatarImage = nativeImage.createFromBuffer(iconBuffer);
+          if (!avatarImage.isEmpty()) {
+            notificationIcon = avatarImage;
+          }
+        } catch (iconError) {
+          console.warn('[Notification] Failed to load avatar icon, using default:', iconError.message);
+        }
+      }
+
       const notification = new Notification({
         title: title || 'Tachyon Messenger',
         body: body || '',
-        icon: getIconPath(),
+        icon: notificationIcon,
         silent: false,
         urgency: 'normal', // low, normal, critical
       });

@@ -337,9 +337,13 @@ class PushNotificationService {
         const { title, body } = payload.notification;
         if (title) {
           try {
+            // Используем аватар отправителя как иконку уведомления
+            const senderAvatar = payload.data?.sender_avatar as string | undefined;
+            const notificationIcon = senderAvatar || '/favicon.ico';
+
             const notification = new Notification(title, {
               body: body || '',
-              icon: '/favicon.ico',
+              icon: notificationIcon,
               tag: payload.messageId || 'default',
               requireInteraction: true,
               data: payload.data, // Передаем данные в notification

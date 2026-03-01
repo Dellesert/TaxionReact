@@ -825,12 +825,15 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             notificationStore.handleNewNotification(message.data);
 
             // Show notification based on platform
+            // Аватар отправителя для иконки уведомления
+            const avatarUrl = message.data.image_url || message.data.sender?.avatar_url;
             try {
               if (isElectron()) {
                 electronPushNotificationService.showNotification(
                   message.data.title || 'Tachyon Messenger',
                   message.data.message || message.data.body || '',
-                  message.data
+                  message.data,
+                  avatarUrl
                 );
               } else {
                 inAppNotificationStore.showNotification(message.data);
@@ -853,10 +856,12 @@ sendChatMessage(chatId: number, content: string, replyToId?: number) {
             // (on iOS/Android this is handled by FCM push, but Electron has no FCM)
             if (isElectron()) {
               try {
+                const updateAvatarUrl = message.data.image_url || message.data.sender?.avatar_url;
                 electronPushNotificationService.showNotification(
                   message.data.title || 'Tachyon Messenger',
                   message.data.message || message.data.body || '',
-                  message.data
+                  message.data,
+                  updateAvatarUrl
                 );
               } catch (error) {
                 console.error('[WS] Error showing Electron notification for update:', error);

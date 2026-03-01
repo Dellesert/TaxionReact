@@ -22,9 +22,14 @@ messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Background message data:', payload.data);
 
   const notificationTitle = payload.notification?.title || 'Новое сообщение';
+
+  // Используем аватар отправителя как иконку уведомления
+  const senderAvatar = payload.data?.sender_avatar;
+  const notificationIcon = senderAvatar || '/assets/images/icon.png';
+
   const notificationOptions = {
     body: payload.notification?.body || '',
-    icon: '/assets/images/icon.png',
+    icon: notificationIcon,
     badge: '/assets/images/icon.png',
     data: payload.data, // Данные передаются в notification
     requireInteraction: true, // Уведомление не исчезает автоматически

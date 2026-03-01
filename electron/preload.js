@@ -119,7 +119,7 @@ contextBridge.exposeInMainWorld('electron', {
 
   // Notification API
   notification: {
-    show: (title, body, data) => ipcRenderer.invoke('notification:show', { title, body, data }),
+    show: (title, body, data, iconUrl) => ipcRenderer.invoke('notification:show', { title, body, data, iconUrl }),
     register: (sessionId) => ipcRenderer.invoke('notification:register', sessionId),
     unregister: () => ipcRenderer.invoke('notification:unregister'),
     setBadgeCount: (count) => ipcRenderer.invoke('notification:setBadgeCount', count),

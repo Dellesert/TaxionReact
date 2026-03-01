@@ -126,19 +126,30 @@ class ElectronPushNotificationService {
    * Show a notification
    * Called by WebSocket service when new notification arrives
    */
-  async showNotification(title: string, body: string, data?: NotificationData): Promise<void> {
+  async showNotification(title: string, body: string, data?: NotificationData, iconUrl?: string): Promise<void> {
     try {
       // Don't show push notifications when the window is active and focused
       if (document.hasFocus()) {
         return;
       }
 
-      // Use Web Notification API (works reliably in both dev and production Electron)
+      // На Windows используем Electron IPC для показа уведомлений с аватаром отправителя
+      // (Electron native Notification поддерживает кастомные иконки на Windows/Linux)
+      if (this.isElectronAvailable()) {
+        const result = await window.electron!.notification.show(title, body, data, iconUrl);
+        if (result.success) {
+          return;
+        }
+        console.warn('[Push Electron] IPC notification failed, falling back to Web API:', result.error);
+      }
+
+      // Fallback to Web Notification API
+      const notificationIcon = iconUrl || '/favicon.ico';
       if ('Notification' in window) {
         if (Notification.permission === 'granted') {
           const notification = new Notification(title, {
             body,
-            icon: '/favicon.ico',
+            icon: notificationIcon,
           });
 
           notification.onclick = () => {
@@ -152,17 +163,12 @@ class ElectronPushNotificationService {
         } else if (Notification.permission !== 'denied') {
           const permission = await Notification.requestPermission();
           if (permission === 'granted') {
-            return this.showNotification(title, body, data);
+            return this.showNotification(title, body, data, iconUrl);
           }
         }
       }
 
-      // Fallback to Electron IPC notification
-      if (!this.isElectronAvailable()) {
-        return;
-      }
-
-      const result = await window.electron!.notification.show(title, body, data);
+      const result = { success: false, error: 'No notification method available' };
       if (!result.success) {
         console.error('[Push Electron] Failed to show notification:', result.error);
       }
