@@ -71,6 +71,7 @@ export const API_ENDPOINTS = {
     DELETE_SELF: '/profile',
     // User list (доступен всем авторизованным пользователям)
     LIST: '/users',
+    BATCH: '/users/batch',
     BY_ID: (id: number) => `/users/${id}`,
     // Admin endpoints
     ADMIN_LIST: '/admin/users',

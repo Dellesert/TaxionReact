@@ -102,6 +102,26 @@ export const getUserById = async (id: number): Promise<User> => {
   }
 };
 
+/**
+ * Get multiple users by IDs in a single batch request
+ */
+export const getUsersByIds = async (ids: number[]): Promise<User[]> => {
+  if (ids.length === 0) return [];
+
+  const response = await api.get(API_ENDPOINTS.USER.BATCH, {
+    params: { ids: ids.join(',') },
+  });
+
+  if (response.data.users) {
+    return response.data.users;
+  } else if (Array.isArray(response.data)) {
+    return response.data;
+  } else if (response.data.data) {
+    return response.data.data;
+  }
+  return [];
+};
+
 // ============= User List =============
 
 /**

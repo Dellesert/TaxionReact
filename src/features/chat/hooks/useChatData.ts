@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useChatStore } from '@shared/store/chatStore';
-import { Platform } from 'react-native';
-import { ChatFilter, FILTER_TABS_ORDER } from '../utils/chatHelpers';
+import { ChatFilter } from '../utils/chatHelpers';
 
 /**
  * Custom hook for managing chat data loading and state
@@ -26,19 +25,17 @@ export const useChatData = () => {
   const [canLoadMore, setCanLoadMore] = useState(false);
 
   /**
-   * Load all tabs on mount for instant switching
+   * Load initial chat data on mount.
+   * Only loads the 'all' tab (2 API calls instead of 8).
+   * Other tabs load on-demand when the user switches to them,
+   * with instant preview derived from cached 'all' tab data.
    */
   const loadAllTabs = useCallback(async () => {
-    // Load current tab first (highest priority)
+    // Load only the 'all' tab — other tabs load on-demand via switchTab
     await loadTabData('all');
 
     // Allow loading more after successful first tab load
     setCanLoadMore(true);
-
-    // Load other tabs in background for instant switching
-    setTimeout(() => loadTabData('private'), 100);
-    setTimeout(() => loadTabData('group'), 200);
-    setTimeout(() => loadTabData('channel'), 300);
   }, [loadTabData]);
 
   /**
@@ -50,27 +47,10 @@ export const useChatData = () => {
       setCanLoadMore(false);
       setTimeout(() => setCanLoadMore(true), 500);
 
-      // Use store switchTab function
+      // Use store switchTab — loads tab data on-demand if not cached
       storeSwitchTab(newFilter);
-
-      // Preload adjacent tabs for smooth swipe on iOS
-      if (Platform.OS === 'ios') {
-        const currentIndex = FILTER_TABS_ORDER.indexOf(newFilter);
-
-        // Preload next tab
-        if (currentIndex < FILTER_TABS_ORDER.length - 1) {
-          const nextTab = FILTER_TABS_ORDER[currentIndex + 1];
-          setTimeout(() => loadTabData(nextTab), 100);
-        }
-
-        // Preload previous tab
-        if (currentIndex > 0) {
-          const prevTab = FILTER_TABS_ORDER[currentIndex - 1];
-          setTimeout(() => loadTabData(prevTab), 100);
-        }
-      }
     },
-    [storeSwitchTab, loadTabData]
+    [storeSwitchTab]
   );
 
   /**

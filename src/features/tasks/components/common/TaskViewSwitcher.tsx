@@ -143,9 +143,6 @@ export const TaskViewSwitcher: React.FC<TaskViewSwitcherProps> = (props) => {
 
             {displayedViewMode === 'table' && (
               <TaskTableView
-                tasks={props.tasks}
-                totals={props.totals}
-                loading={props.loading}
                 searchQuery={props.searchQuery}
                 advancedFilters={props.advancedFilters}
                 expandAllSubtasks={props.expandAllSubtasks}

@@ -115,31 +115,27 @@ export const buildAdvancedTaskFilters = (
     filters.sort_order = advancedFilters.sortDirection;
   }
 
-
+  // Overdue deadline filter (server-side via due_before)
+  if (advancedFilters.hasOverdueDeadline) {
+    filters.due_before = new Date().toISOString();
+    // Exclude done/cancelled — overdue only applies to active tasks
+    if (!filters.status) {
+      filters.status = ['new', 'viewed', 'in_progress', 'review'];
+    }
+  }
 
   return filters;
 };
 
 /**
  * Apply client-side filters that cannot be done via API
- * Note: Subtasks filter is now done server-side, only overdue deadline remains client-side
+ * Note: All filters are now handled server-side (overdue via due_before, subtasks via has_subtasks)
  */
 export const applyClientSideFilters = (
   tasks: Task[],
-  advancedFilters: AdvancedTaskFilters
+  _advancedFilters: AdvancedTaskFilters
 ): Task[] => {
-  let filtered = [...tasks];
-
-  // Filter by overdue deadline
-  if (advancedFilters.hasOverdueDeadline) {
-    const now = new Date();
-    filtered = filtered.filter(t => {
-      if (!t.due_date || t.status === 'done') return false;
-      return new Date(t.due_date) < now;
-    });
-  }
-
-  return filtered;
+  return tasks;
 };
 
 /**

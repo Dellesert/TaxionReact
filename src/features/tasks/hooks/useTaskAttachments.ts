@@ -7,7 +7,6 @@ import { Platform } from 'react-native';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { fileApi } from '@api/fileApi';
-import { getUserById } from '@api/user.api';
 import { getCachedFileUri, cacheFile } from '@shared/utils/fileCache';
 
 /**
@@ -23,33 +22,7 @@ export const useTaskAttachments = (taskId: string) => {
       setIsLoadingAttachments(true);
       const taskIdNum = Number(taskId);
       const data = await taskApi.getTaskAttachments(taskIdNum);
-
-      // Load user info for each attachment if not provided by backend
-      const attachmentsWithUsers = await Promise.all(
-        data.map(async (attachment) => {
-          if (!attachment.uploaded_by && attachment.uploaded_by_user_id) {
-            try {
-              const user = await getUserById(attachment.uploaded_by_user_id);
-              return {
-                ...attachment,
-                uploaded_by: {
-                  id: user.id,
-                  name: user.name,
-                  email: user.email,
-                  avatar: user.avatar,
-                  position: user.position,
-                },
-              };
-            } catch (error) {
-              console.error(`Failed to load user ${attachment.uploaded_by_user_id}:`, error);
-              return attachment;
-            }
-          }
-          return attachment;
-        })
-      );
-
-      setAttachments(attachmentsWithUsers);
+      setAttachments(data);
     } catch (error) {
       console.error('Error loading attachments:', error);
       throw error;

@@ -1,26 +1,25 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Task } from '../../types/task.types';
-import type { TasksByStatus, TotalsByStatus, LoadingByStatus, StatusTab } from '../../hooks/useTaskListData';
+import type { StatusTab } from '../../hooks/useTaskListData';
 import { useAuthStore } from '@shared/store/authStore';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useTaskPermissions } from '../../hooks/useTaskPermissions';
 import { useActionModal } from '@shared/contexts/ActionModalContext';
 import { useNotification } from '@shared/contexts/NotificationContext';
 import { useTaskActions } from '../../hooks/useTaskActions';
+import { useTaskStore } from '@shared/store/taskStore';
+import * as taskApi from '../../api/task.api';
 import { Avatar } from '@shared/components/common/Avatar';
 import { DataTable, DataTableColumn } from '@shared/components/common/DataTable';
 import { TaskActionMenu } from '../common/TaskActionMenu';
 import EditTaskModal from '../modals/EditTaskModal';
 import { DelegateTaskModal } from '../modals/DelegateTaskModal';
 import { CreateSubtaskModal } from '../modals/CreateSubtaskModal';
-import { STATUS_LABELS, STATUS_COLORS, STATUS_TABS_ORDER, applyClientSideFilters, type AdvancedTaskFilters } from '../../utils/taskListHelpers';
+import { STATUS_LABELS, STATUS_COLORS, buildAdvancedTaskFilters, type AdvancedTaskFilters } from '../../utils/taskListHelpers';
 
 interface TaskTableViewProps {
-  tasks: TasksByStatus;
-  totals: TotalsByStatus;
-  loading: LoadingByStatus;
   searchQuery: string;
   advancedFilters: AdvancedTaskFilters;
   expandAllSubtasks?: boolean;
@@ -37,9 +36,6 @@ type TaskRow = {
 };
 
 export const TaskTableView: React.FC<TaskTableViewProps> = ({
-  tasks,
-  totals,
-  loading,
   searchQuery,
   advancedFilters,
   expandAllSubtasks = false,
@@ -53,6 +49,49 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
 
   // Expanded tasks state (for subtasks)
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<number>>(new Set());
+
+  // On-demand subtask loading
+  const subtasksByParentId = useTaskStore((state) => state.subtasksByParentId);
+  const setSubtasks = useTaskStore((state) => state.setSubtasks);
+  const [loadingSubtaskIds, setLoadingSubtaskIds] = useState<Set<number>>(new Set());
+
+  // Server-side pagination
+  const TASK_PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
+  const [serverTasks, setServerTasks] = useState<Task[]>([]);
+  const [serverTotal, setServerTotal] = useState(0);
+  const [serverLoading, setServerLoading] = useState(true);
+
+  const loadServerPage = useCallback(async (page: number) => {
+    setServerLoading(true);
+    try {
+      const filters = buildAdvancedTaskFilters(advancedFilters, searchQuery, user?.id);
+      filters.is_subtask = false; // Exclude subtasks — they load on-demand
+
+      const response = await taskApi.getTasks(filters, {
+        limit: TASK_PAGE_SIZE,
+        offset: (page - 1) * TASK_PAGE_SIZE,
+      });
+
+      setServerTasks(response.data || []);
+      setServerTotal(response.total || 0);
+    } catch (error) {
+      console.error('Failed to load tasks page:', error);
+    } finally {
+      setServerLoading(false);
+    }
+  }, [advancedFilters, searchQuery, user?.id]);
+
+  // Load on mount and when filters/search change
+  useEffect(() => {
+    setCurrentPage(1);
+    loadServerPage(1);
+  }, [loadServerPage]);
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    loadServerPage(page);
+  }, [loadServerPage]);
 
   // Action menu state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -70,33 +109,8 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
   const [showDelegateModal, setShowDelegateModal] = useState(false);
   const [showSubtaskModal, setShowSubtaskModal] = useState(false);
 
-  // Combine all tasks, separate top-level from subtasks
-  const { topLevelTasks, orphanSubtasks } = React.useMemo(() => {
-    const combined: Task[] = [];
-    STATUS_TABS_ORDER.forEach(status => {
-      combined.push(...tasks[status]);
-    });
-    const filtered = applyClientSideFilters(combined, advancedFilters);
-
-    // Build set of all task IDs in current result
-    const allTaskIds = new Set(filtered.map(t => t.id));
-
-    const topLevel: Task[] = [];
-    const orphans: Task[] = [];
-
-    for (const task of filtered) {
-      if (!task.parent_task_id) {
-        // Top-level task (no parent)
-        topLevel.push(task);
-      } else if (!allTaskIds.has(task.parent_task_id)) {
-        // Orphan subtask: parent not in current list
-        orphans.push(task);
-      }
-      // Skip subtasks whose parent IS in the list — they appear via parent.subtasks
-    }
-
-    return { topLevelTasks: topLevel, orphanSubtasks: orphans };
-  }, [tasks, advancedFilters]);
+  // Server tasks are already filtered top-level tasks (is_subtask=false)
+  const topLevelTasks = serverTasks;
 
   // Sync expandedTaskIds with expandAllSubtasks prop
   useEffect(() => {
@@ -113,7 +127,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
     }
   }, [expandAllSubtasks, topLevelTasks]);
 
-  // Build hierarchical list with subtasks
+  // Build hierarchical list with subtasks (loaded on-demand from store)
   const tasksWithSubtasks = React.useMemo(() => {
     const result: TaskRow[] = [];
 
@@ -129,7 +143,8 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       });
 
       if (expandedTaskIds.has(task.id)) {
-        const taskSubtasks = task.subtasks || [];
+        // Use on-demand loaded subtasks from store, fallback to inline
+        const taskSubtasks = subtasksByParentId[task.id] || task.subtasks || [];
         taskSubtasks.forEach(subtask => {
           addTaskWithSubtasks(subtask, level + 1, taskSubtasks);
         });
@@ -141,19 +156,8 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       addTaskWithSubtasks(task, 0);
     });
 
-    // Orphan subtasks (parent not visible) — shown at top level with indicator
-    orphanSubtasks.forEach(task => {
-      result.push({
-        task,
-        level: 0,
-        isSubtask: false,
-        isLastSubtask: false,
-        parentTaskId: task.parent_task_id,
-      });
-    });
-
     return result;
-  }, [topLevelTasks, orphanSubtasks, expandedTaskIds]);
+  }, [topLevelTasks, expandedTaskIds, subtasksByParentId]);
 
   // Get permissions for selected task
   const permissions = useTaskPermissions(selectedTask);
@@ -189,7 +193,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
     showError
   );
 
-  const handleToggleExpand = useCallback((taskId: number) => {
+  const handleToggleExpand = useCallback(async (taskId: number) => {
     setExpandedTaskIds(prev => {
       const newSet = new Set(prev);
       if (newSet.has(taskId)) {
@@ -199,7 +203,24 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       }
       return newSet;
     });
-  }, []);
+
+    // Load subtasks on-demand if not already loaded
+    if (!subtasksByParentId[taskId] && !loadingSubtaskIds.has(taskId)) {
+      setLoadingSubtaskIds(prev => new Set(prev).add(taskId));
+      try {
+        const subtasks = await taskApi.getSubtasks(taskId);
+        setSubtasks(taskId, subtasks);
+      } catch (error) {
+        console.error(`Failed to load subtasks for task ${taskId}:`, error);
+      } finally {
+        setLoadingSubtaskIds(prev => {
+          const next = new Set(prev);
+          next.delete(taskId);
+          return next;
+        });
+      }
+    }
+  }, [subtasksByParentId, loadingSubtaskIds, setSubtasks]);
 
   const handleOpenActionMenu = useCallback((task: Task, event: any) => {
     if (!hasAvailableActions(task)) return;
@@ -287,7 +308,8 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
     setParentTaskForSubtask(null);
     setTaskForAction(null);
     onTaskUpdated?.();
-  }, [onTaskUpdated]);
+    loadServerPage(currentPage);
+  }, [onTaskUpdated, loadServerPage, currentPage]);
 
   const getStatusColor = (status: StatusTab) => {
     return STATUS_COLORS[status];
@@ -339,22 +361,7 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
     return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  const isLoading = loading.new || loading.in_progress || loading.review || loading.done;
-
-  // Client-side pagination
-  const TASK_PAGE_SIZE = 20;
-  const [currentPage, setCurrentPage] = useState(1);
-
-  // Reset page when filters/search change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, advancedFilters]);
-
-  const totalTaskItems = tasksWithSubtasks.length;
-  const paginatedTasks = useMemo(() => {
-    const start = (currentPage - 1) * TASK_PAGE_SIZE;
-    return tasksWithSubtasks.slice(start, start + TASK_PAGE_SIZE);
-  }, [tasksWithSubtasks, currentPage]);
+  const isLoading = serverLoading;
 
   // Disable DataTable sorting when subtasks are expanded to preserve hierarchy
   const hasExpandedTasks = expandedTaskIds.size > 0;
@@ -369,9 +376,10 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
       sortable: !hasExpandedTasks,
       sortValue: (row) => row.task.title.toLowerCase(),
       render: ({ task, isSubtask, isLastSubtask, parentTaskId }, thm) => {
-        const hasSubtasks = (task.subtasks?.length || 0) > 0 || (task.subtask_count || 0) > 0;
+        const hasSubtasks = (subtasksByParentId[task.id]?.length || task.subtasks?.length || 0) > 0 || (task.subtask_count || 0) > 0;
         const isExpanded = expandedTaskIds.has(task.id);
-        const subtaskCount = task.subtasks?.length || task.subtask_count || 0;
+        const isLoadingSubtasks = loadingSubtaskIds.has(task.id);
+        const subtaskCount = subtasksByParentId[task.id]?.length || task.subtasks?.length || task.subtask_count || 0;
         const isOrphan = !isSubtask && !!parentTaskId;
 
         return (
@@ -400,11 +408,15 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
                   handleToggleExpand(task.id);
                 }}
               >
-                <Ionicons
-                  name={isExpanded ? 'chevron-down' : 'chevron-forward'}
-                  size={14}
-                  color={thm.text}
-                />
+                {isLoadingSubtasks ? (
+                  <ActivityIndicator size={12} color={thm.textSecondary} />
+                ) : (
+                  <Ionicons
+                    name={isExpanded ? 'chevron-down' : 'chevron-forward'}
+                    size={14}
+                    color={thm.text}
+                  />
+                )}
               </TouchableOpacity>
             )}
 
@@ -571,16 +583,16 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
         );
       },
     },
-  ], [expandedTaskIds, hasExpandedTasks, handleToggleExpand, user, hasAvailableActions, handleOpenActionMenu, isDark]);
+  ], [expandedTaskIds, hasExpandedTasks, handleToggleExpand, user, hasAvailableActions, handleOpenActionMenu, isDark, subtasksByParentId, loadingSubtaskIds]);
 
   return (
     <View style={localStyles.container}>
       <DataTable<TaskRow>
         columns={columns}
-        data={paginatedTasks}
+        data={tasksWithSubtasks}
         keyExtractor={(row, index) => `${row.task.id}-${row.level}-${row.task.parent_task_id || 'root'}-${index}`}
         onRowPress={(row) => onTaskPress(row.task)}
-        isLoading={isLoading && tasksWithSubtasks.length === 0}
+        isLoading={isLoading && serverTasks.length === 0}
         emptyIcon={searchQuery ? 'search-outline' : 'document-text-outline'}
         emptyTitle={searchQuery ? 'Задачи не найдены' : 'Нет задач'}
         emptySubtitle={searchQuery ? 'Попробуйте изменить параметры поиска' : user?.role !== 'employee' ? 'Создайте новую задачу для начала работы' : 'Задачи пока не назначены'}
@@ -606,15 +618,15 @@ export const TaskTableView: React.FC<TaskTableViewProps> = ({
           // Count parent rows up to this index
           let parentCount = 0;
           for (let i = 0; i <= index; i++) {
-            if (!paginatedTasks[i]?.isSubtask) parentCount++;
+            if (!tasksWithSubtasks[i]?.isSubtask) parentCount++;
           }
           return (currentPage - 1) * TASK_PAGE_SIZE + parentCount;
         }}
         pagination={{
           currentPage,
-          totalItems: totalTaskItems,
+          totalItems: serverTotal,
           pageSize: TASK_PAGE_SIZE,
-          onPageChange: setCurrentPage,
+          onPageChange: handlePageChange,
         }}
       />
 

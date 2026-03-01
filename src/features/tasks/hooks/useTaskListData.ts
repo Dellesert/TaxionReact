@@ -42,6 +42,8 @@ export interface UseTaskListDataReturn {
   loading: LoadingByStatus;
   canLoadMore: CanLoadMoreByStatus;
   isInitialLoading: boolean;
+  subtasksByParentId: Record<number, Task[]>;
+  loadingSubtasks: Set<number>;
   loadTasksByStatus: (
     status: StatusTab,
     limit: number,
@@ -53,6 +55,7 @@ export interface UseTaskListDataReturn {
     silentUpdate: boolean,
     filters: Record<string, any>
   ) => Promise<void>;
+  loadSubtasks: (taskId: number) => Promise<void>;
   resetCanLoadMore: () => void;
   setIsInitialLoading: (loading: boolean) => void;
 }
@@ -65,8 +68,13 @@ export const useTaskListData = (): UseTaskListDataReturn => {
   // Get data directly from Zustand store - this prevents setState during render
   const tasks = useTaskStore((state) => state.tasksByStatus);
   const totals = useTaskStore((state) => state.totals);
+  const subtasksByParentId = useTaskStore((state) => state.subtasksByParentId);
   const setTasksForStatus = useTaskStore((state) => state.setTasksForStatus);
   const appendTasksForStatus = useTaskStore((state) => state.appendTasksForStatus);
+  const setSubtasks = useTaskStore((state) => state.setSubtasks);
+
+  // Track which subtasks are currently loading
+  const [loadingSubtasks, setLoadingSubtasks] = useState<Set<number>>(new Set());
 
   // Loading states
   const [loading, setLoading] = useState<LoadingByStatus>({
@@ -175,6 +183,25 @@ export const useTaskListData = (): UseTaskListDataReturn => {
     }
   }, [loadTasksByStatus, setTasksForStatus]);
 
+  const loadSubtasks = useCallback(async (taskId: number) => {
+    // Skip if already loaded or currently loading
+    if (subtasksByParentId[taskId] || loadingSubtasks.has(taskId)) return;
+
+    setLoadingSubtasks(prev => new Set(prev).add(taskId));
+    try {
+      const subtasks = await taskApi.getSubtasks(taskId);
+      setSubtasks(taskId, subtasks);
+    } catch (error) {
+      console.error(`Failed to load subtasks for task ${taskId}:`, error);
+    } finally {
+      setLoadingSubtasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  }, [subtasksByParentId, loadingSubtasks, setSubtasks]);
+
   const resetCanLoadMore = useCallback(() => {
     setCanLoadMore({
       new: false,
@@ -190,8 +217,11 @@ export const useTaskListData = (): UseTaskListDataReturn => {
     loading,
     canLoadMore,
     isInitialLoading,
+    subtasksByParentId,
+    loadingSubtasks,
     loadTasksByStatus,
     loadAllTasks,
+    loadSubtasks,
     resetCanLoadMore,
     setIsInitialLoading,
   };

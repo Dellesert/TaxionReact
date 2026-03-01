@@ -11,7 +11,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { Chat, Message, TypingIndicator, MessageType } from '@/features/chat/types/chat.types';
 import * as chatApi from '@/features/chat/api/chat.api';
-import { getUserById } from '@api/user.api';
+import { getUserById, getUsersByIds } from '@api/user.api';
 import { isMockMode, mockGetChats, mockGetMessages } from '@shared/utils/mockData';
 import { useAuthStore } from '@shared/store/authStore';
 import { useUserStore } from '@shared/store/userStore';
@@ -186,31 +186,47 @@ interface ChatState {
   set: (state: Partial<ChatState>) => void;
 }
 
-// Helper function to enrich chat with user data (with caching and deduplication)
-const enrichChatWithUsers = async (chat: Chat): Promise<Chat> => {
-  if (!chat.members || chat.members.length === 0) {
-    return chat;
+// Helper function to enrich multiple chats with user data in a single batch request
+const enrichChatsWithUsers = async (chats: Chat[]): Promise<Chat[]> => {
+  const { getCachedUser, cacheUser } = useUserStore.getState();
+
+  // Collect all missing user IDs across all chats
+  const missingIds = new Set<number>();
+  for (const chat of chats) {
+    if (!chat.members) continue;
+    for (const member of chat.members) {
+      if (!member.user && member.user_id && !getCachedUser(member.user_id)) {
+        missingIds.add(member.user_id);
+      }
+    }
   }
 
-  // Load user data for each member who doesn't have it
-  const enrichedMembers = await Promise.all(
-    chat.members.map(async (member) => {
-      if (member.user) {
-        return member; // Already has user data
+  // Batch-fetch all missing users in one request
+  let fetchedUsers = new Map<number, any>();
+  if (missingIds.size > 0) {
+    try {
+      const users = await getUsersByIds(Array.from(missingIds));
+      for (const user of users) {
+        fetchedUsers.set(user.id, user);
+        cacheUser(user);
       }
+    } catch (error) {
+      console.error('Failed to batch-fetch users:', error);
+    }
+  }
 
-      try {
-        // Use deduplication function
-        const user = await getUserWithDedup(member.user_id);
-        return { ...member, user };
-      } catch (error) {
-        console.error(`Failed to load user ${member.user_id}:`, error);
-        return member; // Return member without user data
-      }
-    })
-  );
+  // Enrich all chats with fetched + cached user data
+  return chats.map(chat => {
+    if (!chat.members || chat.members.length === 0) return chat;
 
-  return { ...chat, members: enrichedMembers };
+    const enrichedMembers = chat.members.map(member => {
+      if (member.user) return member;
+      const user = getCachedUser(member.user_id) || fetchedUsers.get(member.user_id);
+      return user ? { ...member, user } : member;
+    });
+
+    return { ...chat, members: enrichedMembers };
+  });
 };
 
 // Initial tabs state (used for reset)
@@ -301,26 +317,25 @@ export const useChatStore = create<ChatState>()(
 
       const type = typeMap[tabName];
 
-      // 1. Load all pinned chats for this tab
-      const pinnedResponse = await chatApi.getPinnedChats(type);
-      let pinnedChats = pinnedResponse.chats;
-
-      // Enrich pinned chats with user data
-      pinnedChats = await Promise.all(pinnedChats.map(enrichChatWithUsers));
-
-      // 2. Load first page of regular chats
+      // 1. Load pinned + regular chats in parallel
       const limit = 15;
       const filters: any = {};
       if (type) filters.type = type;
 
-      const regularResponse = await chatApi.getChats(limit, 0, Object.keys(filters).length > 0 ? filters : undefined);
+      const [pinnedResponse, regularResponse] = await Promise.all([
+        chatApi.getPinnedChats(type),
+        chatApi.getChats(limit, 0, Object.keys(filters).length > 0 ? filters : undefined),
+      ]);
 
       // Filter out pinned chats from regular chats
-      const pinnedIds = new Set(pinnedChats.map(c => c.id));
-      let regularChats = regularResponse.chats.filter(c => !pinnedIds.has(c.id));
+      const pinnedIds = new Set(pinnedResponse.chats.map(c => c.id));
+      const filteredRegular = regularResponse.chats.filter(c => !pinnedIds.has(c.id));
 
-      // Enrich regular chats with user data
-      regularChats = await Promise.all(regularChats.map(enrichChatWithUsers));
+      // Batch-enrich all chats with user data in one request
+      const allChats = [...pinnedResponse.chats, ...filteredRegular];
+      const enriched = await enrichChatsWithUsers(allChats);
+      let pinnedChats = enriched.slice(0, pinnedResponse.chats.length);
+      let regularChats = enriched.slice(pinnedResponse.chats.length);
 
       // Update tab data
       set(state => {
@@ -365,15 +380,34 @@ export const useChatStore = create<ChatState>()(
     const { tabs } = get();
     const tabData = tabs[tabName];
 
-    // Update current chats from cached tab data
-    set({
-      currentTab: tabName,
-      chats: [...tabData.pinnedChats, ...tabData.regularChats],
-      hasMoreChats: tabData.hasMore,
-    });
+    if (tabData.loaded) {
+      // Tab already loaded — show cached data
+      set({
+        currentTab: tabName,
+        chats: [...tabData.pinnedChats, ...tabData.regularChats],
+        hasMoreChats: tabData.hasMore,
+      });
+    } else {
+      // Tab not loaded — derive preview from 'all' tab for instant UX
+      const allTab = tabs.all;
+      if (allTab.loaded && tabName !== 'all') {
+        const typeFilter = tabName; // 'private' | 'group' | 'channel'
+        const derivedPinned = allTab.pinnedChats.filter(c => c.type === typeFilter);
+        const derivedRegular = allTab.regularChats.filter(c => c.type === typeFilter);
+        set({
+          currentTab: tabName,
+          chats: [...derivedPinned, ...derivedRegular],
+          hasMoreChats: true, // Assume more until real data arrives
+        });
+      } else {
+        set({
+          currentTab: tabName,
+          chats: [],
+          hasMoreChats: true,
+        });
+      }
 
-    // Load tab data if not loaded yet
-    if (!tabData.loaded) {
+      // Load actual tab data from API
       get().loadTabData(tabName);
     }
   },
@@ -431,26 +465,25 @@ export const useChatStore = create<ChatState>()(
 
       const type = typeMap[currentTab];
 
-      // 1. Load all pinned chats for this tab
-      const pinnedResponse = await chatApi.getPinnedChats(type);
-      let pinnedChats = pinnedResponse.chats;
-
-      // Enrich pinned chats with user data
-      pinnedChats = await Promise.all(pinnedChats.map(enrichChatWithUsers));
-
-      // 2. Load first page of regular chats
+      // 1. Load pinned + regular chats in parallel
       const limit = 15;
       const filters: any = {};
       if (type) filters.type = type;
 
-      const regularResponse = await chatApi.getChats(limit, 0, Object.keys(filters).length > 0 ? filters : undefined);
+      const [pinnedResponse, regularResponse] = await Promise.all([
+        chatApi.getPinnedChats(type),
+        chatApi.getChats(limit, 0, Object.keys(filters).length > 0 ? filters : undefined),
+      ]);
 
       // Filter out pinned chats from regular chats
-      const pinnedIds = new Set(pinnedChats.map(c => c.id));
-      let regularChats = regularResponse.chats.filter(c => !pinnedIds.has(c.id));
+      const pinnedIds = new Set(pinnedResponse.chats.map(c => c.id));
+      const filteredRegular = regularResponse.chats.filter(c => !pinnedIds.has(c.id));
 
-      // Enrich regular chats with user data
-      regularChats = await Promise.all(regularChats.map(enrichChatWithUsers));
+      // Batch-enrich all chats with user data in one request
+      const allChats = [...pinnedResponse.chats, ...filteredRegular];
+      const enriched = await enrichChatsWithUsers(allChats);
+      let pinnedChats = enriched.slice(0, pinnedResponse.chats.length);
+      let regularChats = enriched.slice(pinnedResponse.chats.length);
 
       // Update state silently (no isLoading changes)
       set(state => ({
@@ -501,7 +534,7 @@ export const useChatStore = create<ChatState>()(
         total = response.total;
         hasMore = response.hasMore;
         // Enrich chats with user data
-        chats = await Promise.all(chats.map(enrichChatWithUsers));
+        chats = await enrichChatsWithUsers(chats);
       }
 
       if (append) {
@@ -583,7 +616,7 @@ export const useChatStore = create<ChatState>()(
       let newChats = response.chats.filter(c => !pinnedIds.has(c.id) && !existingIds.has(c.id));
 
       // Enrich with user data
-      newChats = await Promise.all(newChats.map(enrichChatWithUsers));
+      newChats = await enrichChatsWithUsers(newChats);
 
       // Update tab data
       set(state => {
@@ -647,7 +680,7 @@ export const useChatStore = create<ChatState>()(
       }
 
       // Enrich chat with user data
-      newChat = await enrichChatWithUsers(newChat);
+      [newChat] = await enrichChatsWithUsers([newChat]);
 
       set((state) => ({
         // Check if chat already exists in the list (for reopened hidden chats)
@@ -1703,7 +1736,7 @@ export const useChatStore = create<ChatState>()(
         }
 
         // Enrich chat with user data for members
-        fetchedChat = await enrichChatWithUsers(fetchedChat);
+        [fetchedChat] = await enrichChatsWithUsers([fetchedChat]);
 
         // Добавляем загруженный чат в store
         set((state) => {
