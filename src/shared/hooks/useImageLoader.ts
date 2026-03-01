@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { replaceLocalhostWithIP, isImageFile } from '@/features/chat/utils/message.utils';
+import { isImageFile } from '@/features/chat/utils/message.utils';
 
 interface Attachment {
   id: number;
@@ -24,9 +24,8 @@ export const useImageLoader = (attachments?: Attachment[]) => {
     for (const attachment of attachments) {
       const mimeType = attachment.mime_type || attachment.file_type || '';
       if (isImageFile(mimeType)) {
-        // Просто заменяем localhost на реальный IP
         // expo-image сам загрузит и закеширует изображение
-        urls[attachment.id] = replaceLocalhostWithIP(attachment.file_url);
+        urls[attachment.id] = attachment.file_url;
       }
     }
 

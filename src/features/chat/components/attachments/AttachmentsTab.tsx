@@ -28,7 +28,6 @@ import * as chatApi from '../../api/chat.api';
 import { MediaViewer, MediaItem } from '../modals/MediaViewer';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
-import { replaceLocalhostWithIP } from '../../utils/message.utils';
 import { decodeFileName } from '../../utils/file.utils';
 import { FileTypeIcon } from '@shared/components/common/FileTypeIcon';
 import { getThumbnailUrl } from '../../utils/thumbnail.utils';
@@ -177,9 +176,9 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
   const mediaItems: MediaItem[] = useMemo(() => {
     return mediaAttachments.map(att => ({
       type: att.file_type === 'video' ? 'video' as const : 'image' as const,
-      url: replaceLocalhostWithIP(att.file_url),
-      thumbnailUrl: att.thumbnail_url ? replaceLocalhostWithIP(att.thumbnail_url) : undefined,
-      thumbnailLargeUrl: att.thumbnail_large_url ? replaceLocalhostWithIP(att.thumbnail_large_url) : undefined,
+      url: att.file_url,
+      thumbnailUrl: att.thumbnail_url ? att.thumbnail_url : undefined,
+      thumbnailLargeUrl: att.thumbnail_large_url ? att.thumbnail_large_url : undefined,
       attachmentId: att.id,
       duration: att.duration,
     }));
@@ -205,8 +204,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
         return;
       }
 
-      // Replace localhost with real IP
-      const fileUrl = replaceLocalhostWithIP(attachment.file_url);
+      const fileUrl = attachment.file_url;
 
       if (Platform.OS === 'web') {
         // Web: Download using blob
@@ -538,7 +536,7 @@ export const AttachmentsTab: React.FC<AttachmentsTabProps> = ({ chatId, onForwar
                   {/* Actual thumbnail */}
                   <Image
                     source={{
-                      uri: replaceLocalhostWithIP(getThumbnailUrl(attachment, 'medium')),
+                      uri: getThumbnailUrl(attachment, 'medium'),
                       headers: sessionId ? {
                         'X-Session-ID': sessionId,
                       } : undefined,

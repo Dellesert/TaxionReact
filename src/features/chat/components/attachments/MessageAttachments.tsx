@@ -10,7 +10,7 @@ import { useNotification } from '@shared/contexts/NotificationContext';
 import { useAuthStore } from '@shared/store/authStore';
 import * as secureStorage from '@shared/utils/secureStorage';
 import { STORAGE_KEYS } from '@shared/constants/app.constants';
-import { isImageFile, isVideoFile, formatDuration, formatTime, replaceLocalhostWithIP } from '../../utils/message.utils';
+import { isImageFile, isVideoFile, formatDuration, formatTime } from '../../utils/message.utils';
 import { MessageStatus } from '../common/MessageStatus';
 import { Message } from '../../types/chat.types';
 import { decodeFileName } from '../../utils/file.utils';
@@ -110,7 +110,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
           if (isVideoFile(mt) && !attachment.thumbnail_url) continue;
           // Используем thumbnail подходящего размера для превью
           const thumbnailUrl = getThumbnailUrl(attachment, mediaCount === 1 ? 'large' : 'medium');
-          const imageUrl = replaceLocalhostWithIP(thumbnailUrl);
+          const imageUrl = thumbnailUrl;
 
           // Проверяем, является ли файл публичным (не требует авторизации)
           const isPublicFile = imageUrl.includes('/files/public/');
@@ -156,8 +156,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
 
   const handleFileDownload = async (attachment: Attachment) => {
     try {
-      // Replace localhost with real IP
-      const fileUrl = replaceLocalhostWithIP(attachment.file_url);
+      const fileUrl = attachment.file_url;
 
       // Проверяем, является ли файл публичным
       const isPublicFile = fileUrl.includes('/files/public/');
@@ -249,7 +248,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
       ? thumbnailUri
       : (Platform.OS === 'web' && blobUrls[attachment.id]
         ? blobUrls[attachment.id]
-        : replaceLocalhostWithIP(thumbnailUri));
+        : thumbnailUri);
     const isPublicFile = !isLocal && imageUri.includes('/files/public/');
 
     return (
@@ -260,11 +259,11 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
           if (isUploading) return;
           if (isVideo) {
             onVideoPress?.(
-              replaceLocalhostWithIP(attachment.file_url),
-              attachment.thumbnail_url ? replaceLocalhostWithIP(attachment.thumbnail_url) : undefined
+              attachment.file_url,
+              attachment.thumbnail_url ? attachment.thumbnail_url : undefined
             );
           } else {
-            onImagePress(replaceLocalhostWithIP(attachment.file_url));
+            onImagePress(attachment.file_url);
           }
         }}
         onLongPress={onLongPress}
@@ -397,7 +396,7 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
       ? thumbnailUri
       : (Platform.OS === 'web' && blobUrls[attachment.id]
         ? blobUrls[attachment.id]
-        : replaceLocalhostWithIP(thumbnailUri));
+        : thumbnailUri);
     const isPublicFile = !isLocalVideo && imageUri.includes('/files/public/');
 
     return (
@@ -419,8 +418,8 @@ const MessageAttachmentsComponent: React.FC<MessageAttachmentsProps> = ({
           // Не открываем видео если оно ещё загружается
           if (!isUploading) {
             onVideoPress?.(
-              replaceLocalhostWithIP(attachment.file_url),
-              attachment.thumbnail_url ? replaceLocalhostWithIP(attachment.thumbnail_url) : undefined
+              attachment.file_url,
+              attachment.thumbnail_url ? attachment.thumbnail_url : undefined
             );
           }
         }}

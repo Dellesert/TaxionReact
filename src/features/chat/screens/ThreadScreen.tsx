@@ -25,7 +25,7 @@ import { MediaViewer, MediaItem } from '../components/modals/MediaViewer';
 import { useAuthStore } from '@shared/store/authStore';
 import { useChatStore } from '@shared/store/chatStore';
 import { Avatar } from '@shared/components/common/Avatar';
-import { isImageFile, isVideoFile, replaceLocalhostWithIP } from '../utils/message.utils';
+import { isImageFile, isVideoFile } from '../utils/message.utils';
 import { useImageLoader } from '@shared/hooks/useImageLoader';
 
 function getCommentsLabel(count: number): string {
@@ -103,9 +103,9 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
         const mt = att.mime_type || att.file_type || '';
         return {
           type: isVideoFile(mt) ? 'video' as const : 'image' as const,
-          url: replaceLocalhostWithIP(att.file_url),
-          thumbnailUrl: att.thumbnail_url ? replaceLocalhostWithIP(att.thumbnail_url) : undefined,
-          thumbnailLargeUrl: att.thumbnail_large_url ? replaceLocalhostWithIP(att.thumbnail_large_url) : undefined,
+          url: att.file_url,
+          thumbnailUrl: att.thumbnail_url ? att.thumbnail_url : undefined,
+          thumbnailLargeUrl: att.thumbnail_large_url ? att.thumbnail_large_url : undefined,
           attachmentId: att.id,
           duration: att.duration,
         };

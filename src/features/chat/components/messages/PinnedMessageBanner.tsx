@@ -12,7 +12,7 @@ import { STORAGE_KEYS } from '@shared/constants/app.constants';
 import { Message } from '../../types/chat.types';
 import { decodeFileName } from '../../utils/file.utils';
 import { FileTypeIcon } from '@shared/components/common/FileTypeIcon';
-import { isImageFile, isVideoFile, replaceLocalhostWithIP } from '../../utils/message.utils';
+import { isImageFile, isVideoFile } from '../../utils/message.utils';
 import { getThumbnailUrl } from '../../utils/thumbnail.utils';
 import { stripFormatting } from '../../utils/formatting';
 import Avatar from '@shared/components/common/Avatar';
@@ -192,7 +192,7 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
         const extra = message.attachments.length > 1 ? ` и ещё ${message.attachments.length - 1}` : '';
         return {
           text: label + extra,
-          thumbnailUrl: replaceLocalhostWithIP(thumbnailUrl),
+          thumbnailUrl,
         };
       }
 

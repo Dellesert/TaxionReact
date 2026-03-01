@@ -23,7 +23,6 @@ import { MessageSearchOverlay } from '../components/search/MessageSearchOverlay'
 import { MediaViewer, MediaItem } from '../components/modals/MediaViewer';
 import { Attachment } from '../types/chat.types';
 import * as chatApi from '../api/chat.api';
-import { replaceLocalhostWithIP } from '../utils/message.utils';
 import {
   canDeleteForEveryone as checkCanDeleteForEveryone,
   getUserRoleInChat,
@@ -586,9 +585,9 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation, onThreadPress: 
         .filter((att: Attachment) => att.file_type === 'image' || att.file_type === 'video')
         .map((att: Attachment) => ({
           type: att.file_type === 'video' ? 'video' as const : 'image' as const,
-          url: replaceLocalhostWithIP(att.file_url),
-          thumbnailUrl: att.thumbnail_url ? replaceLocalhostWithIP(att.thumbnail_url) : undefined,
-          thumbnailLargeUrl: att.thumbnail_large_url ? replaceLocalhostWithIP(att.thumbnail_large_url) : undefined,
+          url: att.file_url,
+          thumbnailUrl: att.thumbnail_url ? att.thumbnail_url : undefined,
+          thumbnailLargeUrl: att.thumbnail_large_url ? att.thumbnail_large_url : undefined,
           attachmentId: att.id,
           duration: att.duration,
         }))

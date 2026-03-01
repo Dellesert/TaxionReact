@@ -151,33 +151,6 @@ const parseForwardedMessageFromContent = (content: string): { header: string | n
 };
 
 /**
- * Заменяет localhost на реальный IP адрес для кросс-платформенности
- * Использует IP из переменных окружения
- */
-export const replaceLocalhostWithIP = (url: string): string => {
-  if (!url) return url;
-
-  // Получаем базовый URL из переменных окружения
-  const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1';
-  // Извлекаем только протокол и хост (без /api/v1)
-  const baseHost = apiBaseUrl.replace(/\/api\/v1$/, '');
-
-  // Если URL начинается с /, это относительный путь - добавляем baseHost
-  if (url.startsWith('/')) {
-    return baseHost + url;
-  }
-
-  // Заменяем различные варианты localhost и продакшн URL
-  const replacedUrl = url
-    .replace(/http:\/\/localhost:8080/g, baseHost)
-    .replace(/http:\/\/127\.0\.0\.1:8080/g, baseHost)
-    .replace(/http:\/\/0\.0\.0\.0:8080/g, baseHost)
-    .replace(/https:\/\/taxion\.fusioninsight\.cloud/g, baseHost);
-
-  return replacedUrl;
-};
-
-/**
  * Получает отображаемый контент сообщения с учётом is_deleted
  *
  * ВАЖНО: Бэкенд больше НЕ фильтрует контент удалённых сообщений в WebSocket.

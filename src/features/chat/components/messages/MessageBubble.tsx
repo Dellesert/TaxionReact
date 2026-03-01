@@ -10,7 +10,7 @@ import { MessageAttachments } from '../attachments/MessageAttachments';
 import PollMessageCard from './PollMessageCard';
 import TaskMessageCard from './TaskMessageCard';
 import { MessageStatus } from '../common/MessageStatus';
-import { formatTime, parseForwardedMessage, getDisplayContent, getOriginalSenderName, isVideoFile, isImageFile, replaceLocalhostWithIP } from '../../utils/message.utils';
+import { formatTime, parseForwardedMessage, getDisplayContent, getOriginalSenderName, isVideoFile, isImageFile } from '../../utils/message.utils';
 import { FormattedText } from '../common/FormattedText';
 import { stripFormatting } from '../../utils/formatting';
 import { decodeFileName } from '../../utils/file.utils';
@@ -378,7 +378,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                 const att = message.reply_to.attachments[0];
                 const mt = att.mime_type || att.file_type || '';
                 if (!isImageFile(mt) && !isVideoFile(mt)) return null;
-                const thumbUrl = replaceLocalhostWithIP(getThumbnailUrl(att, 'small'));
+                const thumbUrl = getThumbnailUrl(att, 'small');
                 return (
                   <Image
                     source={{

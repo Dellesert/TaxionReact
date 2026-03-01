@@ -17,7 +17,7 @@ import { ActionModal } from '@shared/components/common/ActionModal';
 import { MediaViewer, MediaItem } from '../modals/MediaViewer';
 import { useMessageData } from '../../hooks/useMessageData';
 import { useImageLoader } from '@shared/hooks/useImageLoader';
-import { isForwardedMessage, isImageFile, isVideoFile, replaceLocalhostWithIP } from '../../utils/message.utils';
+import { isForwardedMessage, isImageFile, isVideoFile } from '../../utils/message.utils';
 import { getOrCreateDirectChat } from '../../api/chat.api';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -142,9 +142,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         const mt = att.mime_type || att.file_type || '';
         return {
           type: isVideoFile(mt) ? 'video' as const : 'image' as const,
-          url: replaceLocalhostWithIP(att.file_url),
-          thumbnailUrl: att.thumbnail_url ? replaceLocalhostWithIP(att.thumbnail_url) : undefined,
-          thumbnailLargeUrl: att.thumbnail_large_url ? replaceLocalhostWithIP(att.thumbnail_large_url) : undefined,
+          url: att.file_url,
+          thumbnailUrl: att.thumbnail_url ? att.thumbnail_url : undefined,
+          thumbnailLargeUrl: att.thumbnail_large_url ? att.thumbnail_large_url : undefined,
           attachmentId: att.id,
           duration: att.duration,
         };
@@ -278,7 +278,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
   const handleImagePress = (imageUrl: string) => {
     if (onMediaViewerOpen) {
-      const attachment = message.attachments?.find(a => replaceLocalhostWithIP(a.file_url) === imageUrl);
+      const attachment = message.attachments?.find(a => a.file_url === imageUrl);
       if (attachment) {
         onMediaViewerOpen(attachment.id);
         return;
@@ -291,7 +291,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
   const handleVideoPress = (videoUrl: string, _thumbnailUrl?: string) => {
     if (onMediaViewerOpen) {
-      const attachment = message.attachments?.find(a => replaceLocalhostWithIP(a.file_url) === videoUrl);
+      const attachment = message.attachments?.find(a => a.file_url === videoUrl);
       if (attachment) {
         onMediaViewerOpen(attachment.id);
         return;
