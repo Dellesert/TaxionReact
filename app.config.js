@@ -83,6 +83,7 @@ module.exports = {
       "@react-native-firebase/messaging",
       "./plugins/withPodfileModifications.js",
       "./plugins/withPushNotificationDelegates.js",
+      "./plugins/withNotificationServiceExtension.js",
       "./plugins/withExportOptions.js",
       "./plugins/withAndroidLocalProperties.js",
       "./plugins/withAndroidKeystore.js",
