@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Animated, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { Chat, TypingIndicator } from '../../types/chat.types';
 import { Avatar } from '@shared/components/common/Avatar';
@@ -14,6 +15,7 @@ import { useChatPrefetch } from '@shared/hooks/usePrefetch';
 import { getTypingUserNames, formatTypingText } from '../../utils/chatScreenHelpers';
 import { stripFormatting } from '../../utils/formatting';
 import { getSystemMessagePreview } from '../messages/SystemMessageBanner';
+import { getThumbnailUrl } from '../../utils/thumbnail.utils';
 import { useAnimationStore } from '@shared/store/animationStore';
 import * as Haptics from 'expo-haptics';
 
@@ -217,6 +219,38 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     }
 
     return senderPrefix + (messageText || 'Нет сообщений');
+  };
+
+  const getMediaPreview = (): { type: 'image' | 'video'; thumbUrl: string | null } | null => {
+    if (!chat.last_message || typingUsers.length > 0) return null;
+    const msg = chat.last_message;
+    if (msg.message_type === 'system') return null;
+
+    // Modern: check attachments array
+    const attachments = msg.attachments || (msg as any).files || [];
+    if (Array.isArray(attachments) && attachments.length > 0) {
+      const first = attachments[0];
+      const fileType = first.file_type || first.mime_type || '';
+      const isImage = fileType.includes('image');
+      const isVideo = fileType.includes('video');
+      if (isImage || isVideo) {
+        const url = getThumbnailUrl(first, 'small');
+        return { type: isVideo ? 'video' : 'image', thumbUrl: url ? replaceLocalhostWithIP(url) : null };
+      }
+    }
+
+    // Legacy: check fields directly on the message
+    const legacyMsg = msg as any;
+    const legacyMime = legacyMsg.mime_type || '';
+    const legacyType = msg.message_type;
+    const isLegacyImage = legacyType === 'image' || legacyMime.includes('image');
+    const isLegacyVideo = legacyType === 'video' || legacyMime.includes('video');
+    if (isLegacyImage || isLegacyVideo) {
+      const raw = legacyMsg.thumbnail_url || legacyMsg.file_url || null;
+      return { type: isLegacyVideo ? 'video' : 'image', thumbUrl: raw ? replaceLocalhostWithIP(raw) : null };
+    }
+
+    return null;
   };
 
   const dynamicStyles = StyleSheet.create({
@@ -486,6 +520,24 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                   style={styles.statusIcon}
                 />
               )}
+              {(() => {
+                const media = getMediaPreview();
+                if (!media) return null;
+                return media.thumbUrl ? (
+                  <Image
+                    source={{ uri: media.thumbUrl }}
+                    style={styles.mediaThumbnail}
+                    contentFit="cover"
+                    recyclingKey={`chat-thumb-${chat.last_message?.id}`}
+                  />
+                ) : (
+                  <Ionicons
+                    name={media.type === 'video' ? 'videocam' : 'camera'}
+                    size={16}
+                    color={theme.textTertiary}
+                  />
+                );
+              })()}
               <Text style={[styles.preview, dynamicStyles.preview]} numberOfLines={1}>
                 {getLastMessagePreview()}
               </Text>
@@ -917,6 +969,11 @@ const styles = StyleSheet.create({
   },
   statusIcon: {
     marginTop: 1,
+  },
+  mediaThumbnail: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
   },
   preview: {
     fontSize: 14,
