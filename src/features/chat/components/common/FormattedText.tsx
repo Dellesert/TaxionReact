@@ -58,10 +58,13 @@ function parseLinkSegments(inputText: string): TextPart[] {
     }
   }
 
-  // Phone
+  // Phone (минимум 7 цифр)
   phoneRegex.lastIndex = 0;
   while ((match = phoneRegex.exec(inputText)) !== null) {
-    allMatches.push({ index: match.index, text: match[0], type: 'phone' });
+    const digitCount = match[0].replace(/\D/g, '').length;
+    if (digitCount >= 7) {
+      allMatches.push({ index: match.index, text: match[0], type: 'phone' });
+    }
   }
 
   allMatches.sort((a, b) => a.index - b.index);

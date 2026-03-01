@@ -111,10 +111,13 @@ export const LinkifiedText: React.FC<LinkifiedTextProps> = ({ text, style, searc
       }
     }
 
-    // Phone
+    // Phone (минимум 7 цифр)
     phoneRegex.lastIndex = 0;
     while ((match = phoneRegex.exec(inputText)) !== null) {
-      allMatches.push({ index: match.index, text: match[0], type: 'phone' });
+      const digitCount = match[0].replace(/\D/g, '').length;
+      if (digitCount >= 7) {
+        allMatches.push({ index: match.index, text: match[0], type: 'phone' });
+      }
     }
 
     // Сортируем совпадения по индексу
