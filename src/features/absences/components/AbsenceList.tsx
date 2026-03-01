@@ -88,6 +88,8 @@ export const AbsenceList: React.FC<AbsenceListProps> = ({
         const absence = section.data[itemIndex];
         if (!isDatePast(endOfDay(parseISO(absence.end_date)))) {
           hasScrolled.current = true;
+          // Don't scroll if the first current absence is already at the top
+          if (sectionIndex === 0 && itemIndex === 0) return;
           setTimeout(() => {
             sectionListRef.current?.scrollToLocation({
               sectionIndex,
