@@ -16,6 +16,8 @@ import { getTypingUserNames, formatTypingText } from '../../utils/chatScreenHelp
 import { stripFormatting } from '../../utils/formatting';
 import { getSystemMessagePreview } from '../messages/SystemMessageBanner';
 import { getThumbnailUrl } from '../../utils/thumbnail.utils';
+import { decodeFileName } from '../../utils/file.utils';
+import { FileTypeIcon } from '@shared/components/common/FileTypeIcon';
 import { useAnimationStore } from '@shared/store/animationStore';
 import * as Haptics from 'expo-haptics';
 
@@ -214,14 +216,18 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
       } else if (fileType.includes('video') || fileType.startsWith('video')) {
         messageText = count === 1 ? 'Видео' : `${count} видео`;
       } else {
-        messageText = count === 1 ? 'Файл' : `${count} файла`;
+        if (count === 1 && firstAttachment.file_name) {
+          messageText = decodeFileName(firstAttachment.file_name);
+        } else {
+          messageText = count === 1 ? 'Файл' : `${count} файла`;
+        }
       }
     }
 
     return senderPrefix + (messageText || 'Нет сообщений');
   };
 
-  const getMediaPreview = (): { type: 'image' | 'video'; thumbUrl: string | null } | null => {
+  const getMediaPreview = (): { type: 'image' | 'video' | 'file'; thumbUrl: string | null; fileName?: string } | null => {
     if (!chat.last_message || typingUsers.length > 0) return null;
     const msg = chat.last_message;
     if (msg.message_type === 'system') return null;
@@ -236,6 +242,10 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
       if (isImage || isVideo) {
         const url = getThumbnailUrl(first, 'small');
         return { type: isVideo ? 'video' : 'image', thumbUrl: url || null };
+      }
+      // Document/other files — return file info for FileTypeIcon
+      if (first.file_name) {
+        return { type: 'file', thumbUrl: null, fileName: first.file_name };
       }
     }
 
@@ -523,6 +533,9 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
               {(() => {
                 const media = getMediaPreview();
                 if (!media) return null;
+                if (media.type === 'file' && media.fileName) {
+                  return <FileTypeIcon fileName={media.fileName} size={16} />;
+                }
                 return media.thumbUrl ? (
                   <Image
                     source={{ uri: media.thumbUrl }}
