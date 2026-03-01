@@ -11,7 +11,8 @@ import { TaskAttachment } from '../../types/task.types';
 import { Avatar } from '@shared/components/common/Avatar';
 import { useTheme } from '@shared/hooks/useTheme';
 import { getUserDisplayName } from '../../utils/taskHelpers';
-import { getFileIcon, decodeFileName } from '@/features/chat/utils/file.utils';
+import { decodeFileName } from '@/features/chat/utils/file.utils';
+import { FileTypeIcon } from '@shared/components/common/FileTypeIcon';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -54,11 +55,6 @@ export const TaskAttachmentsTab: React.FC<TaskAttachmentsTabProps> = ({
       {attachments.length > 0 ? (
         <View style={styles.attachmentsList}>
           {attachments.map((attachment) => {
-            const fileIcon = getFileIcon(
-              attachment.file_type || '',
-              attachment.file_name
-            );
-
             return (
               <TouchableOpacity
                 key={attachment.id}
@@ -74,11 +70,7 @@ export const TaskAttachmentsTab: React.FC<TaskAttachmentsTabProps> = ({
                 activeOpacity={0.7}
                 delayLongPress={500}
               >
-                <Ionicons
-                  name={fileIcon as any}
-                  size={20}
-                  color={theme.primary}
-                />
+                <FileTypeIcon fileName={attachment.file_name} size={20} />
                 <View style={styles.attachmentDetails}>
                   <Text
                     style={[styles.attachmentName, { color: theme.text }]}
