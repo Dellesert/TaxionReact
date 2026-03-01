@@ -136,6 +136,40 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     return 'sent';
   };
 
+  const getSenderPrefix = () => {
+    if (!chat.last_message) return '';
+    const message = chat.last_message;
+    if (message.message_type === 'system') return '';
+
+    const isCurrentUser = message.sender_id === currentUser?.id;
+
+    if (chat.type === 'saved') {
+      return '';
+    } else if (chat.type === 'private') {
+      return isCurrentUser ? 'Вы: ' : '';
+    } else {
+      if (isCurrentUser) {
+        return 'Вы: ';
+      } else {
+        let senderName = '';
+        if (message.sender?.name) {
+          senderName = message.sender.name;
+        } else if (message.sender?.email) {
+          senderName = message.sender.email.split('@')[0];
+        } else if (chat.members && chat.members.length > 0) {
+          const member = chat.members.find(m => m.user_id === message.sender_id);
+          if (member?.user) {
+            senderName = member.user.name || member.user.email?.split('@')[0] || '';
+          }
+        }
+        if (!senderName) {
+          senderName = 'Пользователь';
+        }
+        return `${senderName}: `;
+      }
+    }
+  };
+
   const getLastMessagePreview = () => {
     // Check if someone is typing (takes priority over last message)
     if (typingUsers.length > 0) {
@@ -154,48 +188,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
       return getSystemMessagePreview(message);
     }
 
-    const isCurrentUser = message.sender_id === currentUser?.id;
-
-    // Определяем префикс отправителя
-    let senderPrefix = '';
-    if (chat.type === 'saved') {
-      // В избранном не показываем префикс отправителя
-      senderPrefix = '';
-    } else if (chat.type === 'private') {
-      // В личных чатах показываем только "Вы:" для своих сообщений
-      senderPrefix = isCurrentUser ? 'Вы: ' : '';
-    } else {
-      // В групповых чатах показываем "Вы:" или "Имя:"
-      if (isCurrentUser) {
-        senderPrefix = 'Вы: ';
-      } else {
-        // Пытаемся получить имя отправителя из разных источников
-        let senderName = '';
-
-        // 1. Из объекта sender сообщения
-        if (message.sender?.name) {
-          senderName = message.sender.name;
-        }
-        // 2. Из email отправителя
-        else if (message.sender?.email) {
-          senderName = message.sender.email.split('@')[0];
-        }
-        // 3. Из участников чата
-        else if (chat.members && chat.members.length > 0) {
-          const member = chat.members.find(m => m.user_id === message.sender_id);
-          if (member?.user) {
-            senderName = member.user.name || member.user.email?.split('@')[0] || '';
-          }
-        }
-
-        // Запасной вариант
-        if (!senderName) {
-          senderName = 'Пользователь';
-        }
-
-        senderPrefix = `${senderName}: `;
-      }
-    }
+    const senderPrefix = getSenderPrefix();
 
     // Формируем текст сообщения
     let messageText = stripFormatting(message.content || '');
@@ -211,7 +204,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
       const fileType = firstAttachment.file_type || firstAttachment.mime_type || '';
 
       if (fileType.includes('image') || fileType.startsWith('image')) {
-        // Если одно фото - просто "Фото", если несколько - "3 фото"
         messageText = count === 1 ? 'Фото' : `${count} фото`;
       } else if (fileType.includes('video') || fileType.startsWith('video')) {
         messageText = count === 1 ? 'Видео' : `${count} видео`;
@@ -532,28 +524,46 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
               )}
               {(() => {
                 const media = getMediaPreview();
-                if (!media) return null;
-                if (media.type === 'file' && media.fileName) {
-                  return <FileTypeIcon fileName={media.fileName} size={16} />;
+                const preview = getLastMessagePreview();
+                const prefix = getSenderPrefix();
+                // Есть медиа/файл — рендерим: prefix + icon/thumb + текст без prefix
+                if (media) {
+                  const textWithoutPrefix = prefix && preview.startsWith(prefix)
+                    ? preview.slice(prefix.length)
+                    : preview;
+                  return (
+                    <>
+                      {prefix ? (
+                        <Text style={[styles.previewPrefix, dynamicStyles.preview]}>{prefix}</Text>
+                      ) : null}
+                      {media.type === 'file' && media.fileName ? (
+                        <FileTypeIcon fileName={media.fileName} size={16} />
+                      ) : media.thumbUrl ? (
+                        <Image
+                          source={{ uri: media.thumbUrl }}
+                          style={styles.mediaThumbnail}
+                          contentFit="cover"
+                          recyclingKey={`chat-thumb-${chat.last_message?.id}`}
+                        />
+                      ) : (
+                        <Ionicons
+                          name={media.type === 'video' ? 'videocam' : 'camera'}
+                          size={16}
+                          color={theme.textTertiary}
+                        />
+                      )}
+                      <Text style={[styles.preview, dynamicStyles.preview]} numberOfLines={1}>
+                        {textWithoutPrefix}
+                      </Text>
+                    </>
+                  );
                 }
-                return media.thumbUrl ? (
-                  <Image
-                    source={{ uri: media.thumbUrl }}
-                    style={styles.mediaThumbnail}
-                    contentFit="cover"
-                    recyclingKey={`chat-thumb-${chat.last_message?.id}`}
-                  />
-                ) : (
-                  <Ionicons
-                    name={media.type === 'video' ? 'videocam' : 'camera'}
-                    size={16}
-                    color={theme.textTertiary}
-                  />
+                return (
+                  <Text style={[styles.preview, dynamicStyles.preview]} numberOfLines={1}>
+                    {preview}
+                  </Text>
                 );
               })()}
-              <Text style={[styles.preview, dynamicStyles.preview]} numberOfLines={1}>
-                {getLastMessagePreview()}
-              </Text>
             </View>
 
             <View style={styles.badges}>
@@ -991,6 +1001,10 @@ const styles = StyleSheet.create({
   preview: {
     fontSize: 14,
     flex: 1,
+  },
+  previewPrefix: {
+    fontSize: 14,
+    flexShrink: 0,
   },
   badges: {
     flexDirection: 'row',
