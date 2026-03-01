@@ -1,4 +1,5 @@
 import UserNotifications
+import UIKit
 
 class NotificationService: UNNotificationServiceExtension {
 
@@ -34,7 +35,6 @@ class NotificationService: UNNotificationServiceExtension {
   }
 
   override func serviceExtensionTimeWillExpire() {
-    // Deliver whatever we have before the time limit
     if let contentHandler = contentHandler, let bestAttemptContent = bestAttemptContent {
       contentHandler(bestAttemptContent)
     }
@@ -54,10 +54,8 @@ class NotificationService: UNNotificationServiceExtension {
         return
       }
 
-      // Crop to circle
       let circularImage = self.makeCircularImage(originalImage)
 
-      // Write to temp file
       let fileManager = FileManager.default
       let tmpDir = fileManager.temporaryDirectory
       let fileName = UUID().uuidString + ".png"
