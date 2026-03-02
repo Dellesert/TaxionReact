@@ -425,7 +425,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
       if (isElectron()) {
         const cachedUri = await getElectronCachedVideoUri(item.url);
         if (cachedUri) {
-          player.replace({ uri: cachedUri });
+          await player.replaceAsync({ uri: cachedUri });
           player.play();
           return;
         }
@@ -447,7 +447,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
             const blobUrl = URL.createObjectURL(blob);
             webBlobUrlRef.current = blobUrl;
-            player.replace({ uri: blobUrl });
+            await player.replaceAsync({ uri: blobUrl });
           } catch (error) {
             if ((error as Error).name === 'AbortError') return;
             console.error('[MediaViewer] Electron video load failed:', error);
@@ -455,7 +455,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
             return;
           }
         } else {
-          player.replace({ uri: item.url });
+          await player.replaceAsync({ uri: item.url });
         }
 
         // Background cache via main process (streams to disk, no renderer memory)
@@ -479,7 +479,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
 
           const blobUrl = URL.createObjectURL(blob);
           webBlobUrlRef.current = blobUrl;
-          player.replace({ uri: blobUrl });
+          await player.replaceAsync({ uri: blobUrl });
         } catch (error) {
           if ((error as Error).name === 'AbortError') return;
           console.error('[MediaViewer] Web video load failed:', error);
@@ -487,20 +487,20 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
           return;
         }
       } else {
-        player.replace({ uri: item.url });
+        await player.replaceAsync({ uri: item.url });
       }
     } else {
       // Native: use cache + streaming with headers
       const cachedUri = getCachedVideoUri(item.url);
       if (cachedUri) {
-        player.replace({ uri: cachedUri });
+        await player.replaceAsync({ uri: cachedUri });
       } else {
         if (currentSessionId) {
           cacheVideo(item.url, currentSessionId).catch((err) =>
             console.warn('[MediaViewer] Background video cache failed:', err),
           );
         }
-        player.replace({
+        await player.replaceAsync({
           uri: item.url,
           headers: currentSessionId ? { 'X-Session-ID': currentSessionId } : undefined,
         });
@@ -563,7 +563,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     } else {
       // Cleanup on close
       player.pause();
-      player.replace(null);
+      void player.replaceAsync(null);
       setVideoLoading(false);
       clearAutoHideTimer();
       webAbortControllerRef.current?.abort();
