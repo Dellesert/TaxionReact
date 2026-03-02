@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Animated, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Animated, Platform, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { Chat, TypingIndicator } from '../../types/chat.types';
@@ -43,6 +43,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
   const currentUser = useAuthStore((state) => state.user);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [pressY, setPressY] = useState<number | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showClearSavedModal, setShowClearSavedModal] = useState(false);
   const [clearHistory, setClearHistory] = useState(false);
@@ -277,7 +278,16 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     if (!isEditMode) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setMenuPosition(null);
-      setShowContextMenu(true);
+      // Measure item position to anchor the menu
+      if (chatItemRef.current) {
+        (chatItemRef.current as any).measureInWindow((_x: number, y: number) => {
+          setPressY(y);
+          setShowContextMenu(true);
+        });
+      } else {
+        setPressY(null);
+        setShowContextMenu(true);
+      }
     }
   };
 
@@ -365,6 +375,52 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
   const handleMuteAction = (duration: '1h' | '12h' | 'forever') => {
     setShowMuteModal(false);
     onMute?.(chat.id, duration);
+  };
+
+  // Рендер строки превью сообщения для контекстного меню (forwarded icon + media + text)
+  const renderContextMenuMessagePreview = () => {
+    const media = getMediaPreview();
+    const preview = getLastMessagePreview();
+    const prefix = getSenderPrefix();
+
+    return (
+      <View style={styles.contextMenuPreviewMessageRow}>
+        {chat.last_message?.is_forwarded && !typingUsers.length && (
+          <Ionicons
+            name="arrow-redo"
+            size={14}
+            color={theme.textTertiary}
+            style={{ marginRight: 2 }}
+          />
+        )}
+        {media && media.type === 'file' && media.fileName ? (
+          <FileTypeIcon fileName={media.fileName} size={16} />
+        ) : media && media.thumbUrl ? (
+          <Image
+            source={{ uri: media.thumbUrl }}
+            style={styles.contextMenuMediaThumb}
+            contentFit="cover"
+            recyclingKey={`ctx-thumb-${chat.last_message?.id}`}
+          />
+        ) : media ? (
+          <Ionicons
+            name={media.type === 'video' ? 'videocam' : 'camera'}
+            size={16}
+            color={theme.textTertiary}
+          />
+        ) : null}
+        <Text style={[styles.contextMenuPreviewMessage, { color: theme.textSecondary }]} numberOfLines={1}>
+          {media ? (() => {
+            const textWithoutPrefix = prefix && preview.startsWith(prefix)
+              ? preview.slice(prefix.length)
+              : preview;
+            return prefix
+              ? <><Text style={{ fontWeight: '600' }}>{prefix}</Text>{textWithoutPrefix}</>
+              : textWithoutPrefix;
+          })() : preview}
+        </Text>
+      </View>
+    );
   };
 
   // Handle press in - start prefetch
@@ -609,17 +665,31 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
               { backgroundColor: theme.backgroundSecondary },
               menuPosition && { position: 'absolute', top: menuPosition.top, left: menuPosition.left },
             ]}>
-              {/* Название чата */}
-              <View style={[styles.chatHeader, { backgroundColor: theme.background }]}>
-                <Text style={[styles.chatName, { color: theme.text }]} numberOfLines={1}>
-                  {getChatName()}
-                </Text>
+              {/* Превью чата как в списке */}
+              <View style={[styles.contextMenuPreview, { borderBottomColor: theme.border }]}>
+                <View style={styles.contextMenuPreviewAvatar}>
+                  {chat.type === 'saved' ? (
+                    <View style={styles.savedChatAvatarSmall}>
+                      <Ionicons name="bookmark" size={18} color="#FFFFFF" />
+                    </View>
+                  ) : (
+                    <Avatar
+                      imageUrl={getChatAvatar()}
+                      thumbnailUrl={getChatAvatarThumbnail()}
+                      name={getChatName()}
+                      size={40}
+                    />
+                  )}
+                </View>
+                <View style={styles.contextMenuPreviewContent}>
+                  <Text style={[styles.contextMenuPreviewName, { color: theme.text }]} numberOfLines={1}>
+                    {getChatName()}
+                  </Text>
+                  {renderContextMenuMessagePreview()}
+                </View>
               </View>
 
-              {/* Разделитель */}
-              <View style={[styles.separator, { backgroundColor: theme.border }]} />
-
-              {/* Для saved чата - только очистить */}
+              {/* Действия */}
               {chat.type === 'saved' ? (
                 <TouchableOpacity
                   style={styles.menuItem}
@@ -632,7 +702,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                 </TouchableOpacity>
               ) : (
                 <>
-                  {/* Избранное */}
                   <TouchableOpacity
                     style={styles.menuItem}
                     onPress={handleToggleFavorite}
@@ -647,7 +716,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Закрепить/открепить */}
                   <TouchableOpacity
                     style={styles.menuItem}
                     onPress={handleTogglePinned}
@@ -662,7 +730,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Пометить как прочитанное */}
                   <TouchableOpacity
                     style={styles.menuItem}
                     onPress={handleMarkAsRead}
@@ -673,7 +740,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Уведомления (mute/unmute) */}
                   <TouchableOpacity
                     style={styles.menuItem}
                     onPress={handleMutePress}
@@ -688,7 +754,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Удалить */}
                   {onDelete && (
                     <TouchableOpacity
                       style={styles.menuItem}
@@ -712,21 +777,47 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
             <BlurView intensity={80} style={StyleSheet.absoluteFillObject} tint="dark" />
           )}
           <Pressable
-            style={styles.modalOverlay}
+            style={styles.modalOverlayPositioned}
             onPress={() => setShowContextMenu(false)}
           >
-            <View style={[styles.contextMenu, { backgroundColor: theme.backgroundSecondary }]}>
-              {/* Название чата */}
-              <View style={[styles.chatHeader, { backgroundColor: theme.background }]}>
-                <Text style={[styles.chatName, { color: theme.text }]} numberOfLines={1}>
-                  {getChatName()}
-                </Text>
+            <View style={[
+              styles.contextMenuPositioned,
+              { backgroundColor: theme.backgroundSecondary },
+              (() => {
+                const screenH = Dimensions.get('window').height;
+                const menuH = 350;
+                const margin = 40;
+                let top = pressY ?? (screenH - menuH) / 2;
+                if (top + menuH > screenH - margin) top = screenH - margin - menuH;
+                if (top < margin) top = margin;
+                return { top };
+              })(),
+            ]}>
+              {/* Превью чата как в списке */}
+              <View style={[styles.contextMenuPreview, { borderBottomColor: theme.border }]}>
+                <View style={styles.contextMenuPreviewAvatar}>
+                  {chat.type === 'saved' ? (
+                    <View style={styles.savedChatAvatarSmall}>
+                      <Ionicons name="bookmark" size={18} color="#FFFFFF" />
+                    </View>
+                  ) : (
+                    <Avatar
+                      imageUrl={getChatAvatar()}
+                      thumbnailUrl={getChatAvatarThumbnail()}
+                      name={getChatName()}
+                      size={40}
+                    />
+                  )}
+                </View>
+                <View style={styles.contextMenuPreviewContent}>
+                  <Text style={[styles.contextMenuPreviewName, { color: theme.text }]} numberOfLines={1}>
+                    {getChatName()}
+                  </Text>
+                  {renderContextMenuMessagePreview()}
+                </View>
               </View>
 
-              {/* Разделитель */}
-              <View style={[styles.separator, { backgroundColor: theme.border }]} />
-
-              {/* Для saved чата - только очистить */}
+              {/* Действия */}
               {chat.type === 'saved' ? (
                 <TouchableOpacity
                   style={styles.menuItem}
@@ -739,7 +830,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                 </TouchableOpacity>
               ) : (
                 <>
-                  {/* Избранное */}
                   <TouchableOpacity
                     style={styles.menuItem}
                     onPress={handleToggleFavorite}
@@ -754,7 +844,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Закрепить/открепить */}
                   <TouchableOpacity
                     style={styles.menuItem}
                     onPress={handleTogglePinned}
@@ -769,7 +858,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Пометить как прочитанное */}
                   <TouchableOpacity
                     style={styles.menuItem}
                     onPress={handleMarkAsRead}
@@ -780,7 +868,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Уведомления (mute/unmute) */}
                   <TouchableOpacity
                     style={styles.menuItem}
                     onPress={handleMutePress}
@@ -795,7 +882,6 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Удалить */}
                   {onDelete && (
                     <TouchableOpacity
                       style={styles.menuItem}
@@ -1039,6 +1125,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
+  modalOverlayPositioned: {
+    flex: 1,
+  },
   contextMenu: {
     minWidth: 280,
     maxWidth: 320,
@@ -1057,18 +1146,56 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  chatHeader: {
+  contextMenuPositioned: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  contextMenuPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 12,
+    paddingHorizontal: 16,
+    gap: 12,
+    borderBottomWidth: 1,
   },
-  chatName: {
-    fontSize: 16,
+  contextMenuPreviewAvatar: {},
+  savedChatAvatarSmall: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contextMenuPreviewContent: {
+    flex: 1,
+  },
+  contextMenuPreviewName: {
+    fontSize: 15,
     fontWeight: '600',
-    lineHeight: 22,
-    textAlign: 'center',
+    marginBottom: 2,
   },
-  separator: {
-    height: 1,
-    marginHorizontal: 12,
+  contextMenuPreviewMessageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  contextMenuPreviewMessage: {
+    fontSize: 13,
+    flex: 1,
+  },
+  contextMenuMediaThumb: {
+    width: 18,
+    height: 18,
+    borderRadius: 3,
   },
   menuItem: {
     flexDirection: 'row',
