@@ -11,6 +11,7 @@ import {
   Platform,
   Keyboard,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/hooks/useTheme';
@@ -19,8 +20,12 @@ import { useChatStore } from '@shared/store/chatStore';
 import { useAuthStore } from '@shared/store/authStore';
 import { Chat } from '../../types/chat.types';
 import { Avatar } from '@shared/components/common/Avatar';
+import { FileTypeIcon } from '@shared/components/common/FileTypeIcon';
 import { getChatDisplayName, getChatDisplayAvatar } from '../../utils/chatUtils';
 import { stripFormatting } from '../../utils/formatting';
+import { getSystemMessagePreview } from '../messages/SystemMessageBanner';
+import { getThumbnailUrl } from '../../utils/thumbnail.utils';
+import { decodeFileName } from '../../utils/file.utils';
 import { isElectron } from '@shared/utils/platform';
 
 interface ForwardMessagesModalProps {
@@ -98,10 +103,68 @@ export const ForwardMessagesModal: React.FC<ForwardMessagesModalProps> = ({
     return `${selectedCount} сообщений`;
   };
 
+  const getSenderPrefix = (chat: Chat) => {
+    if (!chat.last_message) return '';
+    const msg = chat.last_message;
+    if (msg.message_type === 'system') return '';
+    const isCurrentUser = msg.sender_id === currentUser?.id;
+    if (chat.type === 'saved') return '';
+    if (chat.type === 'private') return isCurrentUser ? 'Вы: ' : '';
+    if (isCurrentUser) return 'Вы: ';
+    let senderName = '';
+    if (msg.sender?.name) senderName = msg.sender.name;
+    else if (msg.sender?.email) senderName = msg.sender.email.split('@')[0];
+    else if (chat.members?.length) {
+      const member = chat.members.find(m => m.user_id === msg.sender_id);
+      if (member?.user) senderName = member.user.name || member.user.email?.split('@')[0] || '';
+    }
+    return `${senderName || 'Пользователь'}: `;
+  };
+
+  const getLastMessageText = (chat: Chat) => {
+    if (!chat.last_message) return 'Нет сообщений';
+    const msg = chat.last_message;
+    if (msg.message_type === 'system') return getSystemMessagePreview(msg);
+    const prefix = getSenderPrefix(chat);
+    let text = stripFormatting(msg.content || '');
+    const attachments = msg.attachments || (msg as any).files || [];
+    if (!text && Array.isArray(attachments) && attachments.length > 0) {
+      const count = attachments.length;
+      const first = attachments[0];
+      const fileType = first.file_type || first.mime_type || '';
+      if (fileType.includes('image')) text = count === 1 ? 'Фото' : `${count} фото`;
+      else if (fileType.includes('video')) text = count === 1 ? 'Видео' : `${count} видео`;
+      else text = count === 1 && first.file_name ? decodeFileName(first.file_name) : count === 1 ? 'Файл' : `${count} файла`;
+    }
+    return prefix + (text || 'Нет сообщений');
+  };
+
+  const getChatMediaPreview = (chat: Chat): { type: 'image' | 'video' | 'file'; thumbUrl: string | null; fileName?: string } | null => {
+    if (!chat.last_message) return null;
+    const msg = chat.last_message;
+    if (msg.message_type === 'system') return null;
+    const attachments = msg.attachments || (msg as any).files || [];
+    if (Array.isArray(attachments) && attachments.length > 0) {
+      const first = attachments[0];
+      const fileType = first.file_type || first.mime_type || '';
+      const isImage = fileType.includes('image');
+      const isVideo = fileType.includes('video');
+      if (isImage || isVideo) {
+        const url = getThumbnailUrl(first, 'small');
+        return { type: isVideo ? 'video' : 'image', thumbUrl: url || null };
+      }
+      if (first.file_name) return { type: 'file', thumbUrl: null, fileName: first.file_name };
+    }
+    return null;
+  };
+
   const renderChatItem = ({ item }: { item: Chat }) => {
     const displayName = getChatDisplayName(item, currentUser?.id);
     const avatarUrl = getChatDisplayAvatar(item, currentUser?.id);
     const isSavedChat = item.type === 'saved';
+    const prefix = getSenderPrefix(item);
+    const preview = getLastMessageText(item);
+    const media = getChatMediaPreview(item);
 
     return (
       <TouchableOpacity
@@ -120,11 +183,35 @@ export const ForwardMessagesModal: React.FC<ForwardMessagesModalProps> = ({
           <Text style={[styles.chatName, { color: theme.text }]} numberOfLines={1}>
             {displayName}
           </Text>
-          {item.last_message && (
-            <Text style={[styles.lastMessage, { color: theme.textSecondary }]} numberOfLines={1}>
-              {stripFormatting(item.last_message.content)}
-            </Text>
-          )}
+          <View style={styles.previewContainer}>
+            {item.last_message?.is_forwarded && (
+              <Ionicons name="arrow-redo" size={14} color={theme.textTertiary} style={styles.previewIcon} />
+            )}
+            {(() => {
+              if (media) {
+                const textWithoutPrefix = prefix && preview.startsWith(prefix) ? preview.slice(prefix.length) : preview;
+                return (
+                  <>
+                    {prefix ? <Text style={[styles.previewPrefix, { color: theme.textSecondary }]}>{prefix}</Text> : null}
+                    {media.type === 'file' && media.fileName ? (
+                      <FileTypeIcon fileName={media.fileName} size={16} />
+                    ) : media.thumbUrl ? (
+                      <Image source={{ uri: media.thumbUrl }} style={styles.mediaThumbnail} contentFit="cover" />
+                    ) : (
+                      <Ionicons name={media.type === 'video' ? 'videocam' : 'camera'} size={16} color={theme.textTertiary} />
+                    )}
+                    <Text style={[styles.lastMessage, { color: theme.textSecondary }]} numberOfLines={1}>{textWithoutPrefix}</Text>
+                  </>
+                );
+              }
+              return (
+                <Text style={[styles.lastMessage, { color: theme.textSecondary }]} numberOfLines={1}>
+                  {prefix ? <Text style={styles.previewPrefix}>{prefix}</Text> : null}
+                  {prefix && preview.startsWith(prefix) ? preview.slice(prefix.length) : preview}
+                </Text>
+              );
+            })()}
+          </View>
         </View>
         <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
       </TouchableOpacity>
@@ -298,8 +385,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
   },
+  previewContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  previewIcon: {
+    marginTop: 1,
+  },
+  previewPrefix: {
+    fontSize: 14,
+    fontWeight: '600',
+    flexShrink: 0,
+  },
+  mediaThumbnail: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+  },
   lastMessage: {
     fontSize: 14,
+    flex: 1,
   },
   emptyContainer: {
     alignItems: 'center',
