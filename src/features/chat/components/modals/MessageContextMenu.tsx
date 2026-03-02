@@ -1,13 +1,16 @@
 import React from 'react';
-import { Modal, Pressable, View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import { Modal, Pressable, View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useNotification } from '@shared/contexts/NotificationContext';
+import { useAuthStore } from '@shared/store/authStore';
 import { Message } from '../../types/chat.types';
 import { formatDateTime, isImageFile, isVideoFile } from '../../utils/message.utils';
 import { decodeFileName } from '../../utils/file.utils';
+import { getThumbnailUrl } from '../../utils/thumbnail.utils';
 import { FileTypeIcon } from '@shared/components/common/FileTypeIcon';
 import { stripFormatting } from '../../utils/formatting';
 import { ReactionBar } from '../messages/ReactionBar';
@@ -65,6 +68,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   const { theme } = useTheme();
   const { showError } = useNotification();
   const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
+  const sessionId = useAuthStore((s) => s.sessionId);
 
   const userReactionEmojis = React.useMemo(() => {
     if (!currentUserId) return [];
@@ -87,58 +91,117 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
     return false;
   }, [chatType, currentUserRole]);
 
-  // Получить превью сообщения (текст и/или информация о файле)
-  const getMessagePreview = (): { text: string; icon?: string; attachmentText?: string; attachmentFileName?: string } => {
+  // Превью вложений: миниатюры для фото/видео, иконка типа для документов
+  const renderMessagePreview = () => {
     const hasText = message.content && message.content.trim().length > 0;
     const hasAttachments = message.attachments && message.attachments.length > 0;
 
-    // Вспомогательная функция: получить label для вложения
-    const getAttachmentLabel = (truncateLen: number): { label: string; icon?: string; attachmentFileName?: string } => {
-      const attachment = message.attachments[0];
-      const mt = attachment.mime_type || attachment.file_type || '';
-      const isImage = isImageFile(mt);
-      const isVideo = isVideoFile(mt);
+    const mediaAttachments = hasAttachments
+      ? message.attachments.filter(a => {
+          const mt = a.mime_type || a.file_type || '';
+          return isImageFile(mt) || isVideoFile(mt);
+        })
+      : [];
+    const fileAttachments = hasAttachments
+      ? message.attachments.filter(a => {
+          const mt = a.mime_type || a.file_type || '';
+          return !isImageFile(mt) && !isVideoFile(mt);
+        })
+      : [];
 
-      if (isImage || isVideo) {
-        const mediaLabel = isImage ? 'Фото' : 'Видео';
-        const extra = message.attachments.length > 1 ? ` и ещё ${message.attachments.length - 1}` : '';
-        return { label: mediaLabel + extra, icon: isImage ? 'image-outline' : 'videocam-outline' };
-      }
+    const hasMedia = mediaAttachments.length > 0;
+    const hasFiles = fileAttachments.length > 0;
 
-      let fileName = decodeFileName(attachment.file_name);
-      if (fileName.length > truncateLen) {
-        const ext = fileName.split('.').pop();
-        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
-        fileName = nameWithoutExt.substring(0, truncateLen - 5) + '...' + (ext ? `.${ext}` : '');
-      }
-      const extra = message.attachments.length > 1 ? ` и ещё ${message.attachments.length - 1}` : '';
-      return { label: fileName + extra, attachmentFileName: attachment.file_name };
-    };
+    return (
+      <>
+        {/* Миниатюры фото/видео */}
+        {hasMedia && (
+          <View style={styles.thumbnailRow}>
+            {mediaAttachments.slice(0, 4).map((attachment, index) => {
+              const thumbnailUri = getThumbnailUrl(attachment, 'small');
+              const isPublicFile = thumbnailUri.includes('/files/public/');
+              const mt = attachment.mime_type || attachment.file_type || '';
+              const isVideo = isVideoFile(mt);
+              const isLast = index === Math.min(mediaAttachments.length, 4) - 1;
+              const extraCount = mediaAttachments.length - 4;
 
-    // Если есть и текст, и вложения
-    if (hasText && hasAttachments) {
-      const { label, icon, attachmentFileName } = getAttachmentLabel(30);
-      return {
-        text: message.content,
-        icon,
-        attachmentText: label,
-        attachmentFileName,
-      };
-    }
+              return (
+                <View key={attachment.id} style={styles.thumbnailContainer}>
+                  <Image
+                    source={{
+                      uri: thumbnailUri,
+                      headers: (!isPublicFile && sessionId) ? { 'X-Session-ID': sessionId } : undefined,
+                    }}
+                    style={styles.thumbnailImage}
+                    contentFit="cover"
+                    cachePolicy="disk"
+                  />
+                  {isVideo && !(isLast && extraCount > 0) && (
+                    <View style={styles.videoOverlay}>
+                      <Ionicons name="play" size={12} color="#fff" />
+                    </View>
+                  )}
+                  {isLast && extraCount > 0 && (
+                    <View style={styles.extraCountOverlay}>
+                      <Text style={styles.extraCountText}>+{extraCount}</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        )}
 
-    // Если только текст
-    if (hasText) {
-      return { text: message.content };
-    }
+        {/* Иконка типа документа (когда нет медиа) */}
+        {!hasMedia && hasFiles && (
+          <View style={styles.documentPreviewRow}>
+            <FileTypeIcon fileName={fileAttachments[0].file_name} size={36} />
+            <View style={styles.documentInfo}>
+              <Text style={[styles.documentName, { color: theme.text }]} numberOfLines={1}>
+                {(() => {
+                  let name = decodeFileName(fileAttachments[0].file_name);
+                  if (name.length > 30) {
+                    const ext = name.split('.').pop();
+                    const base = name.substring(0, name.lastIndexOf('.'));
+                    name = base.substring(0, 25) + '...' + (ext ? `.${ext}` : '');
+                  }
+                  return name;
+                })()}
+              </Text>
+              {fileAttachments.length > 1 && (
+                <Text style={[styles.documentExtra, { color: theme.textSecondary }]}>
+                  и ещё {fileAttachments.length - 1}
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
 
-    // Если только вложения
-    if (hasAttachments) {
-      const { label, icon, attachmentFileName } = getAttachmentLabel(40);
-      return { text: label, icon, attachmentFileName };
-    }
+        {/* Текст сообщения */}
+        {hasText && (
+          <FormattedText
+            text={message.content}
+            style={[
+              styles.previewText,
+              { color: theme.text },
+              (hasMedia || hasFiles) && { marginTop: 6 },
+            ]}
+            numberOfLines={(hasMedia || hasFiles) ? 2 : 3}
+          />
+        )}
 
-    // Если ни текста, ни вложений нет
-    return { text: 'Сообщение без содержимого' };
+        {/* Пустое сообщение */}
+        {!hasText && !hasMedia && !hasFiles && (
+          <Text style={[styles.previewText, { color: theme.textSecondary }]}>
+            Сообщение без содержимого
+          </Text>
+        )}
+
+        <Text style={[styles.previewTime, { color: theme.textSecondary }]}>
+          {formatDateTime(message.created_at)}
+        </Text>
+      </>
+    );
   };
 
   const handleCopyMessage = async () => {
@@ -183,59 +246,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
 
             {/* Превью выбранного сообщения */}
             <View style={styles.messagePreview}>
-              {(() => {
-                const preview = getMessagePreview();
-                return (
-                  <>
-                    {preview.attachmentText ? (
-                      <>
-                        <FormattedText
-                          text={preview.text}
-                          style={[styles.previewText, { color: theme.text }]}
-                          numberOfLines={2}
-                        />
-                        <View style={[styles.previewContent, { marginTop: 6 }]}>
-                          {preview.attachmentFileName ? (
-                            <FileTypeIcon fileName={preview.attachmentFileName} size={14} />
-                          ) : preview.icon ? (
-                            <Ionicons
-                              name={preview.icon as any}
-                              size={16}
-                              color={theme.primary}
-                              style={styles.previewIcon}
-                            />
-                          ) : null}
-                          <Text style={[styles.attachmentText, { color: theme.textSecondary }]} numberOfLines={1}>
-                            {preview.attachmentText}
-                          </Text>
-                        </View>
-                      </>
-                    ) : (
-                      <View style={styles.previewContent}>
-                        {preview.attachmentFileName ? (
-                          <FileTypeIcon fileName={preview.attachmentFileName} size={16} />
-                        ) : preview.icon ? (
-                          <Ionicons
-                            name={preview.icon as any}
-                            size={18}
-                            color={theme.primary}
-                            style={styles.previewIcon}
-                          />
-                        ) : null}
-                        <FormattedText
-                          text={preview.text}
-                          style={[styles.previewText, { color: theme.text }]}
-                          numberOfLines={3}
-                        />
-                      </View>
-                    )}
-
-                    <Text style={[styles.previewTime, { color: theme.textSecondary }]}>
-                      {formatDateTime(message.created_at)}
-                    </Text>
-                  </>
-                );
-              })()}
+              {renderMessagePreview()}
             </View>
 
             {/* Разделитель */}
@@ -421,55 +432,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
 
               {/* Превью выбранного сообщения */}
               <View style={styles.messagePreview}>
-                {(() => {
-                  const preview = getMessagePreview();
-                  return (
-                    <>
-                      {preview.attachmentText ? (
-                        <>
-                          <FormattedText
-                            text={preview.text}
-                            style={[styles.previewText, { color: theme.text }]}
-                            numberOfLines={2}
-                          />
-                          <View style={[styles.previewContent, { marginTop: 6 }]}>
-                            {preview.icon && (
-                              <Ionicons
-                                name={preview.icon as any}
-                                size={16}
-                                color={theme.primary}
-                                style={styles.previewIcon}
-                              />
-                            )}
-                            <Text style={[styles.attachmentText, { color: theme.textSecondary }]} numberOfLines={1}>
-                              {preview.attachmentText}
-                            </Text>
-                          </View>
-                        </>
-                      ) : (
-                        <View style={styles.previewContent}>
-                          {preview.icon && (
-                            <Ionicons
-                              name={preview.icon as any}
-                              size={18}
-                              color={theme.primary}
-                              style={styles.previewIcon}
-                            />
-                          )}
-                          <FormattedText
-                            text={preview.text}
-                            style={[styles.previewText, { color: theme.text }]}
-                            numberOfLines={3}
-                          />
-                        </View>
-                      )}
-
-                      <Text style={[styles.previewTime, { color: theme.textSecondary }]}>
-                        {formatDateTime(message.created_at)}
-                      </Text>
-                    </>
-                  );
-                })()}
+                {renderMessagePreview()}
               </View>
 
               {/* Разделитель */}
@@ -661,24 +624,63 @@ const styles = StyleSheet.create({
     padding: 12,
     paddingBottom: 8,
   },
-  previewContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  previewIcon: {
-    marginRight: 8,
-    marginTop: 2,
-  },
   previewText: {
     fontSize: 14,
     lineHeight: 20,
     flex: 1,
   },
-  attachmentText: {
+  // Миниатюры фото/видео
+  thumbnailRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 2,
+  },
+  thumbnailContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  extraCountOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  extraCountText: {
+    color: '#fff',
     fontSize: 13,
-    lineHeight: 18,
+    fontWeight: '600',
+  },
+  // Превью документов
+  documentPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  documentInfo: {
     flex: 1,
+    marginLeft: 10,
+  },
+  documentName: {
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  documentExtra: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 1,
   },
   previewTime: {
     fontSize: 11,
