@@ -809,12 +809,15 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
               { backgroundColor: theme.backgroundSecondary },
               (() => {
                 const screenH = Dimensions.get('window').height;
+                const screenW = Dimensions.get('window').width;
+                const menuW = 280;
                 const menuH = 350;
                 const margin = 40;
                 let top = pressY ?? (screenH - menuH) / 2;
                 if (top + menuH > screenH - margin) top = screenH - margin - menuH;
                 if (top < margin) top = margin;
-                return { top };
+                const left = (screenW - menuW) / 2;
+                return { top, left };
               })(),
             ]}>
               {/* Превью чата как в списке */}
@@ -1177,7 +1180,6 @@ const styles = StyleSheet.create({
   },
   contextMenuPositioned: {
     position: 'absolute',
-    alignSelf: 'center',
     width: 280,
     borderRadius: 12,
     overflow: 'hidden',

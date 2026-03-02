@@ -574,7 +574,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabContentInner: {
-    padding: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    maxWidth: 600,
+    width: '100%',
+    alignSelf: 'center',
   },
 
   // Results
