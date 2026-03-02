@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NotificationBell } from '@shared/components/common/NotificationBell';
 import { ConnectionStatus } from '@shared/components/common/ConnectionStatus';
@@ -35,29 +35,41 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
 
   const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
 
-  // Простая анимация fade для кнопок в header
-  const buttonOpacity = useRef(new Animated.Value(1)).current;
+  // Плавная cross-fade анимация между обычным и edit режимом
+  const editModeProgress = useRef(new Animated.Value(isEditMode ? 1 : 0)).current;
 
   useEffect(() => {
     if (reduceAnimations) {
+      editModeProgress.setValue(isEditMode ? 1 : 0);
       return;
     }
-    // Простая плавная анимация без bounce и scale
-    Animated.sequence([
-      // Сначала скрываем текущие кнопки
-      Animated.timing(buttonOpacity, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      // Затем показываем новые кнопки
-      Animated.timing(buttonOpacity, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [isEditMode, buttonOpacity]);
+    Animated.timing(editModeProgress, {
+      toValue: isEditMode ? 1 : 0,
+      duration: 250,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [isEditMode]);
+
+  const normalOpacity = editModeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0],
+  });
+
+  const editOpacity = editModeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  const normalScale = editModeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.85],
+  });
+
+  const editScale = editModeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.85, 1],
+  });
 
   // On Electron desktop, header controls and loading indicator are in TitleBar
   if (isElectronDesktop) {
@@ -89,39 +101,37 @@ export const ChatListHeader: React.FC<ChatListHeaderProps> = ({
       <View style={[styles.headerRight, styles.headerActions]}>
         {!(isElectron && isWideScreen) && (
           <>
-            {!isEditMode ? (
-              <Animated.View style={[
-                styles.buttonGroup,
-              ]}>
-                <TouchableOpacity onPress={onToggleEditMode} style={styles.iconButton}>
-                  <Ionicons name="ellipsis-vertical" size={24} color={theme.error} />
+            {/* Normal mode buttons */}
+            <Animated.View
+              style={[styles.headerButtonsRow, { opacity: normalOpacity, transform: [{ scale: normalScale }] }]}
+              pointerEvents={isEditMode ? 'none' : 'auto'}
+            >
+              <TouchableOpacity onPress={onToggleEditMode} style={styles.iconButton}>
+                <Ionicons name="ellipsis-vertical" size={24} color={theme.error} />
+              </TouchableOpacity>
+              {!isElectron && (
+                <TouchableOpacity onPress={onToggleSearch} style={[styles.iconButton, styles.searchButton]}>
+                  <Ionicons
+                    name={isSearchVisible ? 'close' : 'search'}
+                    size={22}
+                    color={theme.error}
+                  />
                 </TouchableOpacity>
-                {!isElectron && (
-                  <TouchableOpacity onPress={onToggleSearch} style={[styles.iconButton, styles.searchButton]}>
-                    <Ionicons
-                      name={isSearchVisible ? 'close' : 'search'}
-                      size={22}
-                      color={theme.error}
-                    />
-                  </TouchableOpacity>
-                )}
-              </Animated.View>
-            ) : (
-              <Animated.View >
-                <TouchableOpacity onPress={onToggleEditMode} style={styles.editButton}>
-                  <Text style={[styles.editButtonText, { color: theme.error }]}>Готово</Text>
-                </TouchableOpacity>
-              </Animated.View>
-            )}
-            {!isEditMode ? (
-              <Animated.View >
-                <TouchableOpacity onPress={onNewChat} style={styles.addButton}>
-                  <Ionicons name="add" size={30} color={theme.primary} />
-                </TouchableOpacity>
-              </Animated.View>
-            ) : (
-              <View style={styles.addButton} />
-            )}
+              )}
+              <TouchableOpacity onPress={onNewChat} style={styles.addButton}>
+                <Ionicons name="add" size={30} color={theme.primary} />
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Edit mode button - overlaid on full headerRight */}
+            <Animated.View
+              style={[styles.editOverlay, { opacity: editOpacity, transform: [{ scale: editScale }] }]}
+              pointerEvents={isEditMode ? 'auto' : 'none'}
+            >
+              <TouchableOpacity onPress={onToggleEditMode} style={styles.editButton}>
+                <Text style={[styles.editButtonText, { color: theme.error }]}>Готово</Text>
+              </TouchableOpacity>
+            </Animated.View>
           </>
         )}
       </View>
@@ -180,9 +190,14 @@ const styles = StyleSheet.create({
   searchButton: {
     marginLeft: 4,
   },
-  buttonGroup: {
+  headerButtonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  editOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
   },
 });

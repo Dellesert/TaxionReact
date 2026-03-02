@@ -1,7 +1,8 @@
-import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, TouchableOpacity, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
+import { useAnimationStore } from '@shared/store/animationStore';
 
 interface ChatActionBarProps {
   selectedCount: number;
@@ -15,14 +16,45 @@ export const ChatActionBar: React.FC<ChatActionBarProps> = ({
   onDelete,
 }) => {
   const { theme } = useTheme();
+  const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
+  const isVisible = selectedCount > 0;
+  const [shouldRender, setShouldRender] = useState(isVisible);
+  const animValue = useRef(new Animated.Value(isVisible ? 1 : 0)).current;
 
-  if (selectedCount === 0) return null;
+  useEffect(() => {
+    if (isVisible) {
+      setShouldRender(true);
+    }
+    if (reduceAnimations) {
+      animValue.setValue(isVisible ? 1 : 0);
+      if (!isVisible) setShouldRender(false);
+    } else {
+      Animated.timing(animValue, {
+        toValue: isVisible ? 1 : 0,
+        duration: 220,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished && !isVisible) {
+          setShouldRender(false);
+        }
+      });
+    }
+  }, [isVisible]);
+
+  if (!shouldRender) return null;
+
+  const translateY = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-8, 0],
+  });
 
   return (
-    <View
+    <Animated.View
       style={[
         styles.container,
         { backgroundColor: theme.background, borderBottomColor: theme.border },
+        { opacity: animValue, transform: [{ translateY }] },
       ]}
     >
       <TouchableOpacity
@@ -44,7 +76,7 @@ export const ChatActionBar: React.FC<ChatActionBarProps> = ({
           Удалить ({selectedCount})
         </Text>
       </TouchableOpacity>
-    </View>
+    </Animated.View>
   );
 };
 

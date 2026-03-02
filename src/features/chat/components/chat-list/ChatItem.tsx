@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Animated, Platform, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Animated, Platform, Dimensions, Easing } from 'react-native';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { Chat, TypingIndicator } from '../../types/chat.types';
@@ -54,12 +54,12 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
 
   const reduceAnimations = useAnimationStore((s) => s.reduceAnimations);
 
-  // Простая плавная анимация без bounce эффекта
+  // Плавная анимация чекбокса (absolute position — без layout jumps)
   const checkboxAnimation = useRef(new Animated.Value(isEditMode ? 1 : 0)).current;
 
   const checkboxTranslateX = checkboxAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: [-32, 0], // Выезжает слева
+    outputRange: [-32, 0],
   });
 
   const checkboxOpacity = checkboxAnimation.interpolate({
@@ -67,24 +67,24 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     outputRange: [0, 1],
   });
 
-  // Анимация сдвига контента чата для освобождения места под чекбокс
+  // Сдвиг контента вправо на ширину чекбокса (24 + 8 margin)
   const contentTranslateX = checkboxAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 8], // 24px чекбокс + 8px margin
+    outputRange: [0, 32],
   });
 
-  // Запускаем плавную анимацию при изменении isEditMode
   useEffect(() => {
     if (reduceAnimations) {
       checkboxAnimation.setValue(isEditMode ? 1 : 0);
     } else {
       Animated.timing(checkboxAnimation, {
         toValue: isEditMode ? 1 : 0,
-        duration: 250, // Плавная анимация 250ms
+        duration: 280,
+        easing: isEditMode ? Easing.out(Easing.back(1.2)) : Easing.inOut(Easing.ease),
         useNativeDriver: true,
       }).start();
     }
-  }, [isEditMode, checkboxAnimation]);
+  }, [isEditMode]);
 
   const getChatName = () => {
     return getChatDisplayName(chat, currentUser?.id);
@@ -191,8 +191,20 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
 
     const senderPrefix = getSenderPrefix();
 
+    // Проверяем, является ли сообщение задачей
+    const rawContent = message.content || '';
+    if (rawContent.includes('[TASK_DATA]')) {
+      const taskMatch = rawContent.match(/\[TASK_DATA\](.*?)\[\/TASK_DATA\]/s);
+      if (taskMatch) {
+        try {
+          const td = JSON.parse(taskMatch[1]);
+          return senderPrefix + '\u{1F4CB} ' + td.task_title;
+        } catch {}
+      }
+    }
+
     // Формируем текст сообщения
-    let messageText = stripFormatting(message.content || '');
+    let messageText = stripFormatting(rawContent);
 
     // Если сообщение пустое но есть вложения
     // Проверяем и attachments и любое поле которое может содержать файлы
@@ -447,27 +459,28 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
         onPressOut={handlePressOut}
         activeOpacity={0.7}
       >
-        {/* Анимированный чекбокс в режиме редактирования */}
-        {isEditMode && (
-          <Animated.View style={[
+        {/* Чекбокс — absolute, всегда рендерится, без layout jumps */}
+        <Animated.View
+          style={[
             styles.checkboxContainer,
             {
               opacity: checkboxOpacity,
               transform: [{ translateX: checkboxTranslateX }],
             }
+          ]}
+          pointerEvents={isEditMode ? 'auto' : 'none'}
+        >
+          <View style={[
+            styles.checkbox,
+            {
+              borderColor: theme.border,
+              backgroundColor: isSelected ? theme.primary : theme.backgroundSecondary
+            },
+            isSelected && { borderColor: theme.primary }
           ]}>
-            <View style={[
-              styles.checkbox,
-              {
-                borderColor: theme.border,
-                backgroundColor: isSelected ? theme.primary : theme.backgroundSecondary
-              },
-              isSelected && { borderColor: theme.primary }
-            ]}>
-              {isSelected && <Ionicons name="checkmark" size={18} color="#FFF" />}
-            </View>
-          </Animated.View>
-        )}
+            {isSelected && <Ionicons name="checkmark" size={18} color="#FFF" />}
+          </View>
+        </Animated.View>
 
         {/* Анимированный контент чата */}
         <Animated.View
@@ -992,10 +1005,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   checkboxContainer: {
+    position: 'absolute',
+    left: 16,
+    top: 0,
+    bottom: 0,
     width: 24,
-    marginRight: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1,
   },
   checkbox: {
     width: 24,
