@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { View, ScrollView, Dimensions, StyleSheet, useWindowDimensions, TouchableOpacity, Text, Platform, Animated } from 'react-native';
+import { View, ScrollView, Dimensions, StyleSheet, useWindowDimensions, TouchableOpacity, Text, Platform, Animated, Keyboard } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -92,6 +92,10 @@ const TaskDetailScreen: React.FC = () => {
 
   // Ref for the 3-dot menu button
   const menuButtonRef = useRef<any>(null);
+
+  // Keyboard tracking for comments tab scroll
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Custom hooks for data management
   const {
@@ -201,6 +205,32 @@ const TaskDetailScreen: React.FC = () => {
     }, [taskId])
   );
 
+  // Track keyboard height for comments tab scroll adjustment
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  // Auto-scroll comments to bottom when keyboard opens
+  useEffect(() => {
+    if (activeTab === 'comments' && keyboardHeight > 0) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [activeTab, keyboardHeight]);
+
   // Handlers
   const handleTaskAction = async () => {
     if (!task) return;
@@ -222,6 +252,10 @@ const TaskDetailScreen: React.FC = () => {
     try {
       await sendComment();
       await loadActivitiesSilently();
+      // Scroll to the new comment
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 150);
     } catch (error) {
       showError('Не удалось отправить комментарий');
     }
@@ -683,11 +717,12 @@ const TaskDetailScreen: React.FC = () => {
 
             {/* Tab Content */}
             <ScrollView
+              ref={scrollViewRef}
               style={styles.tabContent}
               contentContainerStyle={{
                 paddingBottom:
                   activeTab === 'comments' && !isDelegatedByMe && task?.status !== 'done'
-                    ? 16
+                    ? 16 + keyboardHeight
                     : activeTab === 'overview'
                     ? insets.bottom + 100
                     : insets.bottom + 160,
