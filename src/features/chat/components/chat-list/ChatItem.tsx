@@ -56,6 +56,8 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
 
   // Плавная анимация чекбокса (absolute position — без layout jumps)
   const checkboxAnimation = useRef(new Animated.Value(isEditMode ? 1 : 0)).current;
+  // Отдельная анимация для сдвига контента (useNativeDriver: false для layout-свойств)
+  const contentAnimation = useRef(new Animated.Value(isEditMode ? 1 : 0)).current;
 
   const checkboxTranslateX = checkboxAnimation.interpolate({
     inputRange: [0, 1],
@@ -67,8 +69,8 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
     outputRange: [0, 1],
   });
 
-  // Сдвиг контента вправо на ширину чекбокса (24 + 8 margin)
-  const contentTranslateX = checkboxAnimation.interpolate({
+  // Сдвиг контента вправо через marginLeft (контент сужается, а не обрезается)
+  const contentMarginLeft = contentAnimation.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 32],
   });
@@ -76,13 +78,22 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
   useEffect(() => {
     if (reduceAnimations) {
       checkboxAnimation.setValue(isEditMode ? 1 : 0);
+      contentAnimation.setValue(isEditMode ? 1 : 0);
     } else {
-      Animated.timing(checkboxAnimation, {
-        toValue: isEditMode ? 1 : 0,
-        duration: 280,
-        easing: isEditMode ? Easing.out(Easing.back(1.2)) : Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      }).start();
+      Animated.parallel([
+        Animated.timing(checkboxAnimation, {
+          toValue: isEditMode ? 1 : 0,
+          duration: 280,
+          easing: isEditMode ? Easing.out(Easing.back(1.2)) : Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentAnimation, {
+          toValue: isEditMode ? 1 : 0,
+          duration: 280,
+          easing: isEditMode ? Easing.out(Easing.back(1.2)) : Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        }),
+      ]).start();
     }
   }, [isEditMode]);
 
@@ -487,7 +498,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({ chat, onPress, onMarkAsRea
           style={[
             styles.chatContent,
             {
-              transform: [{ translateX: contentTranslateX }]
+              marginLeft: contentMarginLeft,
             }
           ]}
         >
@@ -1003,6 +1014,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
+    overflow: 'hidden',
   },
   checkboxContainer: {
     position: 'absolute',
