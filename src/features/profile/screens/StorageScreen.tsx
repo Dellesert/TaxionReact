@@ -13,6 +13,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -111,6 +112,13 @@ export default function StorageScreen() {
   const [cacheInfo, setCacheInfo] = useState<CacheInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [selectedClear, setSelectedClear] = useState({
+    data: true,
+    images: true,
+    video: true,
+    files: true,
+  });
 
   const loadCacheInfo = useCallback(async () => {
     setIsLoading(true);
@@ -237,144 +245,41 @@ export default function StorageScreen() {
     loadCacheInfo();
   }, [loadCacheInfo]);
 
-  const handleClearDataCache = async () => {
+  const toggleClearItem = (key: keyof typeof selectedClear) => {
+    setSelectedClear(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const hasSelection = Object.values(selectedClear).some(Boolean);
+
+  const handleClearSelected = async () => {
+    const labels: string[] = [];
+    if (selectedClear.data) labels.push('системные данные');
+    if (selectedClear.images) labels.push('изображения');
+    if (selectedClear.video) labels.push('видео');
+    if (selectedClear.files) labels.push('файлы');
+
     Alert.alert(
-      'Очистить кэш данных',
-      'Будут удалены кэшированные чаты, задачи, события календаря, опросы и профили пользователей. Данные будут загружены заново при следующем открытии.',
+      'Очистить кэш',
+      `Будут удалены: ${labels.join(', ')}. Данные будут загружены заново.`,
       [
         { text: 'Отмена', style: 'cancel' },
         {
           text: 'Очистить',
           style: 'destructive',
           onPress: async () => {
+            setShowClearModal(false);
             setIsClearing(true);
             try {
-              await clearAllStorages();
-              await loadCacheInfo();
-              Alert.alert('Готово', 'Кэш данных очищен');
-            } catch (error) {
-              Alert.alert('Ошибка', 'Не удалось очистить кэш');
-            } finally {
-              setIsClearing(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleClearImageCache = async () => {
-    Alert.alert(
-      'Очистить кэш изображений',
-      'Все кэшированные изображения будут удалены. Изображения будут загружены заново при просмотре.',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Очистить',
-          style: 'destructive',
-          onPress: async () => {
-            setIsClearing(true);
-            try {
-              await Image.clearDiskCache();
-              await Image.clearMemoryCache();
-              await loadCacheInfo();
-              Alert.alert('Готово', 'Кэш изображений очищен');
-            } catch (error) {
-              Alert.alert('Ошибка', 'Не удалось очистить кэш изображений');
-            } finally {
-              setIsClearing(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleClearVideoCache = async () => {
-    Alert.alert(
-      'Очистить кэш видео',
-      'Все кэшированные видео будут удалены. Видео будут загружены заново при просмотре.',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Очистить',
-          style: 'destructive',
-          onPress: async () => {
-            setIsClearing(true);
-            try {
-              await clearVideoCache();
-              await loadCacheInfo();
-              Alert.alert('Готово', 'Кэш видео очищен');
-            } catch (error) {
-              Alert.alert('Ошибка', 'Не удалось очистить кэш видео');
-            } finally {
-              setIsClearing(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleClearFileCache = async () => {
-    Alert.alert(
-      'Очистить кэш файлов',
-      'Все кэшированные документы будут удалены. Файлы будут загружены заново при открытии.',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Очистить',
-          style: 'destructive',
-          onPress: async () => {
-            setIsClearing(true);
-            try {
-              await clearFileCache();
-              await loadCacheInfo();
-              Alert.alert('Готово', 'Кэш файлов очищен');
-            } catch (error) {
-              Alert.alert('Ошибка', 'Не удалось очистить кэш файлов');
-            } finally {
-              setIsClearing(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleClearAllCache = async () => {
-    Alert.alert(
-      'Очистить весь кэш',
-      'Будут удалены все кэшированные данные и изображения. Приложение может работать медленнее, пока данные не будут загружены заново.',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Очистить всё',
-          style: 'destructive',
-          onPress: async () => {
-            setIsClearing(true);
-            try {
-              await clearAllStorages();
-              await Image.clearDiskCache();
-              await Image.clearMemoryCache();
-              await clearVideoCache();
-              await clearFileCache();
-
-              // Clear file cache
-              const clearCacheDir = FileSystem.cacheDirectory;
-              if (isNative && clearCacheDir) {
-                try {
-                  const files = await FileSystem.readDirectoryAsync(clearCacheDir);
-                  for (const file of files) {
-                    await FileSystem.deleteAsync(`${clearCacheDir}${file}`, { idempotent: true });
-                  }
-                } catch (e) {
-                  // Some files might not be deletable
-                }
+              if (selectedClear.data) await clearAllStorages();
+              if (selectedClear.images) {
+                await Image.clearDiskCache();
+                await Image.clearMemoryCache();
               }
+              if (selectedClear.video) await clearVideoCache();
+              if (selectedClear.files) await clearFileCache();
 
               await loadCacheInfo();
-              Alert.alert('Готово', 'Весь кэш очищен');
+              Alert.alert('Готово', 'Кэш очищен');
             } catch (error) {
               Alert.alert('Ошибка', 'Не удалось очистить кэш');
             } finally {
@@ -549,19 +454,6 @@ export default function StorageScreen() {
       flexDirection: 'row',
       alignItems: 'center',
     },
-    clearButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-    },
-    clearButtonText: {
-      fontSize: 16,
-      fontWeight: '500',
-      color: '#EF4444',
-      marginLeft: 8,
-    },
     clearAllButton: {
       backgroundColor: '#EF4444',
       borderRadius: 12,
@@ -595,6 +487,86 @@ export default function StorageScreen() {
       fontSize: 14,
       color: isDark ? theme.textSecondary : '#92400E',
       marginLeft: 12,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    modalContent: {
+      backgroundColor: isDark ? theme.backgroundSecondary : '#FFFFFF',
+      borderRadius: 16,
+      padding: 24,
+      width: '100%',
+      maxWidth: 400,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 4,
+    },
+    modalSubtitle: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginBottom: 20,
+    },
+    checkRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    checkRowText: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    checkRowTitle: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: theme.text,
+    },
+    checkRowSubtitle: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      marginTop: 2,
+    },
+    checkRowSize: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginLeft: 8,
+    },
+    modalButtons: {
+      flexDirection: 'row',
+      marginTop: 20,
+      gap: 12,
+    },
+    modalCancelButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+      backgroundColor: isDark ? theme.border : '#F3F4F6',
+    },
+    modalCancelText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    modalClearButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+      backgroundColor: '#EF4444',
+    },
+    modalClearText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#FFFFFF',
     },
   });
 
@@ -641,8 +613,7 @@ export default function StorageScreen() {
                   <Ionicons name="server-outline" size={20} color="#3B82F6" />
                 </View>
                 <View style={styles.rowTextContainer}>
-                  <Text style={styles.rowTitle}>Данные</Text>
-                  <Text style={styles.rowSubtitle}>Чаты, задачи, календарь, опросы, профили</Text>
+                  <Text style={styles.rowTitle}>Системные данные</Text>
                 </View>
               </View>
               <Text style={styles.rowValue}>{formatBytes(cacheInfo?.mmkv.totalSize || 0)}</Text>
@@ -756,93 +727,107 @@ export default function StorageScreen() {
           </View>
         )}
 
-        {/* Clear Actions */}
+        {/* Clear Action */}
         {isNative && (
-          <>
-            <View style={[styles.section, { marginTop: 32 }]}>
-              <Text style={styles.sectionTitle}>Действия</Text>
-              <View style={styles.card}>
-                <TouchableOpacity
-                  style={styles.row}
-                  onPress={handleClearDataCache}
-                  disabled={isClearing}
-                >
-                  <View style={styles.rowLeft}>
-                    <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
-                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                    </View>
-                    <View style={styles.rowTextContainer}>
-                      <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Очистить кэш данных</Text>
-                      <Text style={styles.rowSubtitle}>Чаты, задачи, календарь, опросы, профили</Text>
-                    </View>
-                  </View>
-                  {isClearing && <ActivityIndicator size="small" color="#EF4444" />}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.row}
-                  onPress={handleClearImageCache}
-                  disabled={isClearing}
-                >
-                  <View style={styles.rowLeft}>
-                    <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
-                      <Ionicons name="images-outline" size={20} color="#EF4444" />
-                    </View>
-                    <View style={styles.rowTextContainer}>
-                      <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Очистить кэш изображений</Text>
-                      <Text style={styles.rowSubtitle}>Аватарки и медиа</Text>
-                    </View>
-                  </View>
-                  {isClearing && <ActivityIndicator size="small" color="#EF4444" />}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.row}
-                  onPress={handleClearVideoCache}
-                  disabled={isClearing}
-                >
-                  <View style={styles.rowLeft}>
-                    <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
-                      <Ionicons name="videocam-outline" size={20} color="#EF4444" />
-                    </View>
-                    <View style={styles.rowTextContainer}>
-                      <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Очистить кэш видео</Text>
-                      <Text style={styles.rowSubtitle}>Кэшированные видеозаписи</Text>
-                    </View>
-                  </View>
-                  {isClearing && <ActivityIndicator size="small" color="#EF4444" />}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.row, styles.rowLast]}
-                  onPress={handleClearFileCache}
-                  disabled={isClearing}
-                >
-                  <View style={styles.rowLeft}>
-                    <View style={[styles.rowIcon, { backgroundColor: '#EF444420' }]}>
-                      <Ionicons name="document-text-outline" size={20} color="#EF4444" />
-                    </View>
-                    <View style={styles.rowTextContainer}>
-                      <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Очистить кэш файлов</Text>
-                      <Text style={styles.rowSubtitle}>PDF, документы и другие файлы</Text>
-                    </View>
-                  </View>
-                  {isClearing && <ActivityIndicator size="small" color="#EF4444" />}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={styles.clearAllButton}
-              onPress={handleClearAllCache}
-              disabled={isClearing}
-            >
-              {isClearing ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.clearAllButtonText}>Очистить весь кэш</Text>
-              )}
-            </TouchableOpacity>
-          </>
+          <TouchableOpacity
+            style={styles.clearAllButton}
+            onPress={() => setShowClearModal(true)}
+            disabled={isClearing}
+          >
+            {isClearing ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.clearAllButtonText}>Очистить кэш</Text>
+            )}
+          </TouchableOpacity>
         )}
       </ScrollView>
+
+      {/* Clear Cache Modal */}
+      <Modal
+        visible={showClearModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowClearModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowClearModal(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <Text style={styles.modalTitle}>Очистить кэш</Text>
+            <Text style={styles.modalSubtitle}>Выберите, что очистить</Text>
+
+            <TouchableOpacity style={styles.checkRow} onPress={() => toggleClearItem('data')}>
+              <Ionicons
+                name={selectedClear.data ? 'checkbox' : 'square-outline'}
+                size={24}
+                color={selectedClear.data ? theme.primary : theme.textSecondary}
+              />
+              <View style={styles.checkRowText}>
+                <Text style={styles.checkRowTitle}>Системные данные</Text>
+              </View>
+              <Text style={styles.checkRowSize}>{formatBytes(cacheInfo?.mmkv.totalSize || 0)}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.checkRow} onPress={() => toggleClearItem('images')}>
+              <Ionicons
+                name={selectedClear.images ? 'checkbox' : 'square-outline'}
+                size={24}
+                color={selectedClear.images ? theme.primary : theme.textSecondary}
+              />
+              <View style={styles.checkRowText}>
+                <Text style={styles.checkRowTitle}>Изображения</Text>
+                <Text style={styles.checkRowSubtitle}>Аватарки и фото в чатах</Text>
+              </View>
+              <Text style={styles.checkRowSize}>{formatBytes(cacheInfo?.imageCache || 0)}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.checkRow} onPress={() => toggleClearItem('video')}>
+              <Ionicons
+                name={selectedClear.video ? 'checkbox' : 'square-outline'}
+                size={24}
+                color={selectedClear.video ? theme.primary : theme.textSecondary}
+              />
+              <View style={styles.checkRowText}>
+                <Text style={styles.checkRowTitle}>Видео</Text>
+                <Text style={styles.checkRowSubtitle}>Кэш видеозаписей</Text>
+              </View>
+              <Text style={styles.checkRowSize}>{formatBytes(cacheInfo?.videoCache || 0)}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.checkRow} onPress={() => toggleClearItem('files')}>
+              <Ionicons
+                name={selectedClear.files ? 'checkbox' : 'square-outline'}
+                size={24}
+                color={selectedClear.files ? theme.primary : theme.textSecondary}
+              />
+              <View style={styles.checkRowText}>
+                <Text style={styles.checkRowTitle}>Файлы</Text>
+                <Text style={styles.checkRowSubtitle}>PDF, документы и другие файлы</Text>
+              </View>
+              <Text style={styles.checkRowSize}>{formatBytes(cacheInfo?.fileCache || 0)}</Text>
+            </TouchableOpacity>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setShowClearModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Отмена</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalClearButton, !hasSelection && { opacity: 0.4 }]}
+                onPress={handleClearSelected}
+                disabled={!hasSelection}
+              >
+                <Text style={styles.modalClearText}>Очистить</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
