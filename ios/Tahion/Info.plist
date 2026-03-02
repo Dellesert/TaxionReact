@@ -41,7 +41,7 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>47</string>
+    <string>48</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
@@ -75,6 +75,7 @@
     <string>Tachyon нужен доступ к вашей фотогалерее для выбора и отправки изображений</string>
     <key>NSUserActivityTypes</key>
     <array>
+      <string>INSendMessageIntent</string>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
     </array>
     <key>RCTNewArchEnabled</key>

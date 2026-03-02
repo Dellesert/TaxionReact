@@ -1,5 +1,6 @@
 import UserNotifications
 import UIKit
+import Intents
 
 class NotificationService: UNNotificationServiceExtension {
 
@@ -18,19 +19,29 @@ class NotificationService: UNNotificationServiceExtension {
       return
     }
 
-    // Get avatar URL from the custom APNS payload
     let userInfo = bestAttemptContent.userInfo
-    guard let avatarURLString = userInfo["sender_avatar"] as? String,
-          let avatarURL = URL(string: avatarURLString) else {
-      contentHandler(bestAttemptContent)
+    let senderName = userInfo["sender_name"] as? String ?? ""
+    let avatarURLString = userInfo["sender_avatar"] as? String
+
+    guard let urlString = avatarURLString,
+          let avatarURL = URL(string: urlString) else {
+      // No avatar — still set up communication notification with name only
+      let updated = self.applyCommNotification(
+        to: bestAttemptContent,
+        senderName: senderName,
+        avatarData: nil
+      )
+      contentHandler(updated)
       return
     }
 
-    downloadAndAttachAvatar(url: avatarURL) { attachment in
-      if let attachment = attachment {
-        bestAttemptContent.attachments = [attachment]
-      }
-      contentHandler(bestAttemptContent)
+    downloadAvatar(url: avatarURL) { data in
+      let updated = self.applyCommNotification(
+        to: bestAttemptContent,
+        senderName: senderName,
+        avatarData: data
+      )
+      contentHandler(updated)
     }
   }
 
@@ -40,49 +51,74 @@ class NotificationService: UNNotificationServiceExtension {
     }
   }
 
-  // MARK: - Avatar Download & Circular Crop
+  // MARK: - Communication Notification (avatar on the left)
 
-  private func downloadAndAttachAvatar(
+  private func applyCommNotification(
+    to content: UNMutableNotificationContent,
+    senderName: String,
+    avatarData: Data?
+  ) -> UNNotificationContent {
+    var personImage: INImage? = nil
+    if let data = avatarData {
+      personImage = INImage(imageData: data)
+    }
+
+    let handle = INPersonHandle(value: nil, type: .unknown)
+    let sender = INPerson(
+      personHandle: handle,
+      nameComponents: nil,
+      displayName: senderName,
+      image: personImage,
+      contactIdentifier: nil,
+      customIdentifier: nil
+    )
+
+    let intent = INSendMessageIntent(
+      recipients: nil,
+      outgoingMessageType: .outgoingMessageText,
+      content: content.body,
+      speakableGroupName: nil,
+      conversationIdentifier: content.threadIdentifier,
+      serviceName: nil,
+      sender: sender,
+      attachments: nil
+    )
+
+    let interaction = INInteraction(intent: intent, response: nil)
+    interaction.direction = .incoming
+    interaction.donate(completion: nil)
+
+    do {
+      let updated = try content.updating(from: intent)
+      return updated
+    } catch {
+      return content
+    }
+  }
+
+  // MARK: - Avatar Download
+
+  private func downloadAvatar(
     url: URL,
-    completion: @escaping (UNNotificationAttachment?) -> Void
+    completion: @escaping (Data?) -> Void
   ) {
-    let task = URLSession.shared.dataTask(with: url) { data, response, error in
-      guard error == nil,
-            let data = data,
-            let originalImage = UIImage(data: data) else {
+    let task = URLSession.shared.dataTask(with: url) { data, _, error in
+      guard error == nil, let data = data else {
         completion(nil)
         return
       }
-
+      guard let originalImage = UIImage(data: data) else {
+        completion(nil)
+        return
+      }
       let circularImage = self.makeCircularImage(originalImage)
-
-      let fileManager = FileManager.default
-      let tmpDir = fileManager.temporaryDirectory
-      let fileName = UUID().uuidString + ".png"
-      let fileURL = tmpDir.appendingPathComponent(fileName)
-
-      guard let pngData = circularImage.pngData() else {
-        completion(nil)
-        return
-      }
-
-      do {
-        try pngData.write(to: fileURL)
-        let attachment = try UNNotificationAttachment(
-          identifier: "avatar",
-          url: fileURL,
-          options: [UNNotificationAttachmentOptionsTypeHintKey: "public.png"]
-        )
-        completion(attachment)
-      } catch {
-        completion(nil)
-      }
+      completion(circularImage.pngData())
     }
     task.resume()
   }
 
   private func makeCircularImage(_ image: UIImage) -> UIImage {
-    let size: CGFloat = 100
+    let size: CGFloat = 300
     let rect = CGRect(x: 0, y: 0, width: size, height: size)
 
     let renderer = UIGraphicsImageRenderer(size: rect.size)
