@@ -177,17 +177,16 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                   }}
                   existingReactions={userReactionEmojis}
                 />
-                <View style={[styles.separator, { backgroundColor: theme.border }]} />
+                <View style={[styles.separator, { backgroundColor: theme.border + '40' }]} />
               </>
             )}
 
             {/* Превью выбранного сообщения */}
-            <View style={[styles.messagePreview, { backgroundColor: theme.background }]}>
+            <View style={styles.messagePreview}>
               {(() => {
                 const preview = getMessagePreview();
                 return (
                   <>
-                    {/* Если есть текст И вложение - показываем текст отдельно */}
                     {preview.attachmentText ? (
                       <>
                         <FormattedText
@@ -212,7 +211,6 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                         </View>
                       </>
                     ) : (
-                      /* Если только текст или только вложение - показываем с иконкой */
                       <View style={styles.previewContent}>
                         {preview.attachmentFileName ? (
                           <FileTypeIcon fileName={preview.attachmentFileName} size={16} />
@@ -241,7 +239,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
             </View>
 
             {/* Разделитель */}
-            <View style={[styles.separator, { backgroundColor: theme.border }]} />
+            <View style={[styles.separator, { backgroundColor: theme.border + '40' }]} />
 
             {/* Для удаленных сообщений показываем восстановить и удалить безвозвратно */}
             {message.is_deleted ? (
@@ -417,12 +415,12 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                     }}
                     existingReactions={userReactionEmojis}
                   />
-                  <View style={[styles.separator, { backgroundColor: theme.border }]} />
+                  <View style={[styles.separator, { backgroundColor: theme.border + '40' }]} />
                 </>
               )}
 
               {/* Превью выбранного сообщения */}
-              <View style={[styles.messagePreview, { backgroundColor: theme.background }]}>
+              <View style={styles.messagePreview}>
                 {(() => {
                   const preview = getMessagePreview();
                   return (
@@ -475,7 +473,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
               </View>
 
               {/* Разделитель */}
-              <View style={[styles.separator, { backgroundColor: theme.border }]} />
+              <View style={[styles.separator, { backgroundColor: theme.border + '40' }]} />
 
               {message.is_deleted ? (
                 <>
