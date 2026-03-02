@@ -1177,8 +1177,8 @@ const styles = StyleSheet.create({
   },
   contextMenuPositioned: {
     position: 'absolute',
-    left: 16,
-    right: 16,
+    alignSelf: 'center',
+    width: 280,
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
