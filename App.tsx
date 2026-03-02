@@ -140,6 +140,8 @@ export default function App() {
 
   const loadUnreadCount = useNotificationStore((state) => state.loadUnreadCount);
 
+  const totalUnreadCount = useChatStore((state) => state.totalUnreadCount);
+
   // Navigation ref for push notification navigation
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
@@ -148,6 +150,13 @@ export default function App() {
 
   // Прогрев кэша при авторизации (загружает чаты, задачи, опросы в фоне)
   useCacheWarmingOnAuth(isAuthenticated);
+
+  // Синхронизация badge count на иконке приложения с количеством непрочитанных сообщений
+  useEffect(() => {
+    if (isAuthenticated) {
+      pushNotificationService.setBadgeCount(totalUnreadCount);
+    }
+  }, [totalUnreadCount, isAuthenticated]);
 
   // Add Electron-specific CSS classes to html element for window border styling
   useEffect(() => {
