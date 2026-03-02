@@ -204,14 +204,23 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     messageBubbleRef.current?.measureInWindow((x, y, width, height) => {
       const screenWidth = Dimensions.get('window').width;
       const screenHeight = Dimensions.get('window').height;
-      const menuWidth = 250;
+      const menuWidth = 260;
       const menuHeight = 510;
+      const edgePadding = 10;
       const minTopMargin = 160; // Отступ сверху (для header и safe area)
       const minBottomMargin = 20; // Отступ снизу
 
-      const left = isOwnMessage
-        ? screenWidth - menuWidth - 20
-        : 20;
+      let left = isOwnMessage
+        ? screenWidth - menuWidth - edgePadding
+        : edgePadding;
+
+      // Гарантируем, что меню не выходит за границы экрана
+      if (left + menuWidth > screenWidth - edgePadding) {
+        left = screenWidth - menuWidth - edgePadding;
+      }
+      if (left < edgePadding) {
+        left = edgePadding;
+      }
 
       // Определяем видимую область сообщения на экране
       const messageVisibleTop = Math.max(y, minTopMargin);
@@ -245,8 +254,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
     const screenWidth = Dimensions.get('window').width;
     const screenHeight = Dimensions.get('window').height;
-    const menuWidth = 250;
+    const menuWidth = 260;
     const menuHeight = 510;
+    const edgePadding = 10;
     const minTopMargin = 20;
     const minBottomMargin = 20;
 
@@ -254,8 +264,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     let top = position.y;
 
     // Не даём меню выйти за правый край
-    if (left + menuWidth > screenWidth) {
-      left = screenWidth - menuWidth - 20;
+    if (left + menuWidth > screenWidth - edgePadding) {
+      left = screenWidth - menuWidth - edgePadding;
     }
 
     // Не даём меню выйти за нижний край
@@ -264,7 +274,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     }
 
     top = Math.max(minTopMargin, top);
-    left = Math.max(10, left);
+    left = Math.max(edgePadding, left);
 
     setMenuPosition({ top, left });
     setShowContextMenu(true);

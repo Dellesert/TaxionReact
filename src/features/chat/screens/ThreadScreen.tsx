@@ -365,13 +365,20 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
       ref.measureInWindow((_x, y, _width, _height) => {
         const screenWidth = Dimensions.get('window').width;
         const screenHeight = Dimensions.get('window').height;
-        const menuWidth = 250;
+        const menuWidth = 260;
         const menuHeight = 510;
+        const edgePadding = 10;
         const minTopMargin = 160;
         const minBottomMargin = 20;
         const isOwn = msg.sender_id === currentUserId;
 
-        const left = isOwn ? screenWidth - menuWidth - 20 : 20;
+        let left = isOwn ? screenWidth - menuWidth - edgePadding : edgePadding;
+        if (left + menuWidth > screenWidth - edgePadding) {
+          left = screenWidth - menuWidth - edgePadding;
+        }
+        if (left < edgePadding) {
+          left = edgePadding;
+        }
         const messageVisibleTop = Math.max(y, minTopMargin);
         let top = messageVisibleTop;
         if (top + menuHeight > screenHeight - minBottomMargin) {
@@ -395,15 +402,16 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
     if (!msg) return;
     const screenWidth = Dimensions.get('window').width;
     const screenHeight = Dimensions.get('window').height;
-    const menuWidth = 250;
+    const menuWidth = 260;
     const menuHeight = 510;
+    const edgePadding = 10;
 
     let left = position.x;
     let top = position.y;
-    if (left + menuWidth > screenWidth) left = screenWidth - menuWidth - 20;
+    if (left + menuWidth > screenWidth - edgePadding) left = screenWidth - menuWidth - edgePadding;
     if (top + menuHeight > screenHeight - 20) top = screenHeight - menuHeight - 20;
     top = Math.max(20, top);
-    left = Math.max(10, left);
+    left = Math.max(edgePadding, left);
 
     setMenuPosition({ top, left });
     setSelectedMessage(msg);
@@ -483,14 +491,15 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
     if (!rootMessage) return;
     const screenWidth = Dimensions.get('window').width;
     const screenHeight = Dimensions.get('window').height;
-    const menuWidth = 250;
+    const menuWidth = 260;
     const menuHeight = 510;
+    const edgePadding = 10;
     let left = position.x;
     let top = position.y;
-    if (left + menuWidth > screenWidth) left = screenWidth - menuWidth - 20;
+    if (left + menuWidth > screenWidth - edgePadding) left = screenWidth - menuWidth - edgePadding;
     if (top + menuHeight > screenHeight - 20) top = screenHeight - menuHeight - 20;
     top = Math.max(20, top);
-    left = Math.max(10, left);
+    left = Math.max(edgePadding, left);
     setMenuPosition({ top, left });
     setSelectedMessage(rootMessage);
     setShowContextMenu(true);

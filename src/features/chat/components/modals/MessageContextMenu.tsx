@@ -629,8 +629,7 @@ const styles = StyleSheet.create({
   },
   contextMenu: {
     position: 'absolute',
-    minWidth: 250,
-    maxWidth: Dimensions.get('window').width - 40,
+    width: 260,
     borderRadius: 12,
     padding: 0,
     overflow: 'hidden',
@@ -649,8 +648,7 @@ const styles = StyleSheet.create({
   },
   contextMenuPosition: {
     position: 'absolute',
-    minWidth: 250,
-    maxWidth: Dimensions.get('window').width - 40,
+    width: 260,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
