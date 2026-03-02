@@ -256,6 +256,16 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
                   </View>
                 ) : (
                   <>
+                    {currentMessage.sender && (
+                      <Avatar
+                        name={currentMessage.sender.name}
+                        imageUrl={currentMessage.sender.avatar}
+                        thumbnailUrl={currentMessage.sender.avatar_thumbnail}
+                        userId={currentMessage.sender.id}
+                        size={22}
+                        style={styles.senderAvatar}
+                      />
+                    )}
                     {preview.attachmentFileName ? (
                       <View style={styles.fileIcon}>
                         <FileTypeIcon fileName={preview.attachmentFileName} size={14} />
@@ -268,16 +278,6 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
                         style={styles.fileIcon}
                       />
                     ) : null}
-                    {currentMessage.sender && (
-                      <Avatar
-                        name={currentMessage.sender.name}
-                        imageUrl={currentMessage.sender.avatar}
-                        thumbnailUrl={currentMessage.sender.avatar_thumbnail}
-                        userId={currentMessage.sender.id}
-                        size={22}
-                        style={styles.senderAvatar}
-                      />
-                    )}
                   </>
                 )}
                 <Text
