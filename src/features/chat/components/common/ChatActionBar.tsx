@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@shared/hooks/useTheme';
 import { useAnimationStore } from '@shared/store/animationStore';
