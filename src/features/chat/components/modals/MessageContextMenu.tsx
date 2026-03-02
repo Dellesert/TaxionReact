@@ -400,9 +400,13 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
             onPress={onClose}
           >
             <View style={[
-              styles.contextMenu,
-              { backgroundColor: theme.backgroundSecondary, top: menuPosition.top, left: menuPosition.left }
+              styles.contextMenuPosition,
+              { top: menuPosition.top, left: menuPosition.left }
             ]}>
+              <View style={[
+                styles.contextMenuNative,
+                { backgroundColor: theme.backgroundSecondary }
+              ]}>
               {/* Панель быстрых реакций */}
               {!message.is_deleted && onReaction && (
                 <>
@@ -607,6 +611,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                   )}
                 </>
               )}
+              </View>
             </View>
           </Pressable>
         </View>
@@ -641,6 +646,20 @@ const styles = StyleSheet.create({
         elevation: 5,
       },
     }),
+  },
+  contextMenuPosition: {
+    position: 'absolute',
+    minWidth: 250,
+    maxWidth: Dimensions.get('window').width - 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  contextMenuNative: {
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   messagePreview: {
     padding: 12,
