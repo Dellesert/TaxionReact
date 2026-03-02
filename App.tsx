@@ -139,8 +139,7 @@ export default function App() {
   const loadAnimationPreference = useAnimationStore((state) => state.loadAnimationPreference);
 
   const loadUnreadCount = useNotificationStore((state) => state.loadUnreadCount);
-
-  const totalUnreadCount = useChatStore((state) => state.totalUnreadCount);
+  const notificationUnreadCount = useNotificationStore((state) => state.unreadCount);
 
   // Navigation ref for push notification navigation
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
@@ -151,12 +150,12 @@ export default function App() {
   // Прогрев кэша при авторизации (загружает чаты, задачи, опросы в фоне)
   useCacheWarmingOnAuth(isAuthenticated);
 
-  // Синхронизация badge count на иконке приложения с количеством непрочитанных сообщений
+  // Синхронизация badge count на иконке приложения с количеством непрочитанных уведомлений
   useEffect(() => {
     if (isAuthenticated) {
-      pushNotificationService.setBadgeCount(totalUnreadCount);
+      pushNotificationService.setBadgeCount(notificationUnreadCount);
     }
-  }, [totalUnreadCount, isAuthenticated]);
+  }, [notificationUnreadCount, isAuthenticated]);
 
   // Add Electron-specific CSS classes to html element for window border styling
   useEffect(() => {
