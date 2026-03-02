@@ -252,6 +252,12 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
             const textContent = stripFormatting(message.content);
             const mediaPreview = getMediaPreview(message);
             const isPoll = message.message_type === 'poll';
+            const attachments = message.attachments || (message as any).files || [];
+            const firstAttachment = Array.isArray(attachments) && attachments.length > 0 ? attachments[0] : null;
+            const fileType = firstAttachment ? (firstAttachment.file_type || firstAttachment.mime_type || '') : '';
+            const isImage = fileType.includes('image');
+            const isVideo = fileType.includes('video');
+            const thumbUrl = firstAttachment && (isImage || isVideo) ? getThumbnailUrl(firstAttachment, 'small') : null;
 
             const iconName = isPoll
               ? 'stats-chart'
@@ -263,11 +269,24 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
 
             return (
               <View style={[styles.messagePreview, { backgroundColor: theme.backgroundSecondary, borderLeftColor: theme.primary }]}>
-                <Ionicons
-                  name={iconName as any}
-                  size={16}
-                  color={theme.primary}
-                />
+                {thumbUrl ? (
+                  <View style={styles.messagePreviewThumbWrapper}>
+                    <Image source={{ uri: thumbUrl }} style={styles.messagePreviewThumb} contentFit="cover" />
+                    {isVideo && (
+                      <View style={styles.messagePreviewPlayIcon}>
+                        <Ionicons name="play" size={10} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </View>
+                ) : firstAttachment && !isImage && !isVideo && firstAttachment.file_name ? (
+                  <FileTypeIcon fileName={firstAttachment.file_name} size={20} />
+                ) : (
+                  <Ionicons
+                    name={iconName as any}
+                    size={16}
+                    color={theme.primary}
+                  />
+                )}
                 <Text style={[styles.previewText, { color: theme.text }]} numberOfLines={2}>
                   {previewText}
                 </Text>
@@ -366,6 +385,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 8,
     flex: 1,
+  },
+  messagePreviewThumbWrapper: {
+    position: 'relative',
+  },
+  messagePreviewThumb: {
+    width: 36,
+    height: 36,
+    borderRadius: 6,
+  },
+  messagePreviewPlayIcon: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 6,
   },
   searchContainer: {
     flexDirection: 'row',
