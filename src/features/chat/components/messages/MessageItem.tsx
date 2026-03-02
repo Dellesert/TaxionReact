@@ -153,6 +153,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
   const isOwnMessage = message.sender_id === currentUser?.id;
   const isAdmin = userRole === 'owner' || userRole === 'admin';
+  const isGlobalAdmin = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
   // Используем новое поле is_forwarded с fallback на старый формат
   const isForwarded = isForwardedMessage(message);
 
@@ -407,6 +408,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         menuPosition={menuPosition}
         isOwnMessage={isOwnMessage}
         isAdmin={isAdmin}
+        isGlobalAdmin={isGlobalAdmin}
         isForwardedMessage={isForwarded}
         chatType={chatType}
         currentUserRole={userRole}
@@ -441,7 +443,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               onDelete?.(message.id, 'everyone');
             },
           },
-          ...(isAdmin && onDeletePermanent ? [{
+          ...(isGlobalAdmin && onDeletePermanent ? [{
             text: 'Удалить безвозвратно',
             icon: 'close-circle-outline' as const,
             style: 'destructive' as const,
@@ -468,7 +470,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               onDelete?.(message.id, 'everyone');
             },
           }] : []),
-          ...(isAdmin && onDeletePermanent ? [{
+          ...(isGlobalAdmin && onDeletePermanent ? [{
             text: 'Удалить безвозвратно',
             icon: 'close-circle-outline' as const,
             style: 'destructive' as const,

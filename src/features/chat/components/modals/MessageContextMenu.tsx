@@ -23,6 +23,7 @@ interface MessageContextMenuProps {
   menuPosition: { top: number; left: number };
   isOwnMessage: boolean;
   isAdmin: boolean;
+  isGlobalAdmin: boolean;
   isForwardedMessage: boolean;
   chatType?: 'private' | 'group' | 'channel';
   currentUserRole?: 'owner' | 'admin' | 'member';
@@ -49,6 +50,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   menuPosition,
   isOwnMessage,
   isAdmin,
+  isGlobalAdmin,
   isForwardedMessage,
   chatType,
   currentUserRole,
@@ -291,7 +293,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                   </TouchableOpacity>
                 )}
                 {/* Удалить безвозвратно (только админы) */}
-                {isAdmin && onDeletePermanent && (
+                {isGlobalAdmin && onDeletePermanent && (
                   <TouchableOpacity
                     style={styles.menuItem}
                     onPress={() => {
@@ -474,7 +476,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                       <Text style={[styles.menuText, { color: theme.primary }]}>Восстановить</Text>
                     </TouchableOpacity>
                   )}
-                  {isAdmin && onDeletePermanent && (
+                  {isGlobalAdmin && onDeletePermanent && (
                     <TouchableOpacity
                       style={styles.menuItem}
                       onPress={() => {

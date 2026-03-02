@@ -759,6 +759,7 @@ const ThreadScreen: React.FC<ThreadScreenProps> = (props) => {
           menuPosition={menuPosition}
           isOwnMessage={selectedMessage.sender_id === currentUserId}
           isAdmin={false}
+          isGlobalAdmin={false}
           isForwardedMessage={false}
           chatType="channel"
           onClose={() => {
