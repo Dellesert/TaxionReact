@@ -34,6 +34,9 @@ module.exports = {
       },
       backgroundColor: "#E94444",
       googleServicesFile: "./GoogleService-Info.plist",
+      entitlements: {
+        "com.apple.developer.usernotifications.communication": true
+      },
       infoPlist: {
         NSPhotoLibraryUsageDescription: "Tachyon нужен доступ к вашей фотогалерее для выбора и отправки изображений",
         NSCameraUsageDescription: "Tachyon нужен доступ к камере для съемки и отправки фотографий",
@@ -47,7 +50,10 @@ module.exports = {
             }
           }
         },
-        ITSAppUsesNonExemptEncryption: false
+        ITSAppUsesNonExemptEncryption: false,
+        NSUserActivityTypes: [
+          "INSendMessageIntent"
+        ]
       }
     },
     android: {
