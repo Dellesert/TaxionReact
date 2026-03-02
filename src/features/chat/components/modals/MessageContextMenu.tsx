@@ -112,45 +112,63 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
     const hasMedia = mediaAttachments.length > 0;
     const hasFiles = fileAttachments.length > 0;
 
+    // Рендер миниатюр (вынесено для переиспользования)
+    const maxThumbs = hasText ? 3 : 4;
+    const thumbsToShow = mediaAttachments.slice(0, maxThumbs);
+    const extraCount = mediaAttachments.length - maxThumbs;
+
+    const renderThumbnails = () => (
+      <View style={hasText ? styles.thumbnailRowCompact : styles.thumbnailRow}>
+        {thumbsToShow.map((attachment, index) => {
+          const thumbnailUri = getThumbnailUrl(attachment, 'small');
+          const isPublicFile = thumbnailUri.includes('/files/public/');
+          const mt = attachment.mime_type || attachment.file_type || '';
+          const isVideo = isVideoFile(mt);
+          const isLast = index === thumbsToShow.length - 1;
+
+          return (
+            <View key={attachment.id} style={styles.thumbnailContainer}>
+              <Image
+                source={{
+                  uri: thumbnailUri,
+                  headers: (!isPublicFile && sessionId) ? { 'X-Session-ID': sessionId } : undefined,
+                }}
+                style={styles.thumbnailImage}
+                contentFit="cover"
+                cachePolicy="disk"
+              />
+              {isVideo && !(isLast && extraCount > 0) && (
+                <View style={styles.videoOverlay}>
+                  <Ionicons name="play" size={12} color="#fff" />
+                </View>
+              )}
+              {isLast && extraCount > 0 && (
+                <View style={styles.extraCountOverlay}>
+                  <Text style={styles.extraCountText}>+{extraCount}</Text>
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </View>
+    );
+
     return (
       <>
-        {/* Миниатюры фото/видео */}
-        {hasMedia && (
-          <View style={styles.thumbnailRow}>
-            {mediaAttachments.slice(0, 4).map((attachment, index) => {
-              const thumbnailUri = getThumbnailUrl(attachment, 'small');
-              const isPublicFile = thumbnailUri.includes('/files/public/');
-              const mt = attachment.mime_type || attachment.file_type || '';
-              const isVideo = isVideoFile(mt);
-              const isLast = index === Math.min(mediaAttachments.length, 4) - 1;
-              const extraCount = mediaAttachments.length - 4;
-
-              return (
-                <View key={attachment.id} style={styles.thumbnailContainer}>
-                  <Image
-                    source={{
-                      uri: thumbnailUri,
-                      headers: (!isPublicFile && sessionId) ? { 'X-Session-ID': sessionId } : undefined,
-                    }}
-                    style={styles.thumbnailImage}
-                    contentFit="cover"
-                    cachePolicy="disk"
-                  />
-                  {isVideo && !(isLast && extraCount > 0) && (
-                    <View style={styles.videoOverlay}>
-                      <Ionicons name="play" size={12} color="#fff" />
-                    </View>
-                  )}
-                  {isLast && extraCount > 0 && (
-                    <View style={styles.extraCountOverlay}>
-                      <Text style={styles.extraCountText}>+{extraCount}</Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
+        {/* Медиа + текст: горизонтальный layout */}
+        {hasMedia && hasText && (
+          <View style={styles.mediaTextRow}>
+            {renderThumbnails()}
+            <FormattedText
+              text={message.content}
+              style={[styles.previewText, { color: theme.text }]}
+              numberOfLines={3}
+            />
           </View>
         )}
+
+        {/* Только медиа без текста */}
+        {hasMedia && !hasText && renderThumbnails()}
 
         {/* Иконка типа документа (когда нет медиа) */}
         {!hasMedia && hasFiles && (
@@ -173,20 +191,24 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
                   и ещё {fileAttachments.length - 1}
                 </Text>
               )}
+              {/* Текст рядом с документом */}
+              {hasText && (
+                <FormattedText
+                  text={message.content}
+                  style={[styles.previewText, { color: theme.text, marginTop: 4 }]}
+                  numberOfLines={2}
+                />
+              )}
             </View>
           </View>
         )}
 
-        {/* Текст сообщения */}
-        {hasText && (
+        {/* Только текст (без вложений) */}
+        {!hasMedia && !hasFiles && hasText && (
           <FormattedText
             text={message.content}
-            style={[
-              styles.previewText,
-              { color: theme.text },
-              (hasMedia || hasFiles) && { marginTop: 6 },
-            ]}
-            numberOfLines={(hasMedia || hasFiles) ? 2 : 3}
+            style={[styles.previewText, { color: theme.text }]}
+            numberOfLines={3}
           />
         )}
 
@@ -629,11 +651,21 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     flex: 1,
   },
+  // Медиа + текст в одну строку
+  mediaTextRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
   // Миниатюры фото/видео
   thumbnailRow: {
     flexDirection: 'row',
     gap: 4,
     marginBottom: 2,
+  },
+  thumbnailRowCompact: {
+    flexDirection: 'row',
+    gap: 4,
   },
   thumbnailContainer: {
     width: 44,
