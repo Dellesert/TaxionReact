@@ -22,24 +22,47 @@ class NotificationService: UNNotificationServiceExtension {
     let userInfo = bestAttemptContent.userInfo
     let senderName = userInfo["sender_name"] as? String ?? ""
     let avatarURLString = userInfo["sender_avatar"] as? String
+    let attachmentURLString = userInfo["attachment_url"] as? String
 
-    guard let urlString = avatarURLString,
-          let avatarURL = URL(string: urlString) else {
-      // No avatar — still set up communication notification with name only
-      let updated = self.applyCommNotification(
-        to: bestAttemptContent,
-        senderName: senderName,
-        avatarData: nil
-      )
-      contentHandler(updated)
-      return
+    let group = DispatchGroup()
+    var avatarData: Data? = nil
+    var attachmentFileURL: URL? = nil
+
+    // Download sender avatar (for left side communication notification)
+    if let urlString = avatarURLString, let avatarURL = URL(string: urlString) {
+      group.enter()
+      downloadAvatar(url: avatarURL) { data in
+        avatarData = data
+        group.leave()
+      }
     }
 
-    downloadAvatar(url: avatarURL) { data in
+    // Download attachment thumbnail (for right side preview)
+    if let urlString = attachmentURLString, let url = URL(string: urlString) {
+      group.enter()
+      downloadAttachment(url: url) { fileURL in
+        attachmentFileURL = fileURL
+        group.leave()
+      }
+    }
+
+    group.notify(queue: .main) {
+      // Attach media preview (right side thumbnail)
+      if let fileURL = attachmentFileURL {
+        if let attachment = try? UNNotificationAttachment(
+          identifier: "media",
+          url: fileURL,
+          options: [UNNotificationAttachmentOptionsThumbnailHiddenKey: false]
+        ) {
+          bestAttemptContent.attachments = [attachment]
+        }
+      }
+
+      // Apply communication notification (left side avatar)
       let updated = self.applyCommNotification(
         to: bestAttemptContent,
         senderName: senderName,
-        avatarData: data
+        avatarData: avatarData
       )
       contentHandler(updated)
     }
@@ -113,6 +136,45 @@ class NotificationService: UNNotificationServiceExtension {
       }
       let circularImage = self.makeCircularImage(originalImage)
       completion(circularImage.pngData())
+    }
+    task.resume()
+  }
+
+  // MARK: - Attachment Download (for right side preview)
+
+  private func downloadAttachment(
+    url: URL,
+    completion: @escaping (URL?) -> Void
+  ) {
+    let task = URLSession.shared.dataTask(with: url) { data, response, error in
+      guard error == nil, let data = data, !data.isEmpty else {
+        completion(nil)
+        return
+      }
+
+      // Determine file extension from MIME type or URL
+      var fileExtension = "jpg"
+      if let mimeType = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type") {
+        if mimeType.contains("png") {
+          fileExtension = "png"
+        } else if mimeType.contains("gif") {
+          fileExtension = "gif"
+        } else if mimeType.contains("mp4") || mimeType.contains("video") {
+          fileExtension = "mp4"
+        }
+      }
+
+      // Write to temp file (UNNotificationAttachment requires a file URL)
+      let tempDir = FileManager.default.temporaryDirectory
+      let fileName = UUID().uuidString + "." + fileExtension
+      let fileURL = tempDir.appendingPathComponent(fileName)
+
+      do {
+        try data.write(to: fileURL)
+        completion(fileURL)
+      } catch {
+        completion(nil)
+      }
     }
     task.resume()
   }
